@@ -1,0 +1,44 @@
+(pc7.ps)run
+
+/delimiter    ( \t\n()/%[]<>{}) char-class def
+/regular-char delimiter inverse def
+/digit        (0123456789) char-class def
+/number       //digit + def
+/opt-number   //digit * def
+/opt-spaces   ( \t\n) char-class * def
+
+/rad-integer  [ //digit //digit ? (#) //number ] parser def
+/integer      [ (-) ? //number ] parser def
+/real         [ (-)? << [ //number (.) //opt-number ] [ (.) //number ] >> ] parser def
+/name         //regular-char + def
+
+/on-integer   << //rad-integer //integer >>
+		             { [ exch /INT  exch dup cvi        ] accumulate } action def
+/on-real      //real         { [ exch /REAL exch dup cvr        ] accumulate } action def
+/on-lit-name  [ (/) //name ] { [ exch /NAME exch dup 1 tail cvn ] accumulate } action def
+/on-name      //name         { [ exch /NAME exch dup cvn cvx    ] accumulate } action def
+/on-delimiter //delimiter    { [ exch /DEL  exch dup cvn cvx    ] accumulate } action def
+
+/ps-token
+    <<
+	//on-real
+	//on-integer
+	//on-lit-name
+	//on-name
+	//on-delimiter
+    >> parser
+def
+
+/mytoken {
+    dup //opt-spaces exec passed { 0 get tail }{ pop }ifelse
+    mark exch dup //ps-token exec passed {
+	0 get tail below-mark cleartomark
+	exch 2 get true
+    }{ cleartomark false } ifelse
+} def
+
+(16#25 name /word 123 2.65 [ ) {mytoken {exch}{exit} ifelse} loop pc
+(16#25 name /word 123 2.65 [ ) {  token {exch}{exit} ifelse} loop pc
+
+quit
+

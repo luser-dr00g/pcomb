@@ -1,0 +1,103 @@
+(struct2.ps) run {
+
+    action{pa ac}{ % parser-desc {proc}  ->  parser
+	/pa /pa load parser def
+	{					% String
+	    z /pa exec passed {			% S [#]
+	      dup {max} reduce zy zxy head      % [#] S[0..^#]
+	      /ac 3 2 roll			% S[0..^#] {proc} [#]
+	      1 aa cvx compose exec		% PASS => [#]
+	    }{					% S []
+	      zy pop				% FAIL => []
+	    } ifelse
+	} ll
+    } @func
+
+    parser { /stringtype is { term      }{
+	     /arraytype  is { sequence  }{
+	     /dicttype   is { alternate }{ } ifelse } ifelse } ifelse }
+
+    *  { parser many }
+    +  { parser some }
+    ?  { parser maybe }
+    char-class { << zy 1 {} fortuple >> }
+    range { z 0 get y 1 get 1 add 1 exch { 1 string dup 0 4 3 roll put } for }
+    inverse { << 0 1 127 { 1 string z 0 4 -1 roll put null } for >> exch
+	      {} each-map {fix-up} map << exch {null} forall >> minus-keys }
+
+    pass   { # 1 aa zy pop }
+    fail   { pop pop [] }
+    failed { z # 0 eq }
+    passed { failed not }
+
+    next   { y tail }
+    sum-up { zy {add} curry forall }
+
+    test { y #        y # lt { fail }{
+	   y y # head y   eq { pass }{ fail }  ifelse }  ifelse }
+
+    term {str}{ {/str test} ll } @func
+    any  { {# 1 ge {[1]}{[]} ifelse } }
+    alt2 {p q}{ {z /p exec zy /q exec compose} ll } @func
+    %alt2 {p q}{ {z /p exec failed { zy /q exec compose }{ zy pop } ifelse } ll } @func
+    seq2 {p q}{ {z /p exec zy {next /q exec sum-up} curry map} ll } @func
+    sequence { z xcheck { }{ {parser} map {seq2} reduce } ifelse }
+    alternate { {} each-map {fix-up} map {parser} map {alt2} reduce }
+
+    some  { z many seq2 }
+    maybe { {()pass} alt2 }
+    many  { {{{}exec}exec}{}deep-map   z 0 get zxy seq2  maybe   y y 0 zy put zy pop }
+
+    fix-up { /nulltype is { pop            }{
+	     /nametype is { z # string cvx }{ } ifelse } ifelse }
+    (>>) { [ {counttomark 2 mod 1 eq {null} if
+	      counttomark dup 1 add copy array astore exch pop
+	      mark exch 2 { aload pop pop } fortuple ] /.name-order exch} {} forall
+	     (>>) load dup type /arraytype eq {/exec cvx} if ] cvx } @exec
+    minus-keys { y zxy {  pop dup /.name-order ne {undef}{pop pop} ifelse z  } forall pop
+		 dup /.name-order 2 copy get [ exch {
+		     counttomark 2 add index  1 index known not { pop } if
+		 } forall ] put }
+
+    #    {length}
+    aa   {array astore}
+    ll   { {load-if-literal-name} deep-map }
+    x    {2 index}
+     y   {1 index}
+      z  {dup}
+     zy  {exch}
+    zxy  {3 1 roll}
+    yzx  {3 2 roll}
+    head {0 zy getinterval}
+    tail {y # y sub getinterval}
+    max  {y y lt{zy}if pop}
+    is   {y type eq}
+    ps   {(stack:)= pstack}
+    pc   {ps clear}
+    pq   {ps quit}
+
+    deep-map { y type /arraytype ne { exec }{
+    	y xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
+    each-map { 1 index xcheck 3 1 roll  [ 3 1 roll foreach ]  exch {cvx} if }
+    foreach {d p}{/d load type /dicttype eq {
+		      /d load /.name-order known {
+			  /d load /.name-order get  { /d 1 index get /p exec } ll
+		      }{/d load /p load} ifelse
+		  }{/d load /p load} ifelse
+		  end forall } @func-begin
+
+    accumulate { below-mark }
+    to-bottom { count 1 roll }
+    below-mark { counttomark 1 add 1 roll }
+} pairs-begin
+
+
+(
+/digit << (09) range >> def
+/id_start << (az) range (AZ) range (_) >> def
+/id_cont  << (az) range (AZ) range (_) //digit >> def
+/identifier  [ id_start id_cont * ] parser def
+
+/mtoken << //identifier >> parser def
+) pop
+

@@ -1,0 +1,115 @@
+<<
+    /curry { [ 3 1 roll {} forall ] }
+    /combine { 2 array astore [ exch { {} forall } forall ] }
+    /map { [ 3 1 roll  forall ] }
+    /reduce { 1 index 0 get 3 1 roll exch 1 1 index length 1 sub getinterval exch forall }
+    /head { 0 exch getinterval }
+    /tail { 1 index length 1 index sub getinterval }
+    /is { 1 index type eq }
+
+    /pass { pop 0 }
+    /fail { pop -1 }
+    /failed { dup -1 le }
+    /passed { failed not }
+    /next { dup 3 1 roll tail }
+    /sum-of { failed { pop pop fail }{ exch pop add } ifelse }
+
+    /test { 1 index length 1 index length lt {  fail  }{
+		2 copy length head 1 index eq {  length  }{  fail  } ifelse
+	    } ifelse }
+    
+    /term { /test cvx 2 array astore cvx }
+    /alt { {dup} 3 2 roll combine
+	   {failed} combine
+	   {pop} 3 2 roll combine
+	   {exch pop} combine cvx
+	   {{exch pop}ifelse} curry combine cvx }
+    /seq { {dup} 3 2 roll combine
+	   {passed} combine
+	   {next} 3 2 roll combine
+	   {sum-of} combine cvx
+	   {{fail} ifelse} curry combine cvx }
+
+    /many { {{{}exec}exec} dup 0 get 3 1 roll seq
+	    {pass} alt
+	    2 copy 0 exch put exch pop }
+    /some { dup many seq }
+
+    /build-parser-action {
+	exch build-parser {passed} combine
+	{2 copy head} 3 2 roll combine
+	{tail} combine cvx
+	{{/parser-fail = pstack/ =}ifelse} curry combine cvx }
+    /build-parser {
+	/stringtype  is { term       }{
+	/arraytype   is { build-seq  }{
+	/dicttype    is { build-alt  }{
+	/booleantype is { build-bool }{
+	} ifelse } ifelse } ifelse } ifelse }
+    /build-seq {
+	dup xcheck {  }{
+	    { build-parser } map
+	    { seq } reduce
+	} ifelse }
+    /build-alt {
+	{ } map
+	{ fix-up } map
+	bubble-sort
+	{ build-parser } map
+	{ alt } reduce }
+    /build-bool {
+	{ {0}
+	}{ {-1}
+	} ifelse }
+    /fixup {
+	/nulltype is { pop                   }{
+	/nametype is { dup length string cvx }{
+	} ifelse } ifelse }
+    /bubble-sort {
+	{
+	    dup sorted { exit } if
+	    [ exch { 2 copy comp { exch } if } reduce ]
+	} loop
+    }
+    /sorted {
+	true exch
+	{
+	    2 copy comp {
+		pop pop pop false 0 exit
+	    } if
+	    exch pop
+	} reduce
+	pop
+    }
+    /comp { switch? 2 index type get 1 index type get exec }
+    /switch? <<
+		 /arraytype   << /arraytype   { arrcomp       }
+			         /stringtype  { pop pop false }
+			         /dicttype    { pop pop false }
+			         /booleantype { pop pop false } >>
+		 /stringtype  << /arraytype   { pop pop true  }
+				 /stringtype  { gt            }
+				 /dicttype    { pop pop false }
+				 /booleantype { pop pop false } >>
+		 /dicttype    << /arraytype   { pop pop true  }
+				 /stringtype  { pop pop true  }
+				 /dicttype    { pop pop false }
+				 /booleantype { pop pop false } >>
+		 /booleantype << /arraytype   { pop pop true  }
+				 /stringtype  { pop pop true  }
+				 /dicttype    { pop pop true  }
+				 /booleantype { pop pop false } >>
+	     >>
+    /arrcomp {
+	1 index xcheck {
+	    dup xcheck {  pop pop false  }{  pop pop false  } ifelse
+	}{
+	    dup xcheck {  pop pop true   }{  pop pop false  } ifelse
+	} ifelse
+    }
+>> begin
+(>>) cvn [
+    { counttomark 2 mod 1 eq { null } if } { } forall
+    counttomark 1 add index load
+] cvx def
+

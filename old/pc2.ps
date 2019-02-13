@@ -1,0 +1,85 @@
+%/forall { pstack/ = //forall } def
+<<
+    /z { dup }  /+ { z }  /++ { 2 copy }  /_ { pop }  /# { length }
+    /y { 1 index }   /zy  { exch     }    /| { array astore }
+    /x { 2 index }  /yzx  { 3 2 roll }    /? { ifelse       }
+    /w { 3 index }   /zxy { 3 1 roll }    /@ { forall       }
+    /v { 4 index }   /zyx { zxy zy   }  /... { getinterval  }
+		     /zwxy{ 4 1 roll }
+
+    /curry   { [ zxy {} @ ]          } /&  { curry   }
+    /combine { 2 | [ zy { {} @ } @ ] } /&& { combine }
+    /map     { [ zxy @ ] }         /reduce { y 0 get zyx 1 y # 1 sub ... zy @ }
+
+    /fail  { _ _ _ []  }	% pop data and return empty array
+    /0=    { z # 0 eq  }	% test empty array
+    /0^    { z # 0 gt  }	% test #chars matched result
+    /mov   { {} @ add  }	% add result from array to index
+    /ret   { zy _ zy _ }	% pass success return
+    /test  { zxy y # y le    { fail               }{
+	     ++ v # ... w eq { yzx # add zy _ 1 | }{	fail    }? }? }
+    /term  { /test cvx 2 | cvx }
+    /empty { zy _ 1 | }		% parser for 'true' descriptor
+    /alt   { {++} yzx && {0=      } && {_     } yzx && cvx {{ret }? } & && cvx }
+    /seq   { {++} yzx && {0^      } && {mov   } yzx && cvx {{fail}? } & && cvx }
+    %        {++  p1      z # 0 gt     {{}@ add p2}         {fail}? } 
+    /build-parser {	% parser-descriptor -> parser
+	z type /stringtype  eq {                            term                           }{
+	z type /booleantype eq { {{empty}}{{0 fail}}?                                      }{
+	z type /arraytype   eq {
+	    z xcheck { 		}{	{build-parser} map {seq} reduce	    }?	    }{
+	z type /dicttype    eq { {} map {fixup} map bubble {build-parser} map {alt} reduce }{	}? }? }? }? }
+    /fixup {
+	z type /nulltype eq { _         }{
+	z type /nametype eq { to-string }{	}? }? }
+    /to-string { z # string cvs }
+    /ps { pstack/ = } /pq { ps quit }
+    /bubble {	{ z sorted {exit} if  [ zy {++ comp{zy}if} reduce ] } loop   }
+    /sorted {  true zy { ++ comp { _ _ _ false 0 exit } if  zy _ } reduce _ }
+    /switch? << /stringtype  << /stringtype{    gt  } /dicttype{_ _ false} /booleantype{ _ _ false} >>
+		/dicttype    << /stringtype{_ _ true} /dicttype{_ _ false} /booleantype{ _ _ false} >>
+		/booleantype << /stringtype{_ _ true} /dicttype{_ _ true } /booleantype{ _ _ false} >> >>
+    /comp { switch? x type get y type get exec }
+    /build-parser-action {	% parse-description {action}
+	{z # zy} zy &&	{add y # y sub ... 0} &&	% {action}' = prefix && action && suffix
+	zy build-parser	{ ++ ++ } zy &&			% {action}' {++++ parser}
+	{ 0^ } &&					% {action}' {++++ parser z # 0 gt}
+	{{}@ ...} yzx && cvx				% {++++ parser z # 0 gt}{{}@ ... action'} 
+	{{ /parser-fail == ps }? } & && cvx		% {++++ parser z # 0 gt {{}@ ... action'}{FAIL}?}
+    }
+    
+>>begin
+/dicttomark (>>) load def   (>>) { counttomark 2 mod 1 eq { null } if dicttomark } def  % permit odd number
+%(Hello) 0 [ <<(H)(h)>> (e)(l)(l)(o) ] build-parser exec pq
+
+/digit   << (0) (1) (2) (3) (4) (5) (6) (7) (8) (9) >> def
+/alpha   << (_) (a) (b) (c) (d) (e) (f) (g) (h) (i) (j) (k) (l) (m)
+	    (n) (o) (p) (q) (r) (s) (t) (u) (v) (w) (x) (y) (z)
+	    (A) (B) (C) (D) (E) (F) (G) (H) (I) (J) (K) (L) (M)
+	    (N) (O) (P) (Q) (R) (S) (T) (U) (V) (W) (X) (Y) (Z) >> def
+/medial <<//digit //alpha>> def
+/opt-space <<( ) true>>
+{	% (string) i (str)# (str)
+    _ 
+} build-parser-action def
+
+/number [ //digit << //digit true >> ]
+{	% (string) i (str)#  (str)
+    cvi  zwxy	% num  (string) i (str)#   % must leave these on top of stack
+} build-parser-action def
+
+//number ==
+
+/id 	[ //alpha //alpha //alpha ]
+{	% (string) i (str)#  (str)
+    cvn  zwxy	% name  (string) i (str
+} build-parser-action def
+
+(22Foo47)    [ zy 0  opt-space number  opt-space id  opt-space number  _ _ ] ==
+( 22 Foo47)  [ zy 0  opt-space number  opt-space id  opt-space number  _ _ ] ==
+(22 Foo 47 ) [ zy 0  opt-space number  opt-space id  opt-space number  _ _ ] ==
+
+quit
+
+
+

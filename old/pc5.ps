@@ -1,0 +1,197 @@
+%!
+
+% Prolog
+
+<<
+    /spill   {{}forall}
+    /curry   %{/exec cvx 3 |}
+    	     {[zxy spill]}
+    /combine %{2 | {/exec cvx} map}
+	     {2 | {spill}map}
+    /map     {[zxy  forall]}
+    /reduce  {y 0 get zxy zy 1 tail zy forall}
+    /head {0 zy getinterval}
+    /tail {y # y sub getinterval}
+    /is  {y type eq}
+    /|   {array astore}
+    /#   {length}
+    /x   {2 index}
+     /y  {1 index}
+      /z {dup}
+    /xyz pop
+     /zy {exch}
+    /zxy {3 1 roll}
+    /yzx {3 2 roll}
+    /max {y y lt {exch} if pop}
+
+    /pass   {# 1 | zy pop}
+    /fail   {pop pop { } }
+    /failed {z # 0 eq}
+    /passed {failed not}
+    /next   {y tail}
+    /sum-up {zy {add} curry cvx forall}
+
+    /test { y #  y #  lt         {  fail  }{	% (input) (seek)
+	    y    y # head  y  eq {  pass  }{  fail  } ifelse
+	    } ifelse }	% [] | [#]
+    /term { /test cvx 2 | cvx }
+    /* { build-parser many }
+    /+ { build-parser some }
+    /? { build-parser maybe }
+
+    /alt {
+	% {		% (input)
+	%     z		% (input) (input)
+	%     p1 zy	% [?1] (input)
+	%     p2        % [?1] [?2]
+	%     combine   % [?1 ?2]
+	% }
+	{z} yzx combine			% p2 [z p1]
+	{zy} combine zy combine		% p2 [z p1 zy p2]
+	{combine} combine cvx }		% {z p1 zy p2 combine}
+    
+    /seq {
+	% {					% (input)
+	%     z					% (input) (input)
+	%     p1 zy				% [?1] (input)
+	%     {next p2 sum-up} curry cvx	% [?1] {(input) next p2 sum-up}
+	%     map				% [#1+?2]
+	% }
+	% {				% #1
+	%     (input) next={y tail}	% #1 (nput)
+	%     p2			% #1 [?2]
+	%     sum-up={
+	%         zy {add} curry cvx	% [?2] {#1 add}
+	%         forall		% #1+?2*
+	%     }
+	% }
+	{z} yzx combine				% p2 [z p1]
+	{zy} combine				% p2 [z p1 zy]
+	{next} yzx combine			% [z p1 zy] [next p2]
+	{sum-up} combine cvx			% [z p1 zy] {next p2 sum-up}
+	{curry cvx map} curry combine cvx }	% {z p1 zy{next p2 sum-up}curry cvx map}
+    
+    /many {	% x => y = << [ x y ] true >>
+	[[[]cvx/exec cvx]cvx/exec cvx]cvx
+	z 0 get zxy seq  maybe
+	y y 0 zy put zy pop }
+    
+    /some { z many seq }
+    
+    /maybe { {()pass} alt }
+
+    /build-parser-action {
+	% {
+	%     z parser  passed {
+	%         {max} reduce y y head action tail
+        %     }{
+	%         /parser-fail = ps
+        %     } ifelse
+        % }
+	zy build-parser {z} zy combine
+	{passed} combine
+	{{max} reduce y y head} yzx combine
+	{tail true } combine cvx
+	{{pop false }ifelse} curry combine cvx }
+    /build-parser {
+	/stringtype  is { term       }{
+	/arraytype   is { build-seq  }{
+	/dicttype    is { build-alt  }{
+	/booleantype is { build-bool }{  } ifelse } ifelse } ifelse } ifelse }
+    /build-seq { z xcheck {  }{  {build-parser} map  {seq} reduce  } ifelse }
+    /build-alt {  {} map  {fix-up} map  bubble  {build-parser} map  {alt} reduce  }
+    /build-bool {  {()pass} {()fail} ifelse  }
+    /fix-up {
+	/nulltype is { pop            }{
+	/nametype is { z # string cvs }{  } ifelse } ifelse }
+    /bubble {  { z sorted {exit} if   [ zy {y y comp {exch} if} reduce ] } loop  }
+    /sorted { true zy  {y y comp {pop pop pop false 0 exit} if  exch pop} reduce  pop }
+    /comp { switch?  x type get  y type get  exec }
+    /switch? <<
+	     /arraytype   << /arraytype   { arrcomp       }
+			     /stringtype  { pop pop false }
+			     /dicttype    { pop pop false }
+			     /booleantype { pop pop false } >>
+	     /stringtype  << /arraytype   { pop pop true  }
+			     /stringtype  { gt            }
+			     /dicttype    { pop pop false }
+			     /booleantype { pop pop false } >>
+	     /dicttype    << /arraytype   { pop pop true  }
+			     /stringtype  { pop pop true  }
+			     /dicttype    { pop pop false }
+			     /booleantype { pop pop false } >>
+	     /booleantype << /arraytype   { pop pop true  }
+			     /stringtype  { pop pop true  }
+			     /dicttype    { pop pop true  }
+			     /booleantype { pop pop false } >>  >>
+    /arrcomp {	y xcheck {    dup xcheck {  pop pop false  }{  pop pop false  } ifelse	}{
+	    		      dup xcheck {  pop pop true   }{  pop pop false  } ifelse	} ifelse    }
+    /ps {pstack/ =} /pc {ps clear} /pq {ps quit}
+    /reverse {    [zy z # 1 sub -1 0  4 -1 roll {zy get} curry cvx for ]	}
+    /func { % /name {a r g s} { body }
+	{z # dict begin{zy def}forall} zy combine {end} combine
+	zy reverse zy curry cvx	}
+
+/inverse {
+    << 0 1 127 {
+	   1 string z 0 4 -1 roll put null
+       } for >>
+    exch
+    {} map {fix-up} map << exch {null} forall >>
+    minus-keys
+}
+/minus-keys {
+    y zxy {
+	pop undef z
+    } forall pop
+}
+>> begin
+(>>) [ {counttomark 2 mod 1 eq {null} if} spill  counttomark 1 add index load ] cvx def
+/fortuple {arr n proc}{    ({end    //n  //arr # 1 sub {
+				        //arr  zy  //n  getinterval
+				        //proc exec
+				    } for		1 dict begin }) cvx exec exec	} func def
+/char-class {    << zy  1 {} fortuple >>  } def
+
+
+% Script
+
+%early scratch testing
+{(xxxxy) (x) term many (xy) term seq exec pc
+/digits (012345789) char-class build-parser some {    cvi zxy	} build-parser-action def
+/id (x) build-parser some {    cvn zxy	} build-parser-action def
+(457xxx999) [zy   digits  id  digits   pop]  ==	} pop
+
+
+
+
+{
+/delimiters ( \n()/%[]<>{}) char-class def
+/regular-chars delimiters inverse def
+/space ( )* {    pop	} build-parser-action def
+/delim delimiters {    zxy	} build-parser-action def
+/tok regular-chars + {    ==	} build-parser-action def
+
+( /testing simple ps {syntax}
+5 9fd 16#7ff[1 index]
+)
+{
+    z # 0 eq {exit} if
+    space {	(\tspaces consumed) =    } if
+    delim {	(\tdelimiter: ) print zy =    }{	(\tno delimiter) =    } ifelse
+    tok {	(\ttoken matched) =    } if
+} loop
+} pop
+
+/meta-chars (.()[]^$?+*) char-class def
+/regular-chars meta-chars inverse def
+/regex <<
+	   regular-chars +
+       >>
+{
+	term zxy    
+} build-parser-action def
+
+(str) (str) regex exec { pop  exec }{ /fail = } ifelse
+
+pq

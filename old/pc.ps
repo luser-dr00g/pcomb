@@ -1,0 +1,175 @@
+%/forall { pstack/ = //forall } def
+/empty {} def
+
+/z {   dup   } def
+/y { 1 index } def
+/x { 2 index } def
+/w { 3 index } def
+/v { 4 index } def
+
+/yz {      } def
+/zy { exch } def
+
+/xyz { } def
+/zxy { 3 1 roll } def
+/yzx { 3 2 roll } def
+
+/+  {   dup  } def
+/++ { 2 copy } def
+
+/| { array astore } def		%  x y z 3 |  =>  [ x y z ]
+/# { length } def
+/_ { = %pop
+   } def
+/? { ifelse } def
+/@ { forall } def
+/pcount 0 def
+/+= { y load add store } def
+/ps { /pcount 1 += pcount =only (:) = pstack/ = } def
+/pq { pstack/ = quit } def
+
+/term {		% x => { x term-body } -> [ i+1 | ]
+    /test-term cvx 2 | cvx
+} def
+
+/test-term {	% str i x  -> [ i+1 | ]
+%    ps
+    zxy  y #  y  le { _ _ _ [] }{	% x str i
+	++  v #  getinterval		% x str i s[i #x]
+	w  eq {				% x str i   <-- Match!
+	    yzx # add  zy pop		% i+#x
+	    1 |				% [ i+#x ]
+	}{				% x str i   <-- No Match!
+	    _ _ _ []
+	} ?
+    } ?
+%    ps
+} def
+
+/combine {  2 | [ zy  { {} @ } @ ]  } def
+/curry {  [ zxy  {} @ ]  } def
+/&& { combine } def
+/& { curry } def
+
+{
+    [ 1 2 3 ] [ 4 5 6 ] combine ==
+} pop
+
+				     % str i
+/alt {			% p1 p2 => %
+    { ++ } yzx &&		% p2 { 2 copy p1 }		% str i []
+    { z # 0 eq } &&		% p2 { 2 copy p1 dup # 0 gt }	% str i []
+    { _ } yzx && cvx		% { 2 copy p1 dup # 0 eq } { pop p2 }
+    { { {} @ add 1 | zy _ } ? } & && cvx	% { 2 copy p1 dup # 0 eq { pop p2 }{{}forall add etc} ifelse }
+} def
+
+				   % str i 
+/seq {			% p1 p2 => { 2 copy p1 dup # 0 gt { {} forall add p2 }{ = = [] } ifelse }
+    { ++ } yzx &&		% p2 { 2 copy p1 }		% str i []
+    { z # 0 gt } &&		% p2 { 2 copy p1 dup # 0 gt }	% str i [n]
+    { ps {} @ add } yzx && cvx	% { 2 copy p1 dup # 0 gt } { {} forall add p2 } 
+    { { _ _ _ [] } ? } & && cvx	% { 2 copy p1 dup # 0 gt { {} forall add p2 }{ = = [] } ifelse }
+} def
+
+
+/map { [ zxy  @  ] } def
+
+/reduce {			% arr oroc
+    y 0 get			% arr proc arr_0
+    zxy zy			% arr_0 proc arr
+    1 y # 1 sub getinterval	% arr_0 proc arr[1..#arr-1]
+    zy  @
+} def
+
+
+{
+    (3 )
+    0
+
+    %(1) term  (2) term alt  (3) term alt
+    %( ) term seq
+
+    [(1) (2) (3)] {term} map {alt} reduce
+    ( ) term seq
+    dup ==
+
+    exec pstack quit
+} pop
+
+
+/build-parser {
+    dup type /arraytype  eq {	{build-parser} map  {seq} reduce    }{
+    dup type /stringtype eq {   term	}{
+    dup type /dicttype   eq {	{} map  { fixup } map  {build-parser} map  {alt} reduce	    }{
+    dup type /nulltype   eq {	    }{
+    	  } ifelse
+	} ifelse
+      } ifelse
+    } ifelse
+} def
+
+/fixup {
+    dup type /nulltype eq {    pop    }{
+    dup type /nametype eq { to-string }{
+      } ifelse
+    } ifelse
+} def
+
+/to-string {    dup length string cvs } def
+
+
+/parse {
+    pstack
+    exec pstack clear / =
+} def
+
+{
+    (12) 0
+    [ (1) << (2) (3) >> ]  build-parser
+    parse
+
+    (1) 0
+    << (1) null >> build-parser
+    parse
+
+    (jello)
+    0
+    [ << (H) (h) (j) null >> (e) (l) (l) (o) ] build-parser
+    parse
+} pop
+
+{
+    /jello    [ << (H) (h) (j) null >> (e) (l) (l) (o) ] build-parser	def
+
+    [
+	(Jello)
+	(jello)
+	(hello)
+	(Hello)
+	(NeinDanke)
+    ] { 0 /jello load parse } @
+} pop
+
+(Hello) 0 [ <<(H)(h)>> (e)(l)(l)(o) ] build-parser ps exec pq
+
+/digit << (0) (1) (2) (3) (4) (5) (6) (7) (8) (9) >> def
+/alphalow << (a) (b) (c) (d) (e) (f) (g) (h) (i) (j) (k) (l) (m)
+	     (n) (o) (p) (q) (r) (s) (t) (u) (v) (w) (x) (y) (z) >> def
+/alphahi << (A) (B) (C) (D) (E) (F) (G) (H) (I) (J) (K) (L) (M)
+	    (N) (O) (P) (Q) (R) (S) (T) (U) (V) (W) (X) (Y) (Z) >> def
+/alpha << //alphalow //alphahi >> def
+
+/number <<
+	    [ //digit //digit  //digit ]
+	    [ //digit //digit ]
+	    [ //digit ]
+	    null
+	>> def
+
+%/E [ //digit //digit       //alpha //digit //digit ] build-parser def
+/E [ //number	//alpha	//number ] build-parser def
+
+(55x72) 0 E
+pstack/ =
+
+quit

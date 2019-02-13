@@ -1,0 +1,128 @@
+%!
+% func - a syntax and mechanism for named, type-checked arguments and local variables in
+% function definitions.
+<<
+    /func         { 1 index type /dicttype eq { typed-func }{ simple-func } ifelse }
+    /simple-func  {  func-begin        { end } compose  }
+    /typed-func   {  typed-func-begin  { end } compose  }
+    
+    /func-begin   { exch reverse /args-begin load curry   exch compose }
+    /args-begin   { dup length dict begin  { exch def } forall }
+
+    /typed-func-begin {		% name << /arg /typename >> { body }
+	exch dup /.name_order 2 copy get reverse put		% name body args@
+	dup /.func_name 4 index put
+	{ dup /.name_order get length dict begin
+	  dup /.func_name get /.func_name exch def
+	  check-args } curry		% name body {args@ ...begin... check-args}
+	exch		% name {args->bool} body
+	{ /.func_name load cvx /.error_name load end signalerror } exch /ifelse cvx 3 array astore cvx
+	compose		% name {args...body}
+    }
+
+    (>>){	% save an array of original keys in order as /.name_order
+	counttomark dup 1 add copy  array astore exch pop
+	mark exch 2 {    aload pop  pop    } fortuple  ]  /.name_order exch
+	counttomark   dup dict begin  2 idiv  { def } repeat pop currentdict end
+    }
+
+    /check-args {	% ... <<args@>>  ->  bool    True means fail
+	count 1 sub 1 index /.name_order get length lt {
+	    /.error_name /stackunderflow cvx def  pop true
+	}{
+	    {  { check-arg } foreach  } stopped
+	} ifelse
+    }
+
+    /check-arg {	% ? name typename
+	2 index type eq { exch def }{ /.error_name /typecheck cvx def  stop } ifelse
+    }
+
+    /instantiate {
+    {
+     { {                                                load      } map }  % Rule 0: load everything
+     { {                                   dup xcheck { load } if } map }  %      1: load executables
+     { {                    currentdict 1 index known { load } if } map }  %      2: load current defs
+     { { dup type/nametype eq                         { load } if } map }  %      3: load names
+     { { dup type/nametype eq  1 index xcheck     and { load } if } map }  %      4: load executable names
+     { { dup type/nametype eq  1 index xcheck not and { load } if } map }  %      5: load literal names
+     { { currentdict 1 index known { load
+		dup type /arraytype eq { {} forall } if } if } deep-map }  %      6: expand arrays
+    }  exch  get exec }
+
+    /first        { 0 get }
+    /rest         { 1 1 index length 1 sub getinterval }
+
+    /deep-map {	1 index type /arraytype ne { exec }{
+		    1 index xcheck 3 1 roll
+		    [ 3 1 roll  /deep-map cvx 2 array astore cvx  forall ]  exch {cvx} if } ifelse }
+    
+    /map          { 1 index xcheck 3 1 roll   [ 3 1 roll  forall  ]   exch { cvx } if }
+    /each-map     { 1 index xcheck 3 1 roll   [ 3 1 roll  foreach ]   exch { cvx } if }    
+    /reduce       { exch dup first  exch rest  3 -1 roll forall }
+    
+    /curry        { [ 3 1 roll  {}forall ] cvx }
+    /compose      { 2 array astore cvx  { {}forall } map }
+    
+    /reverse      { dup xcheck exch  [ exch  reverse-rest  ]  exch { cvx } if }
+    /reverse-rest { dup length 0 eq { pop }{
+			dup rest /reverse-rest cvx 3 -1 roll /first cvx
+			4 array astore cvx exec
+		    } ifelse }
+
+    /ps{pstack/ =}/pq{ps quit}/pc{ps clear}
+
+>> begin
+%errordict/typecheck{pstack} 3 copy pop get compose put
+
+/fortuple {a n p}{
+    0  n  /a load length 1 sub
+        { /a exch /n getinterval /p exec } 2 instantiate
+    end for
+} func-begin def
+
+/foreach {d p}{
+    d type /dicttype eq {
+	d /.name_order known {
+	    d /.name_order get  { /d 1 index get /p exec } 2 instantiate
+	}{
+	    d /p load
+	} ifelse
+    }{
+	d /p load
+    } ifelse
+    end forall
+} func-begin def
+
+
+currentfile flushfile
+% Tests/Examples
+
+
+<<  /a 1  /b 2  /c 3  /d 4  /e 5  /f 6  /g 7  /h 8  /i 9  /j 10  /k 11  /l 12  /m 13 >> dup ===
+dup { pop =only ( ) print } foreach  / =
+{ exch pop =only ( ) print } foreach  pc
+
+/f [/a /b] {
+    a b add
+} func def
+
+1 2 f = / =
+
+/f {a b}{
+    a b add
+} func def
+
+1 2 f = / =
+%2 f     %Error: stackunderflow in exch
+
+/f << /a /integertype  /b /realtype >> {
+    a b add
+} func def
+
+1 2.0 f = / =
+2 f     %Error: stackunderflow
+%1.0 2 f    %Error: typecheck
+
+pq
+

@@ -1,0 +1,91 @@
+%/forall{pstack/ =//forall}def
+[/z {   dup   } /zy  {     exch } /++ {     2 copy   }  /_ { pop       }
+ /y { 1 index } /yzx { 3 2 roll }  /| { array astore }  /# { length    }
+ /x { 2 index } /zxy { 3 1 roll }  /? { ifelse       }  /Z { {} @      }
+ /w { 3 index } /zyx { zxy zy   }  /@ { forall       } /is { y type eq }
+ /v { 4 index } /zwxy{ 4 1 roll } /.. { getinterval  }
+/&   { [ zxy Z ] }   /&&     { 2 | [ zy { Z } @ ] }
+/map { [ zxy @ ] }   /reduce { y 0 get zyx 1 y # 1 sub .. zy @ }
+/ps  { pstack/ = }   /pq     { ps quit }  /pc { ps clear }
+/ini  { 0 zy .. }  /fin   { y # y sub .. }
+/fail { _ -1    }  /fail? { z -1 le }  /!fail? { fail? not }
+/ret  { # } /pass { zy _ }
+/mov { z zxy fin } /vom { fail? { _ _ fail }{ zy _ add }? }
+/test { y # y # lt { fail }{ ++ # ini y eq { ret }{ fail } ? }? }
+/term { /test cvx 2 | cvx }
+/alt  { {z} yzx && {  fail? } && { _   } yzx && { zy _ } && cvx {{pass} ?} & && cvx }
+%/alt  { zy { fail? } &&  zy {{} ?} & && cvx }
+/seq  { {z} yzx && { !fail? } && { mov } yzx && { vom  } && cvx {{fail} ?} & && cvx }
+%       {z  p1       !fail?      { mov   p2       vom  }         {fail} ?}
+%/many {      {{{}exec}exec} z 0 get zxy seq        ++ 0 zy put zy _  {0} alt }
+%/many { {0} alt  {{{}exec}exec} z 0 get zxy seq  ++ 0 zy put zy _ }  %  q={p||0} r={q;;r}
+/many { {{{}exec}exec} z 0 get zxy seq  {_ 0} alt  ++ 0 zy put zy _ }  % y = <<[ x y ] true>>
+%/some {    z {{{}exec}exec} z 0 get zxy seq	   ++ 0 zy put zy _      alt }
+/some { dup many seq }
+
+/build-parser-action {    zy build-parser  { !fail? } &&
+    { ++ ini } yzx && { fin } &&  cvx {{ /parser-fail == ps }? } & && cvx }
+/build-parser {     /stringtype  is { term       }{
+		    /arraytype   is { build-seq  }{
+		    /dicttype    is { build-alt  }{
+		    /booleantype is { build-bool }{    }? }? }? }? }
+/build-seq  { z xcheck {  }{  {build-parser} map {seq} reduce  }? }
+/build-alt  { {} map {fixup} map bubble {build-parser} map {alt} reduce }
+/build-bool { {{0}}{{-1}}? }
+/fixup   {  /nulltype is { _              }{
+	    /nametype is { z # string cvs }{    }? }? }
+/bubble  {  { z sorted {exit} if  [ zy {++ comp{zy}if} reduce ] } loop   }
+/sorted  {  true zy { ++ comp { _ _ _ false 0 exit } if  zy _ } reduce _ }
+/comp    { switch? x type get y type get exec }                /switch? <<
+ /arraytype   << /arraytype{arrcomp } /stringtype{_ _ false} /dicttype{_ _ false} /booleantype{_ _ false} >>
+ /stringtype  << /arraytype{_ _ true} /stringtype{    gt   } /dicttype{_ _ false} /booleantype{_ _ false} >>
+ /dicttype    << /arraytype{_ _ true} /stringtype{_ _ true } /dicttype{_ _ false} /booleantype{_ _ false} >>
+ /booleantype << /arraytype{_ _ true} /stringtype{_ _ true } /dicttype{_ _ true } /booleantype{_ _ false} >> >>
+/arrcomp { y xcheck {  z xcheck { _ _ false }{ _ _ false }?  }
+	            {  z xcheck { _ _ true  }{ _ _ false }?  }? }
+>> begin
+(>>) cvn [ { counttomark 2 mod 1 eq { null } if } Z counttomark 1 add index load ] cvx def
+
+
+({
+(hello world) [<<(H)(h)(j)>> (ello) ( ) (world)] build-parser dup == exec pc
+(hello world) [<<(H)(h)>>(ello)] {    cvn ==  } build-parser-action dup == exec pc
+
+/h <<(H)(h)(j)>> def
+/H h build-parser def
+(hello) [//h (ello)] build-parser dup == exec pc
+(hello) [//H (ello)] build-parser dup == exec pc
+(hello world) [ //H (ello) ] { cvn cvx == / = } build-parser-action dup == exec pc
+(jello world) [ <<//H (j)>> (ello) ] { cvn cvx == / = } build-parser-action dup == exec pc
+})pop
+/digit   << (0) (1) (2) (3) (4) (5) (6) (7) (8) (9) >> def
+/alpha   << (a) (b) (c) (d) (e) (f) (g) (h) (i) (j) (k) (l) (m)
+	    (n) (o) (p) (q) (r) (s) (t) (u) (v) (w) (x) (y) (z)
+	    (A) (B) (C) (D) (E) (F) (G) (H) (I) (J) (K) (L) (M)
+	    (N) (O) (P) (Q) (R) (S) (T) (U) (V) (W) (X) (Y) (Z) (_) >> def
+
+/medial  << //alpha //digit >> def
+
+/sp     %<< ( ) true >>
+( ) term many {    _             } build-parser-action def
+
+/number [ //digit //digit //digit ]
+%//digit build-parser some
+{    cvi      zxy  } build-parser-action def
+
+/id     [ //alpha //alpha //alpha ]
+%[ //alpha  //medial build-parser many ]
+{    cvn cvx  zxy  } build-parser-action def
+%//sp ==//number ==//id ==
+
+/record {[zy   sp  number  sp  id  sp  number   _]==} def
+(123Foo999  ) record
+(   234fOO  888) record
+(  345 FQQ777 ) record
+(    456   fqq 666) record
+
+(   x      )( ) term many exec pc
+(xxxy) (x) term some exec pc
+
+pq
+

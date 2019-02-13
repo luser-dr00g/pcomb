@@ -1,0 +1,97 @@
+(struct.ps) run <<
+    /#    {length}
+    /|    {array astore}
+    /x    {2 index}
+     /y   {1 index}
+      /z  {dup}
+     /zy  {exch}
+    /zxy  {3 1 roll}
+    /yzx  {3 2 roll}
+    /head {0 zy getinterval}
+    /tail {y # y sub getinterval}
+    /max  {y y lt{zy}if pop}
+    /is   {y type eq}
+
+    /pass { # 1 | zy pop }
+    /fail { pop pop [] }
+    /failed { z # 0 eq }
+    /passed { failed not }
+    /next { y tail }
+    /sum-up { zy {add} curry cvx forall }
+    
+    /test { y #        y # lt  { fail }{  % input seek
+	    y y # head  y  eq  { pass }{ fail }  ifelse }  ifelse }
+
+    %    /term { /test cvx 2 | cvx }     (input) -> [length] | []
+    /term {str}{  {/str test} 6 instantiate  } func
+    /alt2 {p q}{  {z /p zy /q compose} 6 instantiate  } func
+    /seq2 {p q}{  {z /p zy {next /q sum-up} curry cvx map} 6 instantiate  } func
+
+    /some { z many seq2 }
+    /maybe { {()pass} alt2 }
+    /many { {{{}exec}exec} {} deep-map
+	    %[[[]cvx/exec cvx]cvx/exec cvx]cvx
+	    z 0 get zxy seq2  maybe
+	    y y 0 zy put zy pop }
+    
+    /parser { /stringtype is { term      }{
+	      /arraytype  is { sequence  }{
+	      /dicttype   is { alternate }{  } ifelse } ifelse } ifelse }
+    /sequence { z xcheck { }{  {parser} map  {seq2} reduce  } ifelse }
+    /alternate { {} each-map  {fix-up} map  {parser} map  {alt2} reduce }
+    /fix-up { /nulltype is { pop            }{
+	      /nametype is { z # string cvs }{  } ifelse } ifelse }
+    
+    /* { parser many }
+    /+ { parser some }
+    /? { parser maybe }
+
+    /char-class { << zy 1 {} fortuple >> }
+    (>>) [  {counttomark 2 mod 1 eq {null} if} {}forall
+	    (>>) load dup type /arraytype eq {/exec cvx} if  ] cvx
+    /inverse {
+	<< 0 1 127 {  1 string z 0 4 -1 roll put  null  } for >>
+	exch  {} each-map  {fix-up} map  << exch {null} forall >>
+	minus-keys }
+    /minus-keys {
+	y zxy {  pop dup /.name_order ne {undef}{pop pop} ifelse z  } forall pop
+	dup /.name_order  2 copy get  [ exch {
+	    counttomark 2 add index  1 index known not { pop } if
+        } forall ]  put }
+
+    /action {  % parser-desc {proc}  ->  parser
+	% { z parser passed {    % input [#*]  =>  input' {0}
+	%   {max} reduce y y head action tail
+        % }{
+	%   pop          %  => input'  {0}
+        % } ifelse }
+	zy parser {z} zy compose
+	{passed} compose
+	{{max} reduce y y head} yzx compose
+	{tail {0}} compose cvx
+	{{pop {0}} ifelse} curry compose cvx }
+>> begin
+
+%currentfile flushfile
+
+{
+(xxxy) [(xxx) (y)] parser exec pc
+(xxxx) (x)* parser exec pc
+(xxxx) (x)+ parser exec pc
+(xxxy) [(x)* (xy)] parser exec pc
+
+%(x) (abcde) char-class inverse parser dup == exec pc
+} pop
+
+/integer (0123456789) char-class + def
+/int-act //integer { == ps } action def
+
+%(23 45 78 99) int-act pstack
+
+(23) ( )* exec ps
+(23) int-act ps
+
+(23 45 78 99) [ ( ) * //int-act ] * exec ps
+
+
+pq

@@ -1,0 +1,54 @@
+(pc7.ps) run
+
+<<
+/listpush { exch 1 index load 2 array astore def }
+/listpop  { dup load aload pop exch 3 1 roll def }
+
+/nodes []
+/fetch    { /nodes listpop }
+/stash    { /nodes listpush }
+
+/on-dot     { pop                        any   stash }
+/on-char    {                            term  stash }
+/on-meta    {            fetch exch  cvx exec  stash }
+/on-factors { pop  fetch fetch exch      seq2  stash }
+/on-terms   { pop  fetch fetch exch      alt2  stash }
+
+/dpx { dup print cvx exec }
+>> begin
+
+/Dot        (.)                                                  def
+/Meta       (*+?)     char-class                                 def
+/Character  (*+?.|()) char-class inverse                         def
+/Expression 7 array cvx                                          def
+/Atom       <<
+		//Dot  //on-dot action
+		[ (\() //Expression (\)) ]
+		//Character  //on-char action
+	    >>                                                   def
+/Factor     [  //Atom   //Meta  //on-meta action  ?  ]           def
+/Term       [  //Factor  //Factor  //on-factors action  *  ]     def
+
+	    [  //Term  [  (|)  //Term  //on-terms action  ] *  ] parser
+//Expression copy pop
+
+/regex {
+    //Expression exec  length 0 eq { pop /regex cvx /syntaxerror signalerror } if
+    fetch
+} def
+
+/r (a(b.)+) regex def
+//r 0 get =
+
+((a) r pc ) dpx
+((ab) r pc ) dpx
+((abx) r pc ) dpx
+((abxb) r pc ) dpx
+((abxx) r pc ) dpx
+((abxbx) r pc ) dpx
+((abxabx) r pc ) dpx
+((axbxx) r pc ) dpx
+
+
+
+quit
