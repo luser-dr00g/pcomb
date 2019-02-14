@@ -46,8 +46,25 @@ result parse_any( parser p, char *input ){
   return  *input ? new_result( (struct result){ .next = NULL, .length_matched = 1 } ) : NULL;
 }
 
+
 /* * branch nodes */
-const int short_circuit_alternate = 1;
+result parse_not( parser p, char *input ){
+  result r = parse( p->a, input );
+  if(  r  )
+    return NULL;
+  else
+    return new_result( (struct result){ .next = NULL, .length_matched = 0 } );
+}
+
+result parse_and( parser p, char *input ){
+  result r = parse( p->a, input );
+  if(  r  )
+    return  parse( p->b, input );
+  else
+    return  NULL;
+}
+
+const int short_circuit_alternate = 0;
 
 /* append to the results of the left branch
    the results of the right branch */
@@ -94,12 +111,21 @@ static void amend_lengths( result r, int length ){
 parser fails(){     return  new_parser( (struct parser){ .test = parse_fail    } ); }
 parser succeeds(){  return  new_parser( (struct parser){ .test = parse_succeed } ); }
 
+parser empty(){     return  new_parser( (struct parser){0} ); }
 parser term( int c ){
   return  new_parser( (struct parser){ .test = parse_term, .c = c } );
 }
 
 parser any(){
   return  new_parser( (struct parser){ .test = parse_any } );
+}
+
+parser not( parser a ){
+  return  new_parser( (struct parser){ .test = parse_not, .a = a } );
+}
+
+parser and( parser a, parser b ){
+  return  new_parser( (struct parser){ .test = parse_and, .a = a, .b = b } );
 }
 
 parser alternate( parser a, parser b ){
@@ -113,6 +139,10 @@ parser sequence( parser a, parser b ){
 /* *  "theorems" */
 parser char_class( char *str ){
   return  *str  ?  alternate( term( *str ), char_class( str + 1 ) )  :  fails();
+}
+
+parser inverse_char_class( char *str ){
+  return  and( not( char_class( str ) ), any() );
 }
 
 parser string( char *str ){

@@ -13,10 +13,22 @@ int simple_test(){
   printf( "%d\n", r ? r->length_matched : -1 );
 }
 
-int regex_test(){
-  parser x = regex( "a.+" );
-  result r = parse( x, "abc" );
+int try(parser x, char *s){
+  printf( "%s -> ", s );
+  result r = parse( x, s );
   printf( "%d\n", r ? r->length_matched : -1 );
+}
+
+int regex_test(){
+  parser x = regex( "ab?" );
+  try( x, "a" );
+  try( x, "ab" );
+  try( x, "abx" );
+  try( x, "abxb" );
+  try( x, "abxx" );
+  try( x, "abxbx" );
+  try( x, "abxabx" );
+  try( x, "axbxx" );
 }
 
 int main(){
