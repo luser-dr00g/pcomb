@@ -12,6 +12,8 @@ define_new_function_for_( plist )
 void ppush( plist *pl, parser p ){ *pl = new_plist( (struct plist){ p, *pl } ); }
 parser ppop( plist *pl ){ parser p; return  !*pl ? NULL : (p = (*pl)->it, *pl = (*pl)->next, p); }
 
+parser err( parser x ){printf("UNREACHABLE ERROR!\n");}
+
 void build_dot( void *p, char *s ){ plist *r = p;  ppush( r, any() ); }
 void build_char( void *p, char *s ){ plist *r = p;  ppush( r, term( *s ) ); }
 void build_meta( void *p, char *s){ plist *r = p;  parser x = ppop( r );
@@ -32,7 +34,7 @@ void build_terms( void *p, char *s){
 
 parser regex( char *re ){
   static parser p = NULL;
-  plist r = NULL;
+  static plist r = NULL;
   if(  !p  ){
     parser dot       = term('.');
     parser meta = char_class("?+*");
@@ -47,5 +49,5 @@ parser regex( char *re ){
     parser expression = sequence( term, many( sequence( or_, action( term, build_terms, &r ) ) ) );
     p = expression;
   }
-  return  parse( p, re )? r->it :0;
+  return  parse( p, re )? ppop( &r ) :NULL;
 }
