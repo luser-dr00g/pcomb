@@ -34,22 +34,23 @@ void build_terms( void *p, char *s){
 parser regex( char *re ){
   static parser p = NULL;
   static plist r = NULL;
+  r = NULL;
   if(  !p  ){
-    parser dot        = term('.');
-    parser meta       = char_class("?+*");
-    parser or_        = term('|');
-    parser character  = inverse_char_class("?+*.|()");
-    parser expression = empty();
-    parser atom       = alternaten(3,
+    parser Dot        = term('.');
+    parser Meta       = char_class("?+*");
+    parser Or         = term('|');
+    parser Character  = inverse_char_class("?+*.|()");
+    parser Expression = empty();
+    parser Atom       = alternaten(3,
 	(parser[]){
-	  action( dot, build_dot, &r),
-	  sequencen(3, (parser[]){ term( '(' ), expression, term( ')' ) } ),
-	  action( character, build_char, &r)
+	  action( Dot, build_dot, &r),
+	  sequencen(3, (parser[]){ term( '(' ), Expression, term( ')' ) } ),
+	  action( Character, build_char, &r)
 	});
-    parser factor     = sequence( atom, maybe( action( meta, build_meta, &r ) ) );
-    parser term       = sequence( factor, many( action( factor, build_factors, &r ) ) );
-    *expression = *sequence( term, many( sequence( or_, action( term, build_terms, &r ) ) ) );
-    p = expression;
+    parser Factor     = sequence( Atom, maybe( action( Meta, build_meta, &r ) ) );
+    parser Term       = sequence( Factor, many( action( Factor, build_factors, &r ) ) );
+    *Expression = *sequence( Term, many( sequence( Or, action( Term, build_terms, &r ) ) ) );
+    p = Expression;
   }
   return  parse( p, re )? ppop( &r ) :NULL;
 }
