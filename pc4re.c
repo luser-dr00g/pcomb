@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pc4re.h"
+#include "pc4priv.h"
 
 typedef struct plist *plist;
 struct plist {
@@ -15,7 +16,9 @@ parser ppop( plist *pl ){ parser p; return  !*pl ? NULL : (p = (*pl)->it, *pl = 
 parser err( parser x ){printf("UNREACHABLE ERROR!\n");}
 void build_dot( void *p, char *s ){ plist *r = p;  ppush( r, any() ); }
 void build_char( void *p, char *s ){ plist *r = p;  ppush( r, term( *s ) ); }
-void build_meta( void *p, char *s){ plist *r = p;  parser x = ppop( r );
+void build_meta( void *p, char *s){
+  plist *r = p;
+  parser x = ppop( r );
   ppush( r, (*s=='?'? maybe :*s=='+'? some :*s=='*'? many :err)( x ) );
 }
 void build_factors( void *p, char *s){

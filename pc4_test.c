@@ -20,7 +20,7 @@ int try(parser x, char *s){
 }
 
 int regex_test(){
-  parser x = regex( "a(b.)+" );
+  parser x = regex( "a.?(b.)+" );
   try( x, "a" );
   try( x, "ab" );
   try( x, "abx" );
