@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "pc4.h"
 #include "pc4priv.h"
 
 result parse_fail( parser p, char *input );

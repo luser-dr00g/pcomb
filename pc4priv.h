@@ -1,3 +1,5 @@
+#include "pc4.h"
+
 typedef result (*handler)( parser, char *);
 
 struct parser { 
@@ -6,11 +8,6 @@ struct parser {
   int c; 
   callback f;
   void *payload;
-}; 
-
-struct result { 
-  result next; 
-  int length_matched; 
 }; 
 
 #define Types(_) \
