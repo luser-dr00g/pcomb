@@ -8,11 +8,11 @@
 /fetch    { /nodes listpop }
 /stash    { /nodes listpush }
 
-/on-dot     { pop                        any   stash }
-/on-char    {                            term  stash }
-/on-meta    {            fetch exch  cvx exec  stash }
-/on-factors { pop  fetch fetch exch      seq2  stash }
-/on-terms   { pop  fetch fetch exch      alt2  stash }
+/do-dot     {{ pop                        any   stash } action}
+/do-char    {{                            term  stash } action}
+/do-meta    {{            fetch exch  cvx exec  stash } action}
+/do-factors {{ pop  fetch fetch exch      seq2  stash } action}
+/do-terms   {{ pop  fetch fetch exch      alt2  stash } action}
 
 /dpx { dup print cvx exec }
 >> begin
@@ -22,15 +22,15 @@
 /Character  (*+?.|()) char-class inverse                         def
 /Expression 7 array cvx                                          def
 /Atom       <<
-		//Dot  //on-dot action
+		//Dot  do-dot
 		[ (\() //Expression (\)) ]
-		//Character  //on-char action
+		//Character  do-char
 	    >>                                                   def
-/Factor     [  //Atom   //Meta  //on-meta action  ?  ]           def
-/Term       [  //Factor  //Factor  //on-factors action  *  ]     def
+/Factor     [  //Atom   //Meta  do-meta  ?  ]                    def
+/Term       [  //Factor  //Factor  do-factors  *  ]              def
 
-	    [  //Term  [  (|)  //Term  //on-terms action  ] *  ] parser
-//Expression copy pop
+	    [  //Term  [  (|)  //Term  do-terms  ] *  ] parser
+//Expression                                                copy pop
 
 /regex {
     //Expression exec  length 0 eq { pop /regex cvx /syntaxerror signalerror } if
