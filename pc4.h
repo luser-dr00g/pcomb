@@ -1,3 +1,4 @@
+#define PC4_H_
 typedef struct parser *parser;
 typedef struct result *result;
 typedef void (*callback)( void *payload, char *match );

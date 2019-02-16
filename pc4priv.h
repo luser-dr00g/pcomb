@@ -1,4 +1,7 @@
+#ifndef PC4_H_
 #include "pc4.h"
+#endif
+#include <stdlib.h>
 
 typedef result (*handler)( parser, char *);
 
