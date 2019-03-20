@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "pc4re.h"
+#include "pc4eg.h"
 
 void print( void *p, char *s ){ printf("%s\n", s); }
 
@@ -31,8 +32,14 @@ int regex_test(){
   try( x, "axbxx" );
 }
 
+int eg_test(){
+  tree t = parse_program(" a = 5 ;");
+  t ? format_program( t ) : printf("parse failed\n");
+}
+
 int main(){
-  regex_test();
+  //regex_test();
+  eg_test();
   return 0;
 }
 

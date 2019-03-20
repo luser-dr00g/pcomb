@@ -1,0 +1,28 @@
+(struct2.ps) run {
+    lettera {inp}{ inp first (a) first eq { [(a) inp rest] }{ [] } ifelse }@func
+
+
+    ll { {load-if-literal-name} deep-map }
+    deep-map { y type /arraytype ne { exec }{
+    	y xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
+    y { 1 index }
+    aa { array astore }
+    ps { (stack:)= pstack }
+    pc { ps clear }
+    second { 1 get }
+} pairs-begin
+<<
+/@ { { dup xcheck { exec }{ exit } ifelse } loop }
+/rep {x} { { [ /x { /x rep } ] } ll } func
+/add1 {x} { x @  dup length 0 eq { [] }
+	    { [ exch dup first 1 add  exch second /add1 cvx 2 aa cvx ] } ifelse } func
+/take {x n} { n 0 eq { [] }{ [ x @ dup first exch second n 1 sub take ] } ifelse } func
+>> begin
+
+(a) lettera pc
+1 rep pc
+1 rep @ pc
+1 rep 5 take pc
+1 rep add1 5 take pc
+
+quit

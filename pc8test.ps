@@ -1,0 +1,16 @@
+(pc8.ps) run  1 dict begin
+
+/is_a  (a)  spill literal def
+/alpha (az) spill range def
+/digit (09) spill range def
+/alnum //alpha //digit alt2  def
+/word  //alnum many nibble trim {to-string} using def
+
+
+(   abcdefghijklm\n) string-input word pc
+
+{ currentfile file-input word pc } exec
+	abcdefghijklm
+
+
+quit

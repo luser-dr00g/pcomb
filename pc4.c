@@ -178,7 +178,7 @@ parser alternaten( int n, parser *pp ){
     	     :  fails();
 }
 
-//char *strndup(char*s,size_t n){char *r = malloc(n+1); if (r) memcpy(r,s,n),r[n]=0; return r;}
+static char *strndup(char*s,size_t n){char *r = malloc(n+1); if (r) memcpy(r,s,n),r[n]=0; return r;}
 
 result parse_action( parser p, char *input ){
   result r = parse( p->a, input );

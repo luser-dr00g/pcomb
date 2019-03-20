@@ -1,0 +1,63 @@
+(struct2.ps) run {
+    filename-input     { (r) file file-input }
+    file-input     {f} { [ f read { [ f /file-input cvx ] cvx }
+		                  { -255 -255 rep                   } ifelse ] } @func
+    string-input   {s} { [ s {first}stopped{ pop pop -255 -255 rep }
+					   { [ s rest /string-input cvx ] cvx } ifelse ] } @func
+
+    succeed {v}   { { [ exch [ exch /v exch ] ] } ll } @func
+    fail          { { pop [] } }
+    satisfy {pred}{ { dup first /pred exec { xs-x succeed }{ fail } ifelse exec } ll } @func
+    literal {x}   { { /x eq } ll satisfy } @func
+    range   {a b} { { dup /a ge exch /b le and } ll satisfy } @func
+    cclass  {cc}  { { charstring /cc exch search { pop pop pop true }
+			                                          { pop false } ifelse  } ll satisfy } @func
+
+    return  {p v} { { /p exec dup length 0 gt { xs-x pop /v exch cons } if } ll } @func
+    using   {p f} { { /p exec [ exch { dup 0 2 copy get /f exec put } forall ] } ll } @func
+    alt2    {p q} { { dup /p exec [ 3 1 roll spill counttomark -1 roll /q exec spill ] } ll } @func
+    seq2    {p q} { { /p exec { x-xs /q exec exch {
+				    exch x-xs 3 1 roll cons exch cons
+				} curry forall } map } ll } @func
+
+    into  {p v q} { { /p exec { xs-x << exch /v exch >> begin /q exec aload pop end } map  } ll } @func
+    then seq2  thenx { then {first}  using }
+               xthen { then {second} using }
+    ? maybe    maybe { [] succeed  alt2 }
+    + some     some  { dup many seq2 }
+    * many     many  { % p* = p p* | eps
+	             {{-777 exec}exec}{}deep-map dup 0 get 3 1 roll  seq2 maybe % {{}e} {p then {{{}e}e}}
+	             2 copy 0 exch put  exch pop executeonly }
+    many-    { many trim }
+    trim {p} { { /p exec dup length 0 gt { 0 1 getinterval } if } ll } @func
+    white { ( \t\n) anyof many }
+    nibble { white exch xthen }
+    dot { {0 ge} satisfy }
+    any { map {alt2} reduce }
+    anyof { {literal} any }
+    noneof { anyof none }
+    none {p} { { dup /p exec dup length 0 gt { pop fail }
+			 		     { pop dot } ifelse exec } ll } @func
+
+    y      { 1 index }             aa     { array astore }
+    ps     { (stack:)= pstack }    pc     { ps clear }
+    second { 1 get }               spill  { {} forall }        cons   { 2 aa }
+    
+    /@ { { dup xcheck { exec }{ exit } ifelse } loop }
+    next { dup second xcheck { dup 1 2 copy get @ put } if second }
+    x-xs { dup first exch next }
+    xs-x { dup next exch first }
+
+    ll       { {load-if-literal-name} deep-map }
+    deep-map { y type /arraytype ne { exec }{
+    	y xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
+    rep  {x} { { [ /x { /x rep } ] } ll } @func
+    add1 {x} { x @  dup length 0 eq { [] }
+	        { [ exch dup first 1 add  exch next /add1 cvx 2 aa cvx ] } ifelse } @func
+    take {x n} { n 0 eq { [] }{ [ x @ x-xs n 1 sub take ] } ifelse } @func
+    charstring { 1 string dup 0 4 3 roll put }
+    flatten { [ exch { dup type /arraytype eq {{}forall}if}dup 4 get 0 2 index put exec ] }
+    to-string { flatten dup length dup string exch 1 sub -1 0 { % A S i
+		    3 copy 3 copy exch pop get put pop pop
+		} for exch pop }
+} pairs-begin
