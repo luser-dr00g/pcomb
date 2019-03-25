@@ -1,0 +1,59 @@
+(struct2.ps)run {
+    filename-input          { (r) file file-input }
+    file-input   (f/file)   { f read { [ exch [ f /file-input cvx ] cvx ] }{ null } ifelse } @func
+    string-input (s/string) { s {first}stopped{ pop pop null }
+			 	{ [ exch [ s rest /string-input cvx ] cvx ] } ifelse } @func
+
+    result {v}    { { /v exch cons one } ll } @func
+    bind   {p f}  { { /p exec { xs-x /f exec } map concat } ll } @func
+
+    zero          { { pop [] } }
+    plus   {p q}  { { dup /p exec exch /q exec compose } ll } @func
+    seq    {p q}  { /q /q load { ( ) load exch cons result exec } bind store
+		    /p load { << exch ( ) exch >> begin /q exec end }ll bind} @func
+    item          { { dup null ne { x-xs cons one }{ zero exec } ifelse } }
+    sat    {pred} { item { dup /pred exec { result }{ pop zero } ifelse exec } ll bind } @func
+    lit    {x}    { { /x eq } ll sat } @func
+    range  {a b}  { { dup /a ge exch /b le and } ll sat } @func
+    anyof         { {lit} any }
+    noneof        { anyof none }
+    any           { map {plus} reduce }
+    none   {p}    { { dup /p exec [] ne { zero }{ item } ifelse exec } ll } @func
+    xthen         { seq { second result exec } bind }
+    thenx         { seq { first result exec } bind }
+    %maybe         { [] result plus }
+    maybe  {p}    { { dup /p exec dup [] eq { result exec }{ exch pop } ifelse } ll } @func
+    many          { {{-777 exec}exec} ll dup first 3 1 roll seq maybe
+		    2 copy 0 exch put  exch pop executeonly }
+    some          { dup many seq }
+    into   {p v q}{ /p load { << exch /v exch >> begin /q exec end }ll bind } @func
+    using         { { result exec } compose bind }
+    char          { first lit }
+    trim   {p}    { { /p exec dup length 0 gt { 0 1 getinterval } if } ll } @func
+
+    x-xs     { dup first exch next }
+    xs-x     { dup next exch first }
+    ll       { {load-if-literal-name} deep-map }
+    /@       { { dup xcheck { exec }{ exit } ifelse } loop }
+    next     { dup second xcheck { dup 1 {@} update } if second }
+    wrap     { 3 2 roll exch compose compose }
+    update   { 3 copy pop get exch exec put }
+    deep-map { 1 index type /arraytype ne { exec }{
+      1 index xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
+    flatten { [ exch { dup type /arraytype eq {{}forall}if}dup 4 get 0 2 index put exec ] }
+    to-string { flatten dup length dup string exch 1 sub -1 0 { % A S i
+		    3 copy 3 copy exch pop get put pop pop
+		} for exch pop }
+    combine  { dup length 1 eq { dup first [] eq { pop }{ compose } ifelse }{ compose } ifelse }
+    one{ 1 aa }   cons{ 2 aa }   second{ 1 get }   aa{ array astore }
+    concat{ { spill } map }   spill{ {} forall }
+    ps{ (stack:)= pstack }   pc{ ps clear }   px { dup print cvx exec }
+} pairs-begin
+currentfile flushfile
+
+(abc) string-input 12 result exec pc
+(abc) string-input item exec pc
+(abc) string-input item { pop zero exec } bind exec pc
+
+
+quit

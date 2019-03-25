@@ -1,35 +1,39 @@
-(pc8.ps)run
-<<
-    /lit { first literal }
-    /px {dup print cvx exec}
->> begin
+(pc8.ps)run {
+    atom null
+    left-factor null
+    left-term null
+    (*) @first  * 
+    (+) @first  + 
+    (?) @first  ? 
+    lit { first literal }
+} pairs-begin
 
 /Dot        (.) lit           def
 /Meta       (*+?) anyof       def
-(*) first { many } def
-(+) first { some } def
-(?) first { maybe } def
 /Character  (*+?.|()) noneof  def
 /Expression { -777 exec }     def
-/Atom   //Dot {pop dot}using
+/Atom   //Dot          { pop dot }using
 	(\() lit //Expression xthen (\)) lit thenx  alt2
-	//Character {literal}using  alt2     def
+	//Character    { literal }using             alt2  def
 /Factor //Atom /atom
-	//Meta { /atom load exch load exec dup /atom exch store }using
-		maybe { dup xcheck{}{pop /atom load}ifelse }using  into  def
+		//Meta               { /atom load exch load exec dup /atom exch store          }using
+			maybe        { dup xcheck{}{pop /atom load}ifelse                      }using
+		into  def
 /Term   //Factor /left-factor
-	//Factor { /left-factor load exch seq2 dup /left-factor exch store }using
-		many { dup xcheck{}{pop /left-factor load}ifelse }using  into  def
+		//Factor             { /left-factor load exch seq2 dup /left-factor exch store }using
+			many         { dup xcheck{}{pop /left-factor load}ifelse               }using
+		into  def
 //Expression 0
 	//Term /left-term
-	(|) lit //Term xthen { /left-term load exch alt2 dup /left-term exch store }using
-		many { dup xcheck{}{pop /left-term load }ifelse }using  into  put
-
+		(|) lit //Term xthen { /left-term load exch alt2 dup /left-term exch store     }using
+			many         { dup xcheck{}{pop /left-term load }ifelse                }using
+		into  put
 /regex { string-input //Expression exec dup length 0 gt {
-	     first first trim {to-string}using
-	 }{} ifelse } def
+	     first first trim {to-string}using  }{} ifelse } def
 
-/r (a+b?|c..|d.*) regex def
+/r (a+(b?.)*|c..|d.*) regex def
+
+/px {dup print cvx exec} def
 (/r load == ) px
 
 /t { string-input r pc } def

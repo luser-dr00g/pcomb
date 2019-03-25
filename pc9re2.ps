@@ -1,0 +1,19 @@
+(pc9.ps)run {
+    using { { result exec } combine bind }
+} pairs-begin
+
+/Dot         (.) char         def
+/Meta        (*+?) anyof      def
+/Character   (*+?.|()) noneof def
+
+/Atom        //Dot
+             //Character  plus  def
+/Factor      //Atom  //Meta maybe  seq   def
+/Term        //Factor  //Factor many  seq  def
+/Expression  //Term  (|) char //Term xthen  many  seq  def
+
+/regex { string-input //Expression exec ps } def
+
+(abc|def|ghi) regex 
+
+quit

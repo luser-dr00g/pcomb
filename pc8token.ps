@@ -1,0 +1,44 @@
+(pc8.ps)run <<
+	/lit { first literal }
+	/delimiter  ( \t\n()/%[]<>{}) cclass
+	/regular    ( \t\n()/%[]<>{}) noneof
+	/digit      (09) spill range
+>> begin
+
+/number     //digit + def
+/opt-number //digit * def
+/rad-integer //digit //digit ? then  (#) lit then //number then def
+/integer  (-) lit ? //number then def
+/real     (-) lit ?
+	      //number (.) lit then //opt-number then 
+	               (.) lit      //number     then  alt2  then def
+/name     //regular + def
+
+/on-radix    { to-string dup      cvi       cons } def
+/on-integer  { to-string dup      cvi       cons } def
+/on-real     { to-string dup      cvr       cons } def
+/on-name     { to-string dup      cvn cvx   cons } def
+/on-lit-name { to-string dup rest cvn cvlit cons } def
+/on-delim    { to-string dup      cvn cvx   cons } def
+
+/ps-token
+	  %-255 literal fail then
+	  //rad-integer       //on-radix    using  %alt2
+	  //real              //on-real     using  alt2
+	  //integer           //on-integer  using  alt2
+	  //name              //on-name     using  alt2
+          (/) lit //name then //on-lit-name using  alt2
+	  //delimiter         //on-delim    using  alt2
+          trim def
+
+/mytoken {
+    dup length 0 gt { dup string-input //ps-token exec dup length 0 gt {
+	first first  aload pop  3 1 roll
+	length 1 index length 1 index sub getinterval exch
+	dup  ( ) cvn eq  1 index xcheck  and { pop mytoken }{ true } ifelse
+    }{ pop pop false } ifelse }{ pop false } ifelse
+} def
+
+(16#25 name /word 123 2.65 [    ) {mytoken {dup type = ==}{exit} ifelse} loop pc
+
+quit

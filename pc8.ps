@@ -11,10 +11,10 @@
     literal {x}   { { /x eq } ll satisfy } @func
     range   {a b} { { dup /a ge exch /b le and } ll satisfy } @func
     cclass  {cc}  { { charstring /cc exch search { pop pop pop true }
-			                                          { pop false } ifelse  } ll satisfy } @func
+						  { pop false } ifelse  } ll satisfy } @func
 
     return  {p v} { { /p exec dup length 0 gt { xs-x pop /v exch cons } if } ll } @func
-    using   {p f} { { /p exec [ exch { dup 0 2 copy get /f exec put } forall ] } ll } @func
+    using   {p f} { { /p exec [ exch { dup 0 /f update } forall ] } ll } @func
     alt2    {p q} { { dup /p exec [ 3 1 roll spill counttomark -1 roll /q exec spill ] } ll } @func
     seq2    {p q} { { /p exec { x-xs /q exec exch {
 				    exch x-xs 3 1 roll cons exch cons
@@ -35,7 +35,7 @@
     dot { {0 ge} satisfy }
     any { map {alt2} reduce }
     anyof { {literal} any }
-    noneof { anyof none }
+    noneof { anyof none } @pop { cclass none }
     none {p} { { dup /p exec dup length 0 gt { pop fail }
 			 		     { pop dot } ifelse exec } ll } @func
 
@@ -44,11 +44,12 @@
     second { 1 get }               spill  { {} forall }        cons   { 2 aa }
     
     /@ { { dup xcheck { exec }{ exit } ifelse } loop }
-    next { dup second xcheck { dup 1 2 copy get @ put } if second }
+    next { dup second xcheck { dup 1 {@} update } if second }
     x-xs { dup first exch next }
     xs-x { dup next exch first }
 
     ll       { {load-if-literal-name} deep-map }
+    update   { 3 copy pop get exch exec put }
     deep-map { y type /arraytype ne { exec }{
     	y xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
     rep  {x} { { [ /x { /x rep } ] } ll } @func
