@@ -1,19 +1,27 @@
 (pc9.ps)run {
-    using { { result exec } combine bind }
+    using { { result exec } compose bind }
+    collapse {f} { dup type /arraytype eq 1 index xcheck not and {
+		     dup first /f load collapse exch second /f load collapse f
+	    	 } if } @func
+(?)@first{ {maybe} compose }
+(+)@first{ {some} compose }
+(*)@first{ {many} compose }
 } pairs-begin
 
 /Dot         (.) char         def
 /Meta        (*+?) anyof      def
 /Character   (*+?.|()) noneof def
 
-/Atom        //Dot
-             //Character  plus  def
-/Factor      //Atom  //Meta maybe  seq   def
-/Term        //Factor  //Factor many  seq  def
-/Expression  //Term  (|) char //Term xthen  many  seq  def
+/Atom        //Dot       {pop{item}}  using
+	     //Character {{lit}curry} using  plus  def
+/Factor      //Atom /A
+	     //Meta {/A load exch load exec} using
+		 maybe {dup [] eq {pop /A load} if } using  into  def
+/Term        //Factor  //Factor many  seq { { {seq} compose compose } collapse } using def
+/Expression  //Term  (|) char //Term xthen  many  seq { { {plus} compose compose } collapse } using def
 
-/regex { string-input //Expression exec ps } def
+/regex { string-input //Expression exec first first ps } def
 
-(abc|def|ghi) regex 
+(ab?.|de+|gh*) regex 
 
 quit

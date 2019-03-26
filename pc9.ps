@@ -9,8 +9,7 @@
 
     zero          { { pop [] } }
     plus   {p q}  { { dup /p exec exch /q exec compose } ll } @func
-    seq    {p q}  { /q /q load { ( ) load exch cons result exec } bind store
-		    /p load { << exch ( ) exch >> begin /q exec end }ll bind} @func
+    seq         { { /_ load exch cons-non-nil result exec } bind { <<exch/_ exch>>begin }{ end } wrap bind }
     item          { { dup null ne { x-xs cons one }{ zero exec } ifelse } }
     sat    {pred} { item { dup /pred exec { result }{ pop zero } ifelse exec } ll bind } @func
     lit    {x}    { { /x eq } ll sat } @func
@@ -21,8 +20,7 @@
     none   {p}    { { dup /p exec [] ne { zero }{ item } ifelse exec } ll } @func
     xthen         { seq { second result exec } bind }
     thenx         { seq { first result exec } bind }
-    %maybe         { [] result plus }
-    maybe  {p}    { { dup /p exec dup [] eq { result exec }{ exch pop } ifelse } ll } @func
+    maybe         { [] result plus }
     many          { {{-777 exec}exec} ll dup first 3 1 roll seq maybe
 		    2 copy 0 exch put  exch pop executeonly }
     some          { dup many seq }
@@ -44,7 +42,7 @@
     to-string { flatten dup length dup string exch 1 sub -1 0 { % A S i
 		    3 copy 3 copy exch pop get put pop pop
 		} for exch pop }
-    combine  { dup length 1 eq { dup first [] eq { pop }{ compose } ifelse }{ compose } ifelse }
+    cons-non-nil { dup [] eq { pop }{ cons } ifelse }
     one{ 1 aa }   cons{ 2 aa }   second{ 1 get }   aa{ array astore }
     concat{ { spill } map }   spill{ {} forall }
     ps{ (stack:)= pstack }   pc{ ps clear }   px { dup print cvx exec }
