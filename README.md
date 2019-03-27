@@ -3,6 +3,11 @@ parser combinators in PostScript and C
 
 Some experiments in implementing parser combinators in C and Postscript.
 
+The PostScript versions all build upon the function syntax extension
+described at
+https://codereview.stackexchange.com/questions/193520/5912/an-enhanced-syntax-for-defining-functions-in-postscript
+and implemented in struct2.ps. An older version, struct.ps, is in the old directory.
+
 pc8.ps finally implements the idea of the parsers actually returning
 useful values.  pc8token.ps and pc8re.ps implement a (partial)
 PostScript `token` implementation and regular expression parser
