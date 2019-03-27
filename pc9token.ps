@@ -1,0 +1,46 @@
+%errordict/typecheck{pstack quit}put
+(pc9.ps)run
+/handle { {to-string dup} exch compose {cons} compose using } def
+
+/delimiter   ( \t\n()/%[]<>{}) anyof   def
+/digit       (09) spill range          def
+%/regular     ( \t\n()/%[]<>{}) noneof  def
+/regular     (az) spill range (AZ) spill range plus //digit plus  def
+
+/number      //digit some      def
+/opt-number  //digit many      def
+/rad-integer //digit //digit maybe seq  (#) char seq  //number seq  def
+/integer     (+-) anyof maybe  //number seq  def
+/real        (+-) anyof maybe  
+		//number (.) char seq  //opt-number seq
+			 (.) char      //number     seq  plus  seq  def
+/name        //regular some  def
+
+/spaces  ( \t\n) anyof many  { length    } handle  def
+/ps-token
+	//rad-integer        { cvi       } handle 
+	//real	             { cvr       } handle  plus
+	//integer            { cvi       } handle  plus
+	//name	             { cvn cvx   } handle  plus
+	(/) char //name seq  { rest cvn  } handle  plus
+	//delimiter          { cvn cvx   } handle  plus
+	def
+
+/tail {
+    1 index length 1 index sub getinterval 
+} def
+
+/mytoken {
+    dup length 0 gt {
+	dup string-input //spaces exec first %ps
+        xs-x second 3 2 roll exch tail exch
+        //ps-token exec dup length 0 gt {
+	    first first %ps
+	    spill 3 1 roll length tail exch true
+	}{ pop pop false } ifelse
+    }{ pop false } ifelse
+} def
+
+(    16#25 name /word 123 2.65 [    ) {mytoken {dup type = ==}{exit} ifelse} loop pc
+
+quit

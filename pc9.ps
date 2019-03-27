@@ -28,9 +28,9 @@
     using         { { result exec } compose bind }
     char          { first lit }
     trim   {p}    { { /p exec dup length 0 gt { 0 1 getinterval } if } ll } @func
-    collapse {f} { dup type /arraytype eq 1 index xcheck not and {
-		     dup first /f load collapse exch second /f load collapse f
-	    	 } if } @func
+    collapse {f}  { dup type /arraytype eq 1 index xcheck not and {
+		      dup first /f load collapse exch second /f load collapse f
+	    	  } if } @func
 
     x-xs     { dup first exch next }
     xs-x     { dup next exch first }
@@ -48,7 +48,7 @@
     cons-non-nil { dup [] eq { pop }{ cons } ifelse }
     one{ 1 aa }   cons{ 2 aa }   second{ 1 get }   aa{ array astore }
     concat{ { spill } map }   spill{ {} forall }
-    ps{ (stack:)= pstack }   pc{ ps clear }   px { dup print cvx exec }
+    ps{ (stack:)= pstack }   pc{ ps clear }   px { dup print cvx exec } pq { ps quit }
 } pairs-begin
 currentfile flushfile
 
