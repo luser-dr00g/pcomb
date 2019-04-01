@@ -21,5 +21,8 @@ tokenizer is about 100 characters shorter than the pc8 versions for
 the same functionality, but the regex code is about 500 characters
 shorter.
 
+The first C version was posted to
+https://codereview.stackexchange.com/questions/166009/5912/parser-combinators-in-oo-c .
+
 The next C version, which should be pc6.{c,h}, will attempt to implement
-the same behavior in C following the example of the small exercise lazy.c.
+the same behavior as pc9.ps in C following the example of the small exercise lazy.c.

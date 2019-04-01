@@ -1,8 +1,8 @@
-(pc9.ps)run {
-    (?)@first{ {maybe} compose }
-    (+)@first{ {some} compose }
-    (*)@first{ {many} compose }
-} pairs-begin
+(pc9.ps)run <<
+    (?)first { {maybe} compose }
+    (+)first { {some}  compose }
+    (*)first { {many}  compose }
+>> begin
 
 /Dot         (.) char         def
 /Meta        (*+?) anyof      def
@@ -15,8 +15,10 @@
 /Factor      //Atom /A
 	     //Meta {/A load exch load exec} using
 		 maybe {dup [] eq {pop /A load} if } using  into  def
-/Term        //Factor  //Factor many  seq { { {seq} compose compose } collapse } using def
-//Expression 0  //Term  (|) char //Term xthen  many  seq { { {plus} compose compose } collapse } using put
+/Term        //Factor  //Factor many  seq 
+		 { { {seq} compose compose } collapse } using  def
+//Expression 0  //Term  (|) char //Term xthen  many  seq 
+		 { { {plus} compose compose } collapse } using  put
 
 /regex { string-input //Expression exec first first ps } def
 
