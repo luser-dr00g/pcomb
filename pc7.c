@@ -317,7 +317,7 @@ parser using( parser p, fOperator *f ){
 
 
 
-object do_meta( parser a, object b ){
+parser do_meta( parser a, object b ){
   switch( b->Int.i ){
   case '*':  a = many( a ); break;
   case '+':  a = some( a ); break;
@@ -326,14 +326,14 @@ object do_meta( parser a, object b ){
   return  a;
 }
 
-list on_dot( void *v, list o ){ return  item(); }
-list on_chr( void *v, list o ){ return  lit( o ); }
-list on_meta( void *v, list o ){
-  object atom = assoc( Symbol(ATOM), v );
+parser on_dot( void *v, object o ){ return  item(); }
+parser on_chr( void *v, object o ){ return  lit( o ); }
+parser on_meta( void *v, object o ){
+  parser atom = assoc( Symbol(ATOM), v );
   return  o  ? do_meta( atom, o ) : atom;
 }
-list on_term( void *v, list o ){ return  collapse( seq, o ); }
-list on_expr( void *v, list o ){ return  collapse( plus, o ); }
+parser on_term( void *v, object o ){ return  collapse( seq, o ); }
+parser on_expr( void *v, object o ){ return  collapse( plus, o ); }
 parser regex( char *re ){
   static parser p;
   if(  !p  ){
