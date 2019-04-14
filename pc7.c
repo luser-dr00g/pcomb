@@ -3,31 +3,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "pc7.h"
+#include "ppnarg.h"
 
-#define POINTER_TO *
-typedef union   object_  POINTER_TO object;
-typedef object  parser;
-typedef object  list;
-typedef object  operator;
-typedef object  predicate;
-typedef object  boolean;
-typedef enum    { INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL } tag;
+typedef enum    { INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING, NTYPES } tag;
 typedef object  fSuspension( void *);
 typedef list    fParser( void *, list );
 typedef object  fOperator( void *, object );
 typedef boolean fPredicate( void *, object );
-enum    symbol  { VALUE, PRED, P, Q, F, X, A, ID, USE,  ATOM };
 union   object_ { tag t;
         struct  { tag t; int i;                   } Int;
         struct  { tag t; object a, b;             } List;
         struct  { tag t; void *v; fSuspension *f; } Suspension;
         struct  { tag t; void *v; fParser *f;     } Parser;
         struct  { tag t; void *v; fOperator *f;   } Operator;
-        struct  { tag t; enum symbol symbol;      } Symbol;
+        struct  { tag t; int symbol; char *pname; } Symbol;
+        struct  { tag t; char *string;            } String;
 };
+enum    symbol  { VALUE = NTYPES +10, PRED, P, Q, F, X, A, ID, USE,  ATOM, USER1 };
 object new_( object o ){
   object p = calloc( 1, sizeof *p );
-  return  p ? *p = *o, p : 0;
+  return  p ?  *p = *o, p : 0;
 }
 #define OBJECT(...) new_( (union object_[]){{ __VA_ARGS__ }} )
 
@@ -37,7 +33,8 @@ list     cons( object a, object b ){            return  OBJECT( .List       = { 
 object   Suspension( void *v, fSuspension *f ){ return  OBJECT( .Suspension = { SUSPENSION, v, f } ); }
 parser   Parser( void *v, fParser *f ){         return  OBJECT( .Parser     = { PARSER, v, f     } ); }
 operator Operator( void *v, fOperator *f ){     return  OBJECT( .Operator   = { OPERATOR, v, f   } ); }
-#define  Symbol(x)  new_( (union object_[]){{ .Symbol = { SYMBOL, x } }} )
+object   String( char *s ){                     return  OBJECT( .String     = { STRING, s        } ); }
+#define  Symbol(x)  new_( (union object_[]){{ .Symbol = { SYMBOL, x, #x } }} )
 
 object at( object a ){ return  a && a->t == SUSPENSION  ? at( a->Suspension.f( a->Suspension.v ) ) : a; }
 object x( list a ){  return  a && a->t == LIST  ? a->List.a = at( a->List.a ) : NULL; }
@@ -51,9 +48,12 @@ list copy( list a ){
 
 boolean eq( object a, object b ){
   return  (
-           !a && !b                   ? 1 :
-           !a || !b                   ? 0 :
-           !memcmp( a, b, sizeof a )  ? 1 : 0
+           !a && !b                                ? 1 :
+           !a || !b                                ? 0 :
+           a->t != b->t                            ? 0 :
+           a->t == SYMBOL && 
+             a->Symbol.symbol == b->Symbol.symbol  ? 1 :
+           !memcmp( a, b, sizeof *a )              ? 1 : 0
           )  ? one(0) : NULL;
 }
 
@@ -79,15 +79,17 @@ list env( list tail, int n, ... ){
 void print( object o ){
   if(  !o  ){ printf( "() " ); return; }
   switch( o->t ){
-    case INTEGER:    printf( "%d ", o->Int.i ); break;
+    case INTEGER:    printf( "%d ", o->Int.i );         break;
     case LIST:       printf( "(" );
                        print( o->List.a );
                        print( o->List.b );
-                     printf( ") " );            break;
-    case SUSPENSION: printf( "SUSPENSION " );   break;
-    case PARSER:     printf( "PARSER " );       break;
-    case OPERATOR:   printf( "OPERATOR " );     break;
-    case SYMBOL:     printf( "SYM " );          break;
+                     printf( ") " );                    break;
+    case SUSPENSION: printf( "SUSPENSION " );           break;
+    case PARSER:     printf( "PARSER " );               break;
+    case OPERATOR:   printf( "OPERATOR " );             break;
+    case STRING:     printf( "\"%s\" ",
+                             o->String.string );        break;
+    case SYMBOL:     printf( "%s ", o->Symbol.pname );  break;
     default: break;
   }
 }
@@ -203,6 +205,11 @@ parser lit( object x ){
 }
 
 
+parser Char( int c ){
+  return  lit( Int( c ) );
+}
+
+
 list fprepend( void *v, list o ){
   object a = assoc( Symbol(A), v );
   return  cons( cons( a, x( o ) ), xs( o ) );
@@ -217,6 +224,11 @@ list fseq( void *v, list o ){
 parser seq( parser p, parser q ){
   //if(  !q  ) return p;
   return  bind( p, Operator( env( 0, 1, Symbol(Q), q ), fseq ) );
+}
+
+
+parser str( char *s ){
+  return  *s  ? seq( Char( *s ), str( s+1 ) ) : result(0);
 }
 
 
@@ -262,21 +274,16 @@ parser trim( parser p ){
 }
 
 
-
-parser Char( int c ){
-  return  lit( Int( c ) );
-}
-
 parser anyof( char *s ){
   return  *s  ? plus( Char( *s ), anyof( s+1 ) ) : zero();
 }
 
-list pnone( void *v, list input ){
+list fnone( void *v, list input ){
   parser p = assoc( Symbol(P), v );
   return  parse( p, input )  ? NULL : fitem( 0, input );
 }
 parser noneof( char *s ){
-  return  Parser( env( 0, 1, Symbol(P), anyof( s ) ), pnone );
+  return  Parser( env( 0, 1, Symbol(P), anyof( s ) ), fnone );
 }
 
 
@@ -319,11 +326,10 @@ parser using( parser p, fOperator *f ){
 
 parser do_meta( parser a, object b ){
   switch( b->Int.i ){
-  case '*':  a = many( a ); break;
-  case '+':  a = some( a ); break;
-  case '?':  a = maybe( a ); break;
+  case '*':  return many( a );
+  case '+':  return some( a );
+  case '?':  return maybe( a );
   }
-  return  a;
 }
 
 parser on_dot( void *v, object o ){ return  item(); }
@@ -352,13 +358,127 @@ parser regex( char *re ){
     //p = expr;
     p = trim( expr );
   }
-  return  parse( p, string_input( re ) );
+  list r = parse( p, string_input( re ) );
+  print( r ), puts("");
+  return  r  ? trim( x( x( r ) ) ) : r;
 }
 
+
+list take( int n, list o ){
+  return  n == 0  ? NULL  : cons( x( o ), take( n-1, xs( o ) ) );
+}
+
+list drop( int n, list o ){
+  return  n == 0  ? o  : drop( n-1, xs( o ) );
+}
+
+int count_ints( list o ){
+  return  !o               ? 0 :
+          o->t == INTEGER  ? 1 :
+          o->t == LIST     ? count_ints( o->List.a ) + count_ints( o->List.b ) :
+          0;
+}
+
+object fill_string( char **s, list o){
+  return  !o               ? NULL :
+          o->t == INTEGER  ? *(*s)++ = o->Int.i, NULL :
+          o->t == LIST     ? fill_string( s, o->List.a ), fill_string( s, o->List.b )  :
+          NULL;
+}
+
+object to_string( list o ){
+  char *s = calloc( count_ints( o )+1, 1 );
+  object z = String( s );
+  return  fill_string( &s, o ), z;
+}
+
+
+int accumulate_integer( int *pi, list o ){
+  return  !o  ?  0 :
+          o->t == INTEGER  ?  *pi = *pi * 10 + o->Int.i - '0' :
+          o->t == LIST     ?  accumulate_integer( pi, o->List.a ) + accumulate_integer( pi, o->List.b ) :
+          7; 
+}
+
+object to_integer( list o ){
+  int z = 0;
+  return  accumulate_integer( &z, o ), Int( z );
+}
+
+
+#define Each_Keyword(_) \
+ _(int) _(char) _(float) _(double) _(struct) \
+ _(auto) _(extern) _(register) _(static) \
+ _(goto) _(return) _(sizeof) \
+ _(break) _(continue) \
+ _(if) _(else) \
+ _(for) _(do) _(while) \
+ _(switch) _(case) _(default) \
+ _(entry)
+#define Enum_name(x) k_##x ,
+
+
+enum extended_symbols {
+  t_int = USER1 +10, t_id,
+  //k_if, k_int, k_char, k_float, k_double, k_struct, k_auto,
+  Each_Keyword( Enum_name )
+  USER2
+};
+
+object reduce(int n, object(*f)(object,object), object *po ){
+  return  n == 1 ? *po : f( *po, reduce( n-1, f, po+1 ) );
+}
+
+#define PLUS(...)  reduce( PP_NARG(__VA_ARGS__), plus, (object []){ __VA_ARGS__ } )
+
+object on_spaces( void *v, list o ){ return  to_string( o ); }
+object on_digits( void *v, list o ){ return  cons( Symbol(t_int), to_integer( o ) ); }
+#define On_keyword(x) \
+  object on_##x( void *v, list o ){ return  cons( Symbol(k_##x), to_string( o ) ); }
+Each_Keyword( On_keyword )
+//object on_if( void *v, list o ){ return cons( Symbol(k_if), to_string( o ) ); }
+//object on_int( void *v, list o ){ return cons( Symbol(k_int), to_string( o ) ); }
+//object on_char( void *v, list o ){ return cons( Symbol(k_char), to_string( o ) ); }
+//object on_float( void *v, list o ){ return cons( Symbol(k_float), to_string( o ) ); }
+//object on_double( void *v, list o ){ return cons( Symbol(k_double), to_string( o ) ); }
+//object on_struct( void *v, list o ){ return cons( Symbol(k_struct), to_string( o ) ); }
+//object on_auto( void *v, list o ){ return cons( Symbol(k_auto), to_string( o ) ); }
+object on_identifier( void *v, list o ){ return  cons( Symbol(t_id), to_string( o ) ); }
+
+#define Handle_keyword(x) \
+  using( str( #x ), on_##x ) ,
+list token_input( void *s ){
+  if(  !s  ) return NULL;
+  static parser p;
+  if(  !p  ){
+    parser space   = using( many( anyof( " " ) ), on_spaces );
+    parser digits  = using( some( is_digit() ), on_digits  );
+    parser alnum = plus( is_alpha(), plus( is_digit(), anyof( "_" ) ) );
+    parser keyword = PLUS( Each_Keyword( Handle_keyword ) );
+//    parser keyword = plus( using( str( "if" ), on_if ),
+//                     plus( using( str( "int" ), on_int ),
+//                     plus( using( str( "char" ), on_char ),
+//                     plus( using( str( "float" ), on_float ),
+//                     plus( using( str( "double" ), on_double ),
+//                     plus( using( str( "struct" ), on_struct ),
+//                           using( str( "auto" ), on_auto ) ) ) ) ) ) );
+    parser identifier = using( seq( plus( is_alpha(), anyof( "_" ) ), many( alnum ) ), on_identifier );
+    p = seq( space, plus( digits, plus( keyword, identifier ) ) );
+  }
+  list r = x( parse( p, s ) );
+  return  cons( x( r ), Suspension( xs( r ), token_input ) );
+}
+
+void test_tokens(){
+  list tokens = token_input( string_input( "123 if blah bluh bleh" ) );
+  print( take( 3, tokens ) ), puts("");
+  print( drop( 3, tokens ) ), puts("");
+  print( take( 2, drop( 3, tokens ) ) ), puts("");
+}
+
+
 void test_regex(){
-  object y = regex( ".?(b)+|a" );
-  print( y ), puts("");
-  parser p = trim( x( x( y ) ) );
+  parser p = regex( ".?(b)+|a" );
   print( parse( p, string_input( "b" ) ) ), puts("");
   print( parse( p, string_input( "xbb" ) ) ), puts("");
   print( parse( p, string_input( "a" ) ) ), puts("");
@@ -410,7 +530,9 @@ void test_basics(){
 
 }
 
-int main(){
+int pc_main(){
   //test_basics();
-  test_regex();
+  //test_regex();
+  test_tokens();
 }
+

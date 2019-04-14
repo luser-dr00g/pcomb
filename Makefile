@@ -1,16 +1,14 @@
 CFLAGS= -std=c99
 CFLAGS+= $(cflags)
 
-test : pc5_test
+test : pc7_test
 	./$<
 
-pc5_test : pc5_test.c pc5.o
+pc7_test : pc7_test.c pc7.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-pc4_test : pc4_test.c pc4.o pc4re.o pc4eg.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-pc7_test :
-	gsnd -dNOSAFER pc7re2.ps
+pc9_test :
+	gsnd -dNOSAFER pc9re2.ps
 
 
