@@ -19,7 +19,7 @@ parser plus( parser, parser );
 parser sat( predicate );
 
 parser lit( object );
-parser Char( int );
+parser chr( int );
 parser anyof( char * );
 parser noneof( char * );
 

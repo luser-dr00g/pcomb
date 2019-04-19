@@ -6,8 +6,12 @@
 #include "pc7.h"
 #include "ppnarg.h"
 
-typedef enum    { INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING, NTYPES } tag;
-typedef object  fSuspension( void *);
+#define NEXT10(n) n-n%10+10
+typedef enum object_tag {
+  INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING,
+  NTYPES, INTERNAL = NEXT10(NTYPES)
+} tag;
+typedef object  fSuspension( void * );
 typedef list    fParser( void *, list );
 typedef object  fOperator( void *, object );
 typedef boolean fPredicate( void *, object );
@@ -20,12 +24,18 @@ union   object_ { tag t;
         struct  { tag t; int symbol; char *pname; } Symbol;
         struct  { tag t; char *string;            } String;
 };
-enum    symbol  { VALUE = NTYPES +10, PRED, P, Q, F, X, A, ID, USE,  ATOM, USER1 };
 object new_( object o ){
   object p = calloc( 1, sizeof *p );
   return  p ?  *p = *o, p : 0;
 }
 #define OBJECT(...) new_( (union object_[]){{ __VA_ARGS__ }} )
+
+enum    symbol  {
+  VALUE = INTERNAL,
+  PRED, P, Q, F, X, A, ID, USE,  ATOM,
+  INTERNAL_, USER1 = NEXT10(INTERNAL_)
+};
+#define  Symbol(x)  new_( (union object_[]){{ .Symbol = { SYMBOL, x, #x } }} )
 
 object   Int( int i ){                          return  OBJECT( .Int        = { INTEGER, i       } ); }
 list     one( object a ){                       return  OBJECT( .List       = { LIST, a, NULL    } ); }
@@ -34,7 +44,6 @@ object   Suspension( void *v, fSuspension *f ){ return  OBJECT( .Suspension = { 
 parser   Parser( void *v, fParser *f ){         return  OBJECT( .Parser     = { PARSER, v, f     } ); }
 operator Operator( void *v, fOperator *f ){     return  OBJECT( .Operator   = { OPERATOR, v, f   } ); }
 object   String( char *s ){                     return  OBJECT( .String     = { STRING, s        } ); }
-#define  Symbol(x)  new_( (union object_[]){{ .Symbol = { SYMBOL, x, #x } }} )
 
 object at( object a ){ return  a && a->t == SUSPENSION  ? at( a->Suspension.f( a->Suspension.v ) ) : a; }
 object x( list a ){  return  a && a->t == LIST  ? a->List.a = at( a->List.a ) : NULL; }
@@ -205,7 +214,7 @@ parser lit( object x ){
 }
 
 
-parser Char( int c ){
+parser chr( int c ){
   return  lit( Int( c ) );
 }
 
@@ -222,13 +231,13 @@ list fseq( void *v, list o ){
   return  prepend( x( o ), parse( q, xs( o ) ) );
 }
 parser seq( parser p, parser q ){
-  //if(  !q  ) return p;
+  if(  !q  ) return p;
   return  bind( p, Operator( env( 0, 1, Symbol(Q), q ), fseq ) );
 }
 
 
 parser str( char *s ){
-  return  *s  ? seq( Char( *s ), str( s+1 ) ) : result(0);
+  return  *s  ? seq( chr( *s ), str( s+1 ) ) : result(0);
 }
 
 
@@ -238,7 +247,7 @@ list fplus( void *v, list input ){
   return  append( parse( p, input ), parse( q, input ) );
 }
 parser plus( parser p, parser q ){
-  //if(  !q  ) return p;
+  if(  !q  ) return p;
   return  Parser( env( 0, 2, Symbol(P), p, Symbol(Q), q ), fplus );
 }
 
@@ -275,7 +284,7 @@ parser trim( parser p ){
 
 
 parser anyof( char *s ){
-  return  *s  ? plus( Char( *s ), anyof( s+1 ) ) : zero();
+  return  *s  ? plus( chr( *s ), anyof( s+1 ) ) : zero();
 }
 
 list fnone( void *v, list input ){
@@ -343,19 +352,17 @@ parser on_expr( void *v, object o ){ return  collapse( plus, o ); }
 parser regex( char *re ){
   static parser p;
   if(  !p  ){
-    parser  dot    = Char( '.' );
+    parser  dot    = chr( '.' );
     parser  meta   = anyof( "*+?" );
-    parser  chr    = noneof( "*+?.|()" );
+    parser  chr_   = noneof( "*+?.|()" );
     parser  expr_  = forward();
     parser  atom   = plus( using( dot, on_dot ),
-                     plus( thenx( xthen( Char('('), expr_ ), Char(')') ),
-                           using( chr, on_chr ) ) );
-    //parser  factor = seq( atom, maybe( meta ) );
+                     plus( thenx( xthen( chr('('), expr_ ), chr(')') ),
+                           using( chr_, on_chr ) ) );
     parser  factor = into( atom, Symbol(ATOM), using( maybe( meta ), on_meta ) );
     parser  term   = using( seq( factor, many( factor ) ), on_term );
-    parser  expr   = using( seq( term, many( xthen( Char('|'), term ) ) ), on_expr );
+    parser  expr   = using( seq( term, many( xthen( chr('|'), term ) ) ), on_expr );
     *expr_ = *expr;
-    //p = expr;
     p = trim( expr );
   }
   list r = parse( p, string_input( re ) );
@@ -406,78 +413,186 @@ object to_integer( list o ){
 }
 
 
-#define Each_Keyword(_) \
- _(int) _(char) _(float) _(double) _(struct) \
- _(auto) _(extern) _(register) _(static) \
- _(goto) _(return) _(sizeof) \
- _(break) _(continue) \
- _(if) _(else) \
- _(for) _(do) _(while) \
- _(switch) _(case) _(default) \
- _(entry)
-#define Enum_name(x) k_##x ,
-
-
-enum extended_symbols {
-  t_int = USER1 +10, t_id,
-  //k_if, k_int, k_char, k_float, k_double, k_struct, k_auto,
-  Each_Keyword( Enum_name )
-  USER2
-};
-
 object reduce(int n, object(*f)(object,object), object *po ){
   return  n == 1 ? *po : f( *po, reduce( n-1, f, po+1 ) );
 }
-
 #define PLUS(...)  reduce( PP_NARG(__VA_ARGS__), plus, (object []){ __VA_ARGS__ } )
+#define SEQ(...) reduce( PP_NARG(__VA_ARGS__), seq, (object []){ __VA_ARGS__ } )
 
+
+#define Each_Keyword(_) \
+  _(int) _(char) _(float) _(double) _(struct) \
+  _(auto) _(extern) _(register) _(static) \
+  _(goto) _(return) _(sizeof) \
+  _(break) _(continue) \
+  _(if) _(else) \
+  _(for) _(do) _(while) \
+  _(switch) _(case) _(default) \
+  _(entry)
+#define Keyword_enum_name(a) k_##a ,
+
+#define Each_Oper(_) \
+  _(*,star) \
+  _(++,plusplus) \
+  _(+,plus) \
+  _(=,equal)
+#define Oper_enum_name(x,y) o_##y ,
+
+enum tokenizer_symbols {
+  t_id = USER1,
+  lparen, rparen, comma, semicolon, colon, lbrace, rbrace,
+  c_int, c_char,
+  Each_Keyword( Keyword_enum_name )
+  Each_Oper( Oper_enum_name )
+  USER1_, USER2 = NEXT10(USER1_)
+};
 object on_spaces( void *v, list o ){ return  to_string( o ); }
-object on_digits( void *v, list o ){ return  cons( Symbol(t_int), to_integer( o ) ); }
-#define On_keyword(x) \
-  object on_##x( void *v, list o ){ return  cons( Symbol(k_##x), to_string( o ) ); }
-Each_Keyword( On_keyword )
-//object on_if( void *v, list o ){ return cons( Symbol(k_if), to_string( o ) ); }
-//object on_int( void *v, list o ){ return cons( Symbol(k_int), to_string( o ) ); }
-//object on_char( void *v, list o ){ return cons( Symbol(k_char), to_string( o ) ); }
-//object on_float( void *v, list o ){ return cons( Symbol(k_float), to_string( o ) ); }
-//object on_double( void *v, list o ){ return cons( Symbol(k_double), to_string( o ) ); }
-//object on_struct( void *v, list o ){ return cons( Symbol(k_struct), to_string( o ) ); }
-//object on_auto( void *v, list o ){ return cons( Symbol(k_auto), to_string( o ) ); }
+#define On_punct(a) \
+  object on_##a( void *v, list o ){ return  cons( Symbol(a), to_string( o ) ); }
+On_punct(lparen)
+On_punct(rparen)
+On_punct(comma)
+On_punct(semicolon)
+On_punct(colon)
+On_punct(lbrace)
+On_punct(rbrace)
+object on_integer( void *v, list o ){ return  cons( Symbol(c_int), to_string( o ) ); }
+object on_character( void *v, list o ){ return  cons( Symbol(c_char), to_string( o ) ); }
 object on_identifier( void *v, list o ){ return  cons( Symbol(t_id), to_string( o ) ); }
 
-#define Handle_keyword(x) \
-  using( str( #x ), on_##x ) ,
+#define On_keyword(a) \
+  object on_##a( void *v, list o ){ return  cons( Symbol(k_##a), to_string( o ) ); }
+Each_Keyword( On_keyword )
+
+#define On_oper(a,b) \
+  object on_##b( void *v, list o ){ return  cons( Symbol(o_##b), to_string( o ) ); }
+Each_Oper( On_oper )
+
+object on_token( void *v, list o ){ return  cons( x( xs( o ) ), cons( x( o ), xs( xs( o ) ) ) ); }
 list token_input( void *s ){
-  if(  !s  ) return NULL;
+  if(  !s  ) return  NULL;
   static parser p;
   if(  !p  ){
-    parser space   = using( many( anyof( " " ) ), on_spaces );
-    parser digits  = using( some( is_digit() ), on_digits  );
-    parser alnum = plus( is_alpha(), plus( is_digit(), anyof( "_" ) ) );
-    parser keyword = PLUS( Each_Keyword( Handle_keyword ) );
-//    parser keyword = plus( using( str( "if" ), on_if ),
-//                     plus( using( str( "int" ), on_int ),
-//                     plus( using( str( "char" ), on_char ),
-//                     plus( using( str( "float" ), on_float ),
-//                     plus( using( str( "double" ), on_double ),
-//                     plus( using( str( "struct" ), on_struct ),
-//                           using( str( "auto" ), on_auto ) ) ) ) ) ) );
+    parser space      = using( many( anyof( " " ) ), on_spaces );
+    parser integer    = using( some( is_digit() ), on_integer  );
+    parser alnum      = PLUS( is_alpha(), is_digit(), anyof( "_" ) );
+#   define Handle_keyword(a)  using( str( #a ), on_##a ) ,
+    parser keyword    = PLUS( Each_Keyword( Handle_keyword ) );
+#   define Handle_oper(a,b)  using( str( #a ), on_##b ) ,
+    parser oper       = PLUS( Each_Oper( Handle_oper ) );
+#   define Handle_punct(a,b)  using( str( a ), on_##b )
+    parser punct      = PLUS(
+                              Handle_punct( "(", lparen ),
+                              Handle_punct( ")", rparen ),
+                              Handle_punct( ",", comma ),
+                              Handle_punct( ";", semicolon ),
+                              Handle_punct( ":", colon ),
+                              Handle_punct( "{", lbrace ),
+                              Handle_punct( "}", rbrace )
+                            );
     parser identifier = using( seq( plus( is_alpha(), anyof( "_" ) ), many( alnum ) ), on_identifier );
-    p = seq( space, plus( digits, plus( keyword, identifier ) ) );
+    parser escape     = seq( chr('\\'),
+                          plus( seq( is_digit(), maybe( seq( is_digit(), maybe( is_digit() ) ) ) ),
+                                anyof( "'hi\"bart\\n" ) ) );
+    parser character  = using( xthen( chr('\''), thenx( plus( escape, item() ), chr( '\'' ) ) ),
+                              on_character );
+    parser constant = plus( integer, character );
+    p = using( seq( space, PLUS( constant, keyword, oper, identifier, punct ) ), on_token );
   }
   list r = x( parse( p, s ) );
   return  cons( x( r ), Suspension( xs( r ), token_input ) );
 }
 
-void test_tokens(){
-  list tokens = token_input( string_input( "123 if blah bluh bleh" ) );
+
+int test_tokens(){
+  list tokens = token_input( string_input( "auto ;*++'\\42' '\\n' 'h' 123 if blah bluh bleh" ) );
   print( take( 3, tokens ) ), puts("");
   print( drop( 3, tokens ) ), puts("");
   print( take( 2, drop( 3, tokens ) ) ), puts("");
 }
 
+enum parsing_level_symbols {
+  func_def = USER2,
+  USER2_, USER3 = NEXT10(USER2_)
+};
 
-void test_regex(){
+boolean is_identifier( void *v, object o ){ return  eq( x( o ), Symbol(t_id) ); }
+boolean is_constant( void *v, object o ){
+  return  ( eq( x( o ), Symbol(c_char) )
+         || eq( x( o ), Symbol(c_int) ) ) ? one(0) : NULL;
+}
+boolean is_comma( void *v, object o ){ return  eq( x( o ), Symbol(comma) ); }
+boolean is_semicolon( void *v, object o ){ return  eq( x( o ), Symbol(semicolon) ); }
+boolean is_lparen( void *v, object o ){ return  eq( x( o ), Symbol(lparen) ); }
+boolean is_rparen( void *v, object o ){ return  eq( x( o ), Symbol(rparen) ); }
+boolean is_lbrace( void *v, object o ){ return  eq( x( o ), Symbol(lbrace) ); }
+boolean is_rbrace( void *v, object o ){ return  eq( x( o ), Symbol(rbrace) ); }
+boolean is_asgnop( void *v, object o ){ return  eq( x( o ), Symbol(o_equal) ); }
+object parse_c_program( void *s ){
+  if(  !s  ) return  NULL;
+  static parser p;
+  if(  !p  ){
+    parser identifier = sat( Operator( 0, is_identifier ) );
+    parser constant = sat( Operator( 0, is_constant ) );
+    parser comma = sat( Operator( 0, is_comma ) );
+    parser lparen = sat( Operator( 0, is_lparen ) );
+    parser rparen = sat( Operator( 0, is_rparen ) );
+    parser lbrace = sat( Operator( 0, is_lbrace ) );
+    parser rbrace = sat( Operator( 0, is_rbrace ) );
+    parser semicolon = sat( Operator( 0, is_semicolon ) );
+    parser primary = PLUS( identifier, constant );
+    parser asgnop = sat( Operator( 0, is_asgnop ) );
+    parser lvalue = identifier;
+    parser expression = forward();
+    parser expression_ = PLUS(
+                               SEQ(lvalue, asgnop, expression),
+                               primary
+                             );
+          *expression = *expression_;
+    parser statement = plus(
+                             seq( expression, semicolon ),
+                             SEQ( lbrace, many( statement ), rbrace )
+                           );
+    parser declarator = identifier;
+    parser type_specifier;
+    parser function_body;
+    parser parameter_list = seq( identifier, many( seq( comma, identifier ) ) );
+    parser function_declarator = SEQ( declarator, lparen, maybe( parameter_list ), rparen );
+    parser function_definition = SEQ( maybe( type_specifier ), function_declarator, function_body );
+    parser data_definition;
+    parser external_definition = plus( function_definition, data_definition );
+    parser program = some( external_definition );
+    p = statement;
+  }
+  return  parse( p, s );
+}
+
+#define PRINT(__) printf( "%s =\n", #__ ), print( __ ), puts("")
+
+int test_parser(){
+  char *source = "x = 5; int auto";
+  object tokens = token_input( string_input( source ) );
+  PRINT( take( 5, tokens ) );
+  object program = parse_c_program( tokens );
+  PRINT( program );
+  object first_parse = x( program );
+  PRINT( x( first_parse ) );
+  PRINT( xs( first_parse ) );
+  object second_parse = xs( program );
+  PRINT( x( second_parse ) );
+}
+
+int test_regex();
+
+int pc_main(){
+  //test_basics(), puts("");
+  //test_regex(), puts("");
+  test_tokens(), puts("");
+  test_parser(), puts("");
+}
+
+
+int test_regex(){
   parser p = regex( ".?(b)+|a" );
   print( parse( p, string_input( "b" ) ) ), puts("");
   print( parse( p, string_input( "xbb" ) ) ), puts("");
@@ -485,7 +600,7 @@ void test_regex(){
 }
 
 
-void test_basics(){
+int test_basics(){
   char *s = "my string";
   list p = string_input( s );
   list pp = string_input( "12345" );
@@ -529,10 +644,3 @@ void test_basics(){
   puts("");
 
 }
-
-int pc_main(){
-  //test_basics();
-  //test_regex();
-  test_tokens();
-}
-
