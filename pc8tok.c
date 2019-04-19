@@ -35,7 +35,7 @@ tokens_from_chars( void *s ){
     parser escape     = seq( chr('\\'),
                             plus( seq( digit(), maybe( seq( digit(), maybe( digit() ) ) ) ),
                                   anyof( "'\"bnrt\\" ) ) );
-    parser character  = using( xthen( chr('\''), thenx( plus( escape, item() ), chr('\'') ) ), on_character );
+    parser character  = using( seq( chr('\''), seq( plus( escape, item() ), chr('\'') ) ), on_character );
     parser string     = using( SEQ( chr('"'), many( character ), chr('"') ), on_string );
     parser constant   = PLUS( integer, floating, character, string );
     parser symbolic   = PLUS( Each_Symbolic( Handle_Symbolic ) zero() );
