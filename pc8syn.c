@@ -90,10 +90,11 @@ tree_from_tokens( void *s ){
     parser constant_expression = expression;
 
     parser statement  = forward();
+    parser statement_list = many( statement );
     parser statement_ =
         PLUS(
 	      seq( expression, semi_ ),
-	      SEQ( lbrace_, many( statement ), rbrace_ ),
+	      SEQ( lbrace_, statement_list, rbrace_ ),
 	      SEQ( k_if_, lparen_, expression, rparen_, statement ),
 	      SEQ( k_if_, lparen_, expression, rparen_, statement, k_else_, statement ),
               SEQ( k_do_, statement, k_while_, lparen_, expression, rparen_, semi_ ),
@@ -146,20 +147,20 @@ tree_from_tokens( void *s ){
                                    seq( sc_specifier, type_specifier ) );
     parser declaration = seq( decl_specifiers, maybe( declarator_list ) );
     parser declaration_list = forward();
-    parser declaration_list_= seq( declarator, maybe( seq( comma_, declaration_list ) ) );
+    parser declaration_list_= seq( declaration, maybe( seq( comma_, declaration_list ) ) );
           *declaration_list = *declaration_list_;
-    parser data_def;
+    parser data_def = zero();
     parser parameter_list = forward();
     parser parameter_list_= maybe( seq( expression, maybe( seq( comma_, parameter_list ) ) ) );
           *parameter_list = *parameter_list_;
     parser function_declarator = SEQ( declarator, lparen_, maybe( parameter_list ), rparen_ );
-    parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ) );
+    parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
     parser function_body = seq( type_decl_list, function_statement );
     parser function_def = SEQ( maybe( type_specifier ), function_declarator, function_body );
     parser external_def = plus( function_def, data_def );
     parser program = some( external_def );
 
-    p = statement;
+    p = program;
     add_global_root( p );
   }
   return  parse( p, s );
@@ -167,15 +168,33 @@ tree_from_tokens( void *s ){
 
 #include <stdio.h>
 
+void print_flat( list a ){
+  if(  !a  ) return;
+  if(  a->t != LIST  ){ print( a ); return; }
+  print_flat( a->List.a );
+  print_flat( a->List.b );
+}
+
 #define PRINT(__) printf( "%s =\n", #__ ), print( __ ), puts("")
+#define PRINT_FLAT(__) printf( "%s =\n", #__ ), print_flat( __ ), puts("")
 int test_parser(){
-  char *source = "\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
+  char *source =
+"int max(a, b, c)\n"
+"int a, b, c;\n"
+"{\n"
+"      int m;\n"
+"      m = (a>b)? a:b;\n"
+"      return(m>c? m:c);"
+"}\n"
+"\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
   object tokens = tokens_from_chars( chars_from_string( source ) );
   add_global_root( tokens );
   PRINT( take( 4, tokens ) );
   object program = tree_from_tokens( tokens );
-  PRINT( program );
+  //PRINT( program );
   printf( "gc: %d\n", garbage_collect( program ) );
+  PRINT_FLAT( x_( x_( program ) ) );
+  PRINT( xs_( x_( program ) ) );
 }
 
 int main(){ test_parser(); }
