@@ -4,6 +4,8 @@
 #include "pc8obj.h"
 static list global_roots = NULL;
 static list allocation_list = NULL;
+union object_ T_[1] = {{ .Symbol = { SYMBOL, T, "T" }}};
+union object_ invalid[1] = {{ .t = INVALID }};
 
 object
 new_( object o ){
@@ -106,16 +108,28 @@ garbage_collect( object local_roots ){
 static object
 at( object a ){
   return  a && a->t == SUSPENSION  ? at( a->Suspension.f( a->Suspension.v ) ) : a;
+  if(  a && a->t == SUSPENSION  ){
+    object r = at( a->Suspension.f( a->Suspension.v ) );
+    if(  r  ) return  *a = *r, a;
+    else  return  *a = (union object_){ .t = INVALID }, NULL;
+  } else {
+    return  a;
+  }
+  return  a && a->t == SUSPENSION  ? *a = *at( a->Suspension.f( a->Suspension.v ) ), a : a;
 }
 
 object
 x_( list a ){
+  while(  a && a->t == SUSPENSION  ){ object r = at( a ); *a = ( r  ? *r : *invalid ); }
   return  a && a->t == LIST  ? a->List.a = at( a->List.a ) : a;
+  return  at( a ) && a->t != INVALID ? a->t == LIST  ? at( a->List.a ) : a : NULL;
 }
 
 object
 xs_( list a ){
+  while(  a && a->t == SUSPENSION  ){ object r = at( a ); *a = ( r  ? *r : *invalid ); }
   return  a && a->t == LIST  ? a->List.b = at( a->List.b ) : a;
+  return  at( a ) && a->t != INVALID ?  a->t == LIST  ? at( a->List.b ) : a : NULL;
 }
 
 boolean
@@ -127,13 +141,20 @@ eq( object a, object b ){
             a->t == SYMBOL &&
               a->Symbol.symbol == b->Symbol.symbol  ? 1 :
             !memcmp( a, b, sizeof *a )              ? 1 : 0
-          )  ? one(0) : NULL;
+          )  ? T_ : NULL;
+}
+
+static
+char *strdup( char *s ){
+  char *p = calloc( strlen(s) + 1, 1 );
+  return  p  ? strcpy( p, s ) : NULL;
 }
 
 list
 copy( list a ){
   return  !a  ? NULL :
           a->t == LIST  ? cons( copy( x_( a ) ), copy( xs_( a ) ) ) :
+          a->t == STRING  ?  OBJECT( .String = { STRING, strdup( a->String.string ), 1 } ) :
           new_( a );
 }
 
@@ -165,7 +186,7 @@ last( list a ){
 
 list
 append( object a, object b ){
-  if(  !b  ) return a;
+  if(  !b || b->t == INVALID  ) return a;
   if(  a  &&  a->t != LIST  ){
     printf( "append(a,b) a is not a list\n" );
     return b;

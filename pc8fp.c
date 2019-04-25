@@ -7,22 +7,22 @@ apply( operator f, object o ){
 
 list
 map( operator f, list o ){
-  return  o  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) ) : NULL;
+  return  o && o->t != INVALID  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) ) : NULL;
 }
 
 list
 join( list o ){
-  return  o  ? append( x_( o ), join( xs_( o ) ) ) : NULL;
+  return  o && o->t != INVALID  ? append( x_( o ), join( xs_( o ) ) ) : NULL;
 }
 
 static object
 do_collapse( object(*f)(object,object), object a, object b ){
-  return  b  ? f( a, b ) : a;
+  return  b && b->t != INVALID  ? f( a, b ) : a;
 }
 
 object
 collapse( object(*f)(object,object), list a ){
-  return  a && a->t == LIST  ? do_collapse( f, collapse( f, x_( a ) ), collapse( f, xs_( a ) ) ) : a;
+  return  a && a->t != INVALID ? a->t == LIST  ? do_collapse( f, collapse( f, x_( a ) ), collapse( f, xs_( a ) ) ) : a : NULL;
 }
 
 object

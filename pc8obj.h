@@ -16,7 +16,7 @@ typedef boolean fPredicate( void *, object );
 #define NEXT10(n) n-n%10+10
 typedef enum object_tag {
   INVALID, INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING,
-  NTAGS, SYM1 = NEXT10(NTAGS)
+  NTAGS, T, SYM1 = NEXT10(T)
 } tag;
 union object_ { tag t;
       struct  { tag t; int i;                                } Int;
@@ -28,6 +28,7 @@ union object_ { tag t;
       struct  { tag t; char *string; int disposable;         } String;
       struct  { tag t; object next;                          } Header;
 };
+union object_ T_[1];
 object new_( object o );
 #define OBJECT(...) new_( (union object_[]){{ __VA_ARGS__ }} )
 

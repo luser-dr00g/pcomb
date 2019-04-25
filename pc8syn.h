@@ -1,6 +1,5 @@
-// Syntax analyzer
+//pc8syn.h  Syntax analyzer
 #include "pc8tok.h"
-
 enum syntax_analysis_symbols {
   func_def = SYM3,
 

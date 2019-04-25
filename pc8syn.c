@@ -1,24 +1,14 @@
 #include "pc8syn.h"
 
-
-#define Each_Symbol(_) \
-  _(t_id) _(c_int) _(c_float) _(c_char) _(c_string) \
-  _(comma) _(lparen) _(rparen) _(lbrace) _(rbrace) _(lbrack) _(rbrack) _(semi) _(quest) _(colon) \
-  _(o_star) _(o_amp) _(o_plus) _(o_plusplus) _(o_minus) _(o_minusminus) _(o_equal) \
-  _(o_bang) _(o_tilde) _(o_dot) _(o_arrow) _(o_slant) _(o_percent) \
-  _(o_ltlt) _(o_gtgt) _(o_lt) _(o_le) _(o_gt) _(o_ge) _(o_equalequal) _(o_ne) \
-  _(o_caret) _(o_pipe) _(o_ampamp) _(o_pipepipe) \
-  _(o_eplus) _(o_eminus) _(o_estar) _(o_eslant) _(o_epercent) \
-  _(o_egtgt) _(o_eltlt) _(o_eamp) _(o_ecaret) _(o_epipe) \
-  _(k_if) _(k_else) _(k_sizeof) _(k_break) _(k_continue) _(k_return) \
-  _(k_do) _(k_while) _(k_for) _(k_switch) _(k_case) _(k_default) _(k_goto) \
-  _(k_auto) _(k_extern) _(k_static) _(k_register) \
-  _(k_int) _(k_char) _(k_float) _(k_double) _(k_struct) 
+#define Extra_Symbols(_) \
+  _(t_id) _(c_int) _(c_float) _(c_char) _(c_string)
 
 #define Parser_for_symbol_(n) parser n##_ = lit( Symbol(n) );
+#define Parser_for_symbolic_(s,n) parser n##_ = lit( Symbol(n) );
 
 parser parser_for_grammar( void ){
-  Each_Symbol( Parser_for_symbol_ )
+  Each_Symbolic( Parser_for_symbolic_ )
+  Extra_Symbols( Parser_for_symbol_ )
 
   parser identifier = t_id_;
   parser asgnop     = PLUS( o_equal_, o_eplus_, o_eminus_, o_estar_, o_eslant_, o_epercent_,
@@ -189,9 +179,27 @@ void print_data( list a ){
   }
 }
 
+void print_list();
+void print_listn( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  default: print( a ); return;
+  case LIST: print_list( x_( a ) ), print_listn( xs_( a ) ); return;
+  }
+}
+
+void print_list( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  default: print( a ); return;
+  case LIST: printf( "(" ), print_list( x_( a ) ), print_listn( xs_( a ) ), printf( ")" ); return;
+  }
+}
+
 #define PRINT(__) printf( "%s =\n", #__ ), print( __ ), puts("")
 #define PRINT_FLAT(__) printf( "%s =\n", #__ ), print_flat( __ ), puts("")
 #define PRINT_DATA(__) printf( "%s =\n", #__ ), print_data( __ ), puts("")
+#define PRINT_LIST(__) printf( "%s =\n", #__ ), print_list( __ ), puts("")
 int test_parser(){
   char *source =
 "int max(a, b, c)\n"
@@ -210,6 +218,7 @@ int test_parser(){
   printf( "gc: %d\n", garbage_collect( program ) );
   PRINT( x_( x_( program ) ) );
   PRINT_FLAT( x_( x_( program ) ) );
+  PRINT_LIST( x_( x_( program ) ) );
   PRINT_DATA( x_( x_( program ) ) );
   PRINT( xs_( x_( program ) ) );
 }

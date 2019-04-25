@@ -28,7 +28,7 @@ zero( void ){
 
 static list
 pitem( void *v, list input ){
-  return  input  ? one( cons( x_( input ), xs_( input ) ) ) : NULL;
+  return  input && input->t != INVALID  ? one( cons( x_( input ), xs_( input ) ) ) : NULL;
 }
 parser
 item( void ){
@@ -50,8 +50,24 @@ bind( parser p, operator f ){
   return  Parser( env( 0, 2, Symbol(P), p, Symbol(F), f ), pbind );
 }
 
+
+static list
+cplus( void *v ){
+  parser q = assoc( Symbol(Q), v );
+  list input = assoc( Symbol(X), v );
+  return  parse( q, input );
+}
 static list
 pplus( void *v, list input ){
+  parser p = assoc( Symbol(P), v );
+  parser q = assoc( Symbol(Q), v );
+  list r = parse( p, input );
+  object qq = Suspension( env( 0, 2, Symbol(Q), q, Symbol(X), input ), cplus );
+  return  r  ? append( r, qq ) : qq;
+//  return  append( parse( p, input ), Suspension( env( 0, 2, Symbol(Q), q, Symbol(X), input ), cplus ) );
+}
+static list
+v1_pplus( void *v, list input ){
   parser p = assoc( Symbol(P), v );
   parser q = assoc( Symbol(Q), v );
   return  append( parse( p, input ), parse( q, input ) );
@@ -75,7 +91,7 @@ sat( predicate pred ){
 
 static boolean
 palpha( void *v, object o ){
-  return  isalpha( o->Int.i )  ? one(0) : NULL;
+  return  isalpha( o->Int.i )  ? T_ : NULL;
 }
 parser
 alpha( void ){
@@ -84,7 +100,7 @@ alpha( void ){
 
 static boolean
 pdigit( void *v, object o ){
-  return  isdigit( o->Int.i )  ? one(0) : NULL;
+  return  isdigit( o->Int.i )  ? T_ : NULL;
 }
 parser
 digit( void ){
@@ -138,9 +154,9 @@ prepend( list a, list b ){
   return  map( Operator( env( 0, 1, Symbol(A), a ), pprepend ), b );
 }
 static list
-pseq( void *v, list input ){
+pseq( void *v, list output ){
   parser q = assoc( Symbol(Q), v );
-  return  prepend( x_( input ), parse( q, xs_( input ) ) );
+  return  prepend( x_( output ), parse( q, xs_( output ) ) );
 }
 parser
 seq( parser p, parser q ){

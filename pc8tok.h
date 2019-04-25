@@ -1,4 +1,4 @@
-// Tokenizer
+//pc8tok.h Tokenizer
 #include "pc8par.h"
 
 #define Each_Symbolic(_) \
