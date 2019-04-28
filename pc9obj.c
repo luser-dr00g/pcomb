@@ -19,7 +19,7 @@ new_( object a ){
 
 int
 valid( object a ){
-  switch( a ? a->t : 0 ){
+  switch( a  ? a->t  : 0 ){
   default:
     return 0;
   case INTEGER:
@@ -129,7 +129,7 @@ garbage_collect( object local_roots ){
 
 object
 at_( object a ){
-  return  valid( a ) && a->t == SUSPENSION  ? at_( a->Suspension.f( a->Suspension.v ) ) : a;
+  return  valid( a ) && a->t == SUSPENSION  ? at_( a->Suspension.f( a->Suspension.v ) )  : a;
 }
 
 object
@@ -141,8 +141,8 @@ px_( void *v ){
 object
 x_( list a ){
   return  valid( a )  ?
-              a->t == LIST        ? a->List.a            :
-              a->t == SUSPENSION  ? Suspension( a, px_ ) : NIL_
+              a->t == LIST        ? a->List.a             :
+              a->t == SUSPENSION  ? Suspension( a, px_ )  : NIL_
           : NIL_;
 }
 
@@ -155,8 +155,8 @@ pxs_( void *v ){
 object
 xs_( list a ){
   return  valid( a )  ?
-              a->t == LIST        ? a->List.b             :
-              a->t == SUSPENSION  ? Suspension( a, pxs_ ) : NIL_
+              a->t == LIST        ? a->List.b              :
+              a->t == SUSPENSION  ? Suspension( a, pxs_ )  : NIL_
           : NIL_;
 }
 
@@ -164,25 +164,49 @@ list
 take( int n, list o ){
   if(  n == 0  ) return NIL_;
   *o = *at_( o );
-  return  cons( x_( o ), take( n-1, xs_( o ) ) );
+  return  valid( o )  ? cons( x_( o ), take( n-1, xs_( o ) ) )  : NIL_;
 }
 list
 drop( int n, list o ){
-  if(  n == 0  ) return NIL_;
+  if(  n == 0  ) return o;
   *o = *at_( o );
-  return  drop( n-1, xs_( o ) );
+  return  valid( o )  ? drop( n-1, xs_( o ) )  : NIL_;
 }
 
 
 list
 pchars_from_string( void *v ){
   char *p = v;
-  return  *p  ?  cons( Int( *p ), Suspension( p+1, pchars_from_string ) ) : Symbol(EOF);
+  return  *p  ?  cons( Int( *p ), Suspension( p+1, pchars_from_string ) )  : Symbol(EOF);
 }
 list
 chars_from_string( void *v ){
   char *p = v;
-  return  *p  ?  Suspension( p, pchars_from_string ) : Symbol(EOF);
+  return  *p  ?  Suspension( p, pchars_from_string )  : Symbol(EOF);
+}
+
+static int
+count_ints( list o ){
+  return  !o               ? 0 :
+          o->t == SUSPENSION ? *o = *at_( o ), count_ints( o ) :
+          o->t == INTEGER  ? 1 :
+          o->t == LIST     ? count_ints( o->List.a ) + count_ints( o->List.b ) :
+          0;
+}
+
+static object
+fill_string( char **s, list o ){
+  return  !o    ? NULL :
+          o->t == INTEGER  ? *(*s)++ = o->Int.i, NULL :
+          o->t == LIST     ? fill_string( s, o->List.a ), fill_string( s, o->List.b ) :
+          NULL;
+}
+
+object
+string_from_chars( list o ){
+  char *s = calloc( count_ints( o ) + 1, 1 );
+  object z = String( s, 1 );
+  return  fill_string( &s, o ), z;
 }
 
 void
@@ -207,7 +231,7 @@ print( object o ){
 void
 print_listn( list a ){
   //if(  !valid( a )  ) return;
-  switch(  a ? a->t : 0  ){
+  switch(  a  ? a->t  : 0  ){
   default: print( a ); return;
   case LIST: print_list( x_( a ) ), print_listn( xs_( a ) ); return;
   }
@@ -215,7 +239,7 @@ print_listn( list a ){
 
 void print_list( list a ){
   //if(  !valid( a )  ) return;
-  switch(  a ? a->t : 0  ){
+  switch(  a  ? a->t  : 0  ){
   default: print( a ); return;
   case LIST: printf( "(" ), print_list( x_( a ) ), print_listn( xs_( a ) ), printf( ")" ); return;
   }
@@ -250,6 +274,7 @@ int test_basics(){
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( take( 2, ch ) );
   PRINT( Int( garbage_collect( ch ) ) );
+  return 0;
 }
 
-int obj_main(){ test_basics(); }
+int obj_main(){ return test_basics(); }

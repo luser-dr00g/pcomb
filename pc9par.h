@@ -5,7 +5,7 @@
 #include "ppnarg.h"
 
 enum parser_symbols {
-  VALUE = SYM1, PRED, P, PP, NN, Q, FF, XX, AA, ID, USE, ATOM,
+  VALUE = SYM1, PRED, P, PP, NN, Q, R, FF, XX, AA, ID, USE, ATOM,
   SYM2
 };
 

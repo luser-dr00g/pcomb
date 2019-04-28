@@ -40,6 +40,7 @@ list take( int n, list o );
 list drop( int n, list o );
 
 list chars_from_string( void *v );
+object string_from_chars( list o );
 
 void print( object o );
 void print_list( list a );
