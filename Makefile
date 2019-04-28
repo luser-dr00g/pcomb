@@ -1,8 +1,11 @@
-CFLAGS= -std=c99 -g
+CFLAGS= -std=c99 -Wall -Wpedantic -Wno-switch -Wno-return-type -g
 CFLAGS+= $(cflags)
 
-test : pc8
+test : pc9
 	./$<
+
+pc9 : pc9obj.o pc9fp.o pc9par.o pc9tok.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 pc8 : pc8obj.o pc8fp.o pc8par.o pc8tok.o pc8syn.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
