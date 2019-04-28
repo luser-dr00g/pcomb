@@ -40,8 +40,8 @@ static object  on_token( void *v, list o ){
   object space = x_( o );
   object symbol = x_( xs_( o ) );
   object string = xs_( xs_( o ) );
-  return  cons( symbol, cons( space, string ) );
   return  symbol->Symbol.data = cons( space, string ),  symbol;
+  return  cons( symbol, cons( space, string ) );
 }
 
 list
@@ -78,8 +78,9 @@ int test_tokens(){
   return 0;
 }
 
-int main(){
-  return  //par_main(),
+int tok_main(){
+  return
+          par_main(),
           test_tokens(),
           0;
 }

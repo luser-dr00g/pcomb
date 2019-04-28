@@ -237,7 +237,8 @@ print_listn( list a ){
   }
 }
 
-void print_list( list a ){
+void
+print_list( list a ){
   //if(  !valid( a )  ) return;
   switch(  a  ? a->t  : 0  ){
   default: print( a ); return;
@@ -245,8 +246,34 @@ void print_list( list a ){
   }
 }
 
+void
+print_flat( list a ){
+  if(  !a  ) return;
+  if(  a->t != LIST  ){ print( a ); return; }
+  print_flat( a->List.a );
+  print_flat( a->List.b );
+}
 
-int test_basics(){
+static void
+print_bare( list a ){
+  switch(  a->t  ){
+  case LIST:  print_bare( a->List.a ), print_bare( a->List.b );  break;
+  case STRING: printf( "%s", a->String.string ); break;
+  }
+}
+
+void
+print_data( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  case LIST:  print_data( a->List.a), print_data( a->List.b );  break;
+  case SYMBOL: print_bare( a->Symbol.data );  break;
+  }
+}
+
+
+int
+test_basics(){
   list ch = chars_from_string( "abcdef" );
   PRINT( ch );
   PRINT( Int( garbage_collect( ch ) ) );

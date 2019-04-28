@@ -44,4 +44,8 @@ object string_from_chars( list o );
 
 void print( object o );
 void print_list( list a );
+void print_flat( list a );
+void print_data( list a );
 #define PRINT(__) printf( "%s: %s = ", __func__, #__ ), print_list( __ ), puts("")
+#define PRINT_FLAT(__) printf( "%s: %s = ", __func__, #__ ), print_flat( __ ), puts("")
+#define PRINT_DATA(__) printf( "%s: %s = ", __func__, #__ ), print_data( __ ), puts("")

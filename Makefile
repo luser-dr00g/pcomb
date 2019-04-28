@@ -1,10 +1,13 @@
-CFLAGS= -std=c99 -Wall -Wpedantic -Wno-switch -Wno-return-type -g
+CFLAGS= -std=c99 -g -Wall -Wpedantic -Wno-switch -Wno-return-type -Wno-unused-variable
 CFLAGS+= $(cflags)
 
 test : pc9
 	./$<
 
-pc9 : pc9obj.o pc9fp.o pc9par.o pc9tok.o
+clean :
+	rm *.o
+
+pc9 : pc9obj.o pc9fp.o pc9par.o pc9tok.o pc9syn.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
 pc8 : pc8obj.o pc8fp.o pc8par.o pc8tok.o pc8syn.o
