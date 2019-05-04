@@ -49,17 +49,17 @@ cons( object a, object b ){
 }
 
 object
-Suspension( void *v, fSuspension *f ){
+Suspension( object v, fSuspension *f ){
   return  OBJECT( .Suspension = { SUSPENSION, v, f } );
 }
 
 parser
-Parser( void *v, fParser *f ){
+Parser( object v, fParser *f ){
   return  OBJECT( .Parser = { PARSER, v, f } );
 }
 
 oper
-Operator( void *v, fOperator *f ){
+Operator( object v, fOperator *f ){
   return  OBJECT( .Operator = { OPERATOR, v, f } );
 }
 
@@ -73,6 +73,10 @@ Symbol_( int sym, char *pname ){
   return  OBJECT( .Symbol = { SYMBOL, sym, pname } );
 }
 
+object
+Void( void *v ){
+  return  OBJECT( .Void = { VOID, v } );
+}
 
 void
 add_global_root( object a ){
@@ -94,11 +98,12 @@ mark_objects( list a ){
   if(  !valid(a) || mark( a )  ) return;
   mark_this( a, 1 );
   switch(  a->t  ){
-  case LIST:     mark_objects( a->List.a ); 
-                 mark_objects( a->List.b );      break;
-  case PARSER:   mark_objects( a->Parser.v );    break;
-  case OPERATOR: mark_objects( a->Operator.v );  break;
-  case SYMBOL:   mark_objects( a->Symbol.data ); break;
+  case LIST:       mark_objects( a->List.a ); 
+                   mark_objects( a->List.b );       break;
+  case PARSER:     mark_objects( a->Parser.v );     break;
+  case OPERATOR:   mark_objects( a->Operator.v );   break;
+  case SYMBOL:     mark_objects( a->Symbol.data );  break;
+  case SUSPENSION: mark_objects( a->Suspension.v ); break;
   }
 }
 
@@ -127,13 +132,16 @@ garbage_collect( object local_roots ){
   return  sweep_objects( &allocation_list );
 }
 
+
+
 object
 at_( object a ){
   return  valid( a ) && a->t == SUSPENSION  ? at_( a->Suspension.f( a->Suspension.v ) )  : a;
 }
 
+
 object
-px_( void *v ){
+px_( object v ){
   list a = v;
   *a = *at_( a );
   return  x_( a );
@@ -147,7 +155,7 @@ x_( list a ){
 }
 
 object
-pxs_( void *v ){
+pxs_( object v ){
   list a = v;
   *a = *at_( a );
   return  xs_( a );
@@ -175,15 +183,27 @@ drop( int n, list o ){
 
 
 list
-pchars_from_string( void *v ){
-  char *p = v;
-  return  *p  ?  cons( Int( *p ), Suspension( p+1, pchars_from_string ) )  : Symbol(EOF);
+pchars_from_string( object v ){
+  char *p = v->String.string;
+  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), pchars_from_string ) )  : Symbol(EOF);
 }
 list
-chars_from_string( void *v ){
-  char *p = v;
-  return  *p  ?  Suspension( p, pchars_from_string )  : Symbol(EOF);
+chars_from_string( char *p ){
+  return  p  ?  Suspension( String( p, 0 ), pchars_from_string )  : NIL_;
 }
+
+
+list
+pchars_from_file( object v ){
+  FILE *f = v->Void.v;
+  int c = fgetc( f );
+  return  c != EOF  ? cons( Int( c ), Suspension( v, pchars_from_file ) )  : Symbol(EOF);
+}
+list
+chars_from_file( FILE *f ){
+  return  f  ? Suspension( Void( f ), pchars_from_file ) : NIL_;
+}
+
 
 static int
 count_ints( list o ){
@@ -194,7 +214,7 @@ count_ints( list o ){
           0;
 }
 
-static object
+object
 fill_string( char **s, list o ){
   return  !o    ? NULL :
           o->t == INTEGER  ? *(*s)++ = o->Int.i, NULL :
@@ -254,20 +274,13 @@ print_flat( list a ){
   print_flat( a->List.b );
 }
 
-static void
-print_bare( list a ){
-  switch(  a->t  ){
-  case LIST:  print_bare( a->List.a ), print_bare( a->List.b );  break;
-  case STRING: printf( "%s", a->String.string ); break;
-  }
-}
-
 void
 print_data( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
   case LIST:  print_data( a->List.a), print_data( a->List.b );  break;
-  case SYMBOL: print_bare( a->Symbol.data );  break;
+  case STRING: printf( "%s", a->String.string ); break;
+  case SYMBOL: print_data( a->Symbol.data );  break;
   }
 }
 

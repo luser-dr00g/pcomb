@@ -58,7 +58,7 @@ assoc( object a, list b ){
 }
 
 static list
-pappend( void *v ){
+pappend( object v ){
   list a = assoc( Symbol(A), v );
   list b = assoc( Symbol(B), v );
   *a = *at_( a );
@@ -78,7 +78,7 @@ append( list a, list b ){
 
 
 static object
-papply( void *v ){
+papply( object v ){
   oper f = assoc( Symbol(F), v );
   object o = assoc( Symbol(X), v );
   *o = *at_( o );
@@ -97,7 +97,7 @@ apply( oper f, object o ){
 
 
 static list
-pmap( void *v ){
+pmap( object v ){
   oper f = assoc( Symbol(F), v );
   list o = assoc( Symbol(X), v );
   *o = *at_( o );
@@ -116,7 +116,7 @@ map( oper f, list o ){
 
 
 static list
-pjoin( void *v ){
+pjoin( object v ){
   list o = assoc( Symbol(X), v );
   *o = *at_( o );
   return  append( x_( take( 1, o ) ), join( xs_( o ) ) );

@@ -7,6 +7,14 @@
 #define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
 #define Parser_for_symbol_(b)      parser b##_ = lit( Symbol(b) );
 
+static object on_func_def( object v, list o ){ 
+  object s = Symbol(func_def); return  s->Symbol.data = o, s;
+  return  cons( Symbol(func_def), o ); 
+}
+static object on_data_def( object v, list o ){
+  object s = Symbol(data_def); return  s->Symbol.data = o, s;
+}
+
 parser
 parser_for_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
@@ -101,6 +109,10 @@ parser_for_grammar( void ){
 	    semi_
       );
 
+  parser constant_expression_list = forward();
+      *constant_expression_list = *seq( constant_expression, maybe( seq( comma_, constant_expression_list ) ) );
+  parser initializer = plus( constant, constant_expression_list );
+
   parser type_specifier = forward();
   parser declarator_list = forward();
   parser type_declaration = SEQ( type_specifier, declarator_list, semi_ );
@@ -130,14 +142,19 @@ parser_for_grammar( void ){
   parser declaration = seq( decl_specifiers, maybe( declarator_list ) );
   parser declaration_list = forward();
 	*declaration_list = *seq( declaration, maybe( seq( comma_, declaration_list ) ) );
-  parser data_def = zero();
+  parser init_declarator = seq( declarator, maybe( initializer ) );
+  parser init_declarator_list = forward();
+        *init_declarator_list = *seq( init_declarator, maybe( seq( comma_, init_declarator_list ) ) );
+  parser data_def = using( SEQ( maybe( k_extern_ ), maybe( type_specifier ), maybe( init_declarator_list ), semi_ ),
+                           on_data_def );
 
   parser parameter_list = forward();
 	*parameter_list = *maybe( seq( expression, maybe( seq( comma_, parameter_list ) ) ) );
   parser function_declarator = SEQ( declarator, lparen_, maybe( parameter_list ), rparen_ );
   parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
-  parser function_body = seq( type_decl_list, function_statement );
-  parser function_def = SEQ( maybe( type_specifier ), function_declarator, function_body );
+  parser function_body = seq( maybe( type_decl_list ), function_statement );
+  parser function_def = using( SEQ( maybe( type_specifier ), function_declarator, function_body ),
+                               on_func_def );
 
   parser external_def = plus( function_def, data_def );
   parser program = some( external_def );
@@ -146,7 +163,7 @@ parser_for_grammar( void ){
 }
 
 list
-tree_from_tokens( void *s ){
+tree_from_tokens( object s ){
   if(  !s  ) return  NIL_;
   static parser p;
   if(  !p  ){
@@ -159,12 +176,17 @@ tree_from_tokens( void *s ){
 int test_syntax(){
   char *source =
 "\n"
+"int i,j,k 5;\n"
+"float d 3.4;\n"
 "int max(a, b, c)\n"
 "int a, b, c;\n"
 "{\n"
 "      int m;\n"
 "      m = (a>b)? a:b;\n"
 "      return(m>c? m:c);\n"
+"}\n"
+"main( ) {\n"
+"\tprintf(\"Hello, world\");\n"
 "}\n"
 "\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
   object tokens = tokens_from_chars( chars_from_string( source ) );
@@ -182,7 +204,7 @@ int test_syntax(){
 
 
 int main(){
-  return  //tok_main(),
+  return  tok_main(),
           test_syntax(),
           0;
 }

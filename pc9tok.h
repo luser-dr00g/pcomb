@@ -11,18 +11,19 @@
   _("if", k_if) _("else", k_else) \
   _("for", k_for) _("do", k_do) _("while", k_while) \
   _("switch", k_switch) _("case", k_case) _("default", k_default) \
-  _("entry", k_entry) \
+  /*_("entry", k_entry)*/ \
   _("*", o_star) _("++", o_plusplus) _("+", o_plus) _(".", o_dot) \
   _("->", o_arrow) _("--", o_minusminus) _("-", o_minus) _("!=", o_ne) _("!", o_bang) _("~", o_tilde) \
   _("&&", o_ampamp) _("&", o_amp) _("==", o_equalequal) _("=", o_equal) \
   _("^", o_caret) _("||", o_pipepipe) _("|", o_pipe) \
   _("/", o_slant) _("%", o_percent) \
-  _("(", lparen) _(")", rparen) _(",", comma) _(";", semi) _(":", colon) _("?", quest) \
-  _("{", lbrace) _("}", rbrace) _("[", lbrack) _("]", rbrack) \
   _("<<", o_ltlt) _("<=", o_le) _("<", o_lt) _(">>", o_gtgt) _(">=", o_ge) _(">", o_gt) \
   _("=+", o_eplus) _("=-", o_eminus) _("=*", o_estar) _("=/", o_eslant) _("=%", o_epercent) \
   _("=>>", o_egtgt) _("=<<", o_eltlt) _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe) \
+  _("(", lparen) _(")", rparen) _(",", comma) _(";", semi) _(":", colon) _("?", quest) \
+  _("{", lbrace) _("}", rbrace) _("[", lbrack) _("]", rbrack) \
 //End Symbolic
+
 #define Enum_name(x,y) y ,
 
 enum token_symbols {
@@ -32,4 +33,6 @@ enum token_symbols {
   SYM3
 };
 
-list tokens_from_chars( void *v );
+list tokens_from_chars( object v );
+
+int tok_main( void );

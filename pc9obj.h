@@ -8,10 +8,10 @@ typedef object parser;
 typedef object oper;
 typedef oper   predicate;
 typedef object boolean;
-typedef object fSuspension( void * );
-typedef list fParser( void *, list );
-typedef object fOperator( void *, object );
-typedef boolean fPredicate( void *, object );
+typedef object fSuspension( object );
+typedef list fParser( object, list );
+typedef object fOperator( object, object );
+typedef boolean fPredicate( object, object );
 typedef object fBinOper( object, object );
 
 enum object_symbols {
@@ -24,12 +24,13 @@ int valid( object a );
 object Int( int i );
 list one( object a );
 list cons( object a, object b );
-object Suspension( void *v, fSuspension *f );
-parser Parser( void *v, fParser *f );
-oper Operator( void *v, fOperator *f );
+object Suspension( object v, fSuspension *f );
+parser Parser( object v, fParser *f );
+oper Operator( object v, fOperator *f );
 object String( char *s, int disposable );
 object Symbol_( int sym, char *pname );
 #define Symbol(n) Symbol_( n, #n )
+object Void( void *v );
 
 void add_global_root( object a );
 int garbage_collect( object local_roots );
@@ -39,13 +40,15 @@ object xs_( list a );
 list take( int n, list o );
 list drop( int n, list o );
 
-list chars_from_string( void *v );
+list chars_from_string( char *v );
+list chars_from_file( FILE *v );
 object string_from_chars( list o );
 
 void print( object o );
 void print_list( list a );
 void print_flat( list a );
 void print_data( list a );
-#define PRINT(__) printf( "%s: %s = ", __func__, #__ ), print_list( __ ), puts("")
-#define PRINT_FLAT(__) printf( "%s: %s = ", __func__, #__ ), print_flat( __ ), puts("")
-#define PRINT_DATA(__) printf( "%s: %s = ", __func__, #__ ), print_data( __ ), puts("")
+#define PRINT_WRAPPER(_, __, ___) printf( "%s: %s %s= ", __func__, #__, ___ ), _( __ ), puts("")
+#define PRINT(__)      PRINT_WRAPPER( print_list, __, "" )
+#define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat" )
+#define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data" )

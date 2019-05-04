@@ -5,7 +5,8 @@
 
 enum syntax_analysis_symbols {
   func_def = SYM3,
+  data_def,
   SYM4
 };
 
-list tree_from_tokens( void *s );
+list tree_from_tokens( object s );

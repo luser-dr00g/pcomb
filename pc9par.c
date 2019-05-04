@@ -1,4 +1,6 @@
 #include <ctype.h>
+#include <stdarg.h>
+#include <string.h>
 #include "pc9par.h"
 #include "pc9objpriv.h"
 
@@ -10,7 +12,7 @@ parse( parser p, list input ){
 
 
 static list
-presult( void *v, list input ){
+presult( object v, list input ){
   return  one( cons( assoc( Symbol(VALUE), v ), input ) );
 }
 parser
@@ -19,7 +21,7 @@ result( object a ){
 }
 
 static list
-pzero( void *v, list input ){
+pzero( object v, list input ){
   return  NIL_;
 }
 parser
@@ -28,7 +30,9 @@ zero( void ){
 }
 
 static list
-pitem( void *v, list input ){
+pitem( object v, list input ){
+  drop( 1, input );
+  return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) ) : NIL_;
   return  valid( input ) ? one( cons( x_( take( 1, input ) ), xs_( input ) ) )  : NIL_;  //strict
   return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;             //lazy
 }
@@ -51,7 +55,7 @@ cbind( void *v ){
 }
 */
 static list
-pbind( void *v, list input ){
+pbind( object v, list input ){
   //PRINT( (object)v );
   parser p = assoc( Symbol(P), v );
   oper f = assoc( Symbol(FF), v );
@@ -73,20 +77,20 @@ bind( parser p, oper f ){
 }
 
 static list
-bplus( void *v ){
+bplus( object v ){
   list r = assoc( Symbol(R), v );
   object qq = assoc( Symbol(Q), v );
   *r = *at_( r );
   return  valid( r )  ? append( r, qq ) : qq;
 }
 static list
-cplus( void *v ){
+cplus( object v ){
   parser q = assoc( Symbol(Q), v );
   list input = assoc( Symbol(X), v );
   return  parse( q, input );
 }
 static list
-pplus( void *v, list input ){
+pplus( object v, list input ){
   parser p = assoc( Symbol(P), v );
   parser q = assoc( Symbol(Q), v );
   list r = parse( p, input );
@@ -104,7 +108,7 @@ plus( parser p, parser q ){
 }
 
 static list
-psat( void *v, list input ){
+psat( object v, list input ){
   predicate pred = assoc( Symbol(PRED), v );
   object r = apply( pred, x_( input ) );
   return  valid( r )  ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;
@@ -115,7 +119,7 @@ sat( predicate pred ){
 }
 
 static boolean
-palpha( void *v, object o ){
+palpha( object v, object o ){
   return  isalpha( o->Int.i )  ? T_  : NIL_;
 }
 parser
@@ -124,7 +128,7 @@ alpha( void ){
 }
 
 static boolean
-pdigit( void *v, object o ){
+pdigit( object v, object o ){
   return  isdigit( o->Int.i )  ? T_  : NIL_;
 }
 parser
@@ -133,7 +137,7 @@ digit( void ){
 }
 
 static boolean
-plit( void *v, object o ){
+plit( object v, object o ){
   object a = assoc( Symbol(X), v );
   return  eq( a, o );
 }
@@ -158,7 +162,7 @@ anyof( char *s ){
 }
 
 static list
-pnone( void *v, list input ){
+pnone( object v, list input ){
   parser p = assoc( Symbol(NN), v );
   object r = parse( p, input );
   *r = *at_( r );
@@ -171,7 +175,7 @@ noneof( char *s ){
 
 
 static list
-pprepend( void *v, list o ){
+pprepend( object v, list o ){
   object a = assoc( Symbol(AA), v );
   return  valid( a )  ? cons( cons( a, x_( o ) ), xs_( o ) )  : o;
 }
@@ -180,7 +184,7 @@ prepend( list a, list b ){
   return  map( Operator( env( 0, 1, Symbol(AA), a ), pprepend ), b );
 }
 static list
-pseq( void *v, list output ){
+pseq( object v, list output ){
   parser q = assoc( Symbol(Q), v );
   return  prepend( x_( output ), parse( q, xs_( output ) ) );
 }
@@ -191,7 +195,7 @@ seq( parser p, parser q ){
 }
 
 static list
-pxthen( void *v, list o ){
+pxthen( object v, list o ){
   return  one( cons( xs_( x_( o ) ), xs_( o ) ) );
 }
 parser
@@ -200,7 +204,7 @@ xthen( parser p, parser q ){
 }
 
 static list
-pthenx( void *v, list o ){
+pthenx( object v, list o ){
   return  one( cons( x_( x_( o ) ), xs_( o ) ) );
 }
 parser
@@ -209,7 +213,7 @@ thenx( parser p, parser q ){
 }
 
 static list
-pinto( void *v, list o ){
+pinto( object v, list o ){
   object id = assoc( Symbol(ID), v );
   parser q = assoc( Symbol(Q), v );
   return  parse( Parser( env( q->Parser.v, 1, id, x_( o ) ), q->Parser.f ), xs_( o ) );
@@ -244,7 +248,7 @@ some( parser p ){
 }
 
 static list
-ptrim( void *v, list input ){
+ptrim( object v, list input ){
   parser p = assoc( Symbol(PP), v );
   list r = parse( p, input );
   return  valid( r )  ? one( x_( take( 1, r ) ) )  : r;
@@ -256,7 +260,7 @@ trim( parser p ){
 
 
 static list
-pusing( void *v, list o ){
+pusing( object v, list o ){
   oper f = assoc( Symbol(USE), v );
   //f->Operator.v = v;
   //PRINT( o );
@@ -271,20 +275,20 @@ using( parser p, fOperator *f ){
 static parser
 do_meta( parser a, object o ){
   switch( o->Int.i ){
-  case '*':  return  many( a );
-  case '+':  return  some( a );
-  case '?':  return  maybe( a );
-  }
+  case '*':  return  many( a ); break;
+  case '+':  return  some( a ); break;
+  case '?':  return  maybe( a ); break;
+  } return  a;
 }
 static parser
-on_meta( void *v, object o ){
+on_meta( object v, object o ){
   parser atom = assoc( Symbol(ATOM), v );
   return  valid( o ) ? do_meta( atom, o )  : atom;
 }
-static parser  on_dot( void *v, object o ){ return  item(); }
-static parser  on_chr( void *v, object o ){ return  lit( o ); }
-static parser  on_term( void *v, object o ){ return  collapse( seq, o ); }
-static parser  on_expr( void *v, object o ){ return  collapse( plus, o ); }
+static parser  on_dot( object v, object o ){ return  item(); }
+static parser  on_chr( object v, object o ){ return  lit( o ); }
+static parser  on_term( object v, object o ){ return  collapse( seq, o ); }
+static parser  on_expr( object v, object o ){ return  collapse( plus, o ); }
 
 #define META     "*+?"
 #define SPECIAL  META ".|()"
@@ -309,6 +313,133 @@ regex( char *re ){
   }
   list r = parse( p, chars_from_string( re ) );
   return  valid( r )  ? ( x_( x_( r ) ) )  : r;
+}
+
+parser
+vusing( parser p, object v, fOperator *f ){
+  return  bind( p, Operator( env( 0, 1, Symbol(USE), Operator( v, f ) ), pusing ) );
+}
+
+object sum( object a, object b ){ return  Int( a->Int.i + b->Int.i ); }
+
+boolean nz( object v, object o ){ return  o->Int.i ? T_ : NIL_; }
+
+
+static object p_char( object v, list o ){
+  va_list *p = v; return  putchar(va_arg( *p, int )), Int(1);
+}
+static object p_string( object v, list o ){
+  va_list *p = v;
+  char *s = va_arg( *p, char* );
+  return  fputs( s, stdout ), Int(strlen( s ));
+}
+static object p_lit( object v, list o ){
+  return  putchar( o->Int.i ), Int(1);
+}
+
+static object on_fmt( object v, list o ){ return  collapse( sum, o ); }
+
+int
+pprintf( char const *fmt, ... ){
+  if(  !fmt  ) return  0;
+  static va_list v;
+  va_start( v, fmt );
+  static parser p;
+  if(  !p  ){
+    parser directive = PLUS( using( chr('%'), p_lit ),
+                             vusing( chr('c'), &v, p_char ),
+                             vusing( chr('s'), &v, p_string ) );
+    parser term = PLUS( xthen( chr('%'), directive ),
+                        using( sat( Operator( 0, nz ) ), p_lit ) );
+    parser format = many( term );
+    p = using( format, on_fmt );
+    add_global_root( p );
+  }
+  object r = parse( p, chars_from_string( (char*)fmt ) );
+  drop( 1, r );
+  //PRINT( r );
+  va_end( v );
+  return  x_( x_( r ) )->Int.i;
+}
+
+
+static object  convert_char( object v, list o ){
+  va_list *p = v;
+  char *cp = va_arg( *p, char* );
+  *cp = o->Int.i;
+  return  Int(1);
+}
+static object  convert_string( object v, list o ){
+  va_list *p = v;
+  char *sp = va_arg( *p, char* );
+  fill_string( &sp, o );
+  return  Int(1);
+}
+
+static parser  on_char( object v, list o ){
+  return  vusing( item(), v, convert_char );
+}
+static parser  on_string( object v, list o ){
+  return  vusing( xthen( many( anyof( " \t\n" ) ),  many( noneof( " \t\n" ) ) ), v, convert_string );
+}
+
+static object  r_zero( object v, list o ){ return  Int(0); }
+static parser  pass( parser p ){ return  using( p, r_zero ); }
+
+static parser  on_space( object v, list o ){ return  valid( o )  ? pass( many( anyof( " \t\n" ) ) )  : o; }
+static parser  on_percent( object v, list o ){ return  pass( chr('%') ); }
+static parser  on_lit( object v, list o ){ return  pass( lit( o ) ); }
+
+static object  sum_up( object v, list o ){ return  collapse( sum, o ); }
+
+static parser  on_terms( object v, list o ){ return  using( collapse( seq, o ), sum_up ); }
+
+int
+pscanf( char const *fmt, ... ){
+  if(  !fmt  ) return  0;
+  static va_list v;
+  va_start( v, fmt );
+  static parser p;
+  if(  !p  ){
+    parser space = using( many( anyof( " \t\n" ) ), on_space );
+    parser directive = PLUS( using( chr('%'), on_percent ),
+                             vusing( chr('c'), &v, on_char ),
+                             vusing( chr('s'), &v, on_string ) );
+    parser term  = PLUS( xthen( chr('%'), directive ),
+                         using( sat( Operator( 0, nz ) ), on_lit ) );
+    parser format = many( seq( space, term ) );
+    //p = format;
+    p = using( format, on_terms );
+    add_global_root( p );
+  }
+  list fp = parse( p, chars_from_string( (char*)fmt ) );
+  drop( 1, fp );
+  parser f = x_( x_( fp ) );
+  if(  !valid( f )  ) return 0;
+  //PRINT( f );
+  list r = parse( f, chars_from_file( stdin ) );
+  drop( 1, r );
+  //PRINT( r );
+  va_end( v );
+  return  valid( r ) ? x_( x_( r ) )->Int.i : 0;
+}
+
+
+int test_pscanf(){
+  char c;
+  PRINT( Int( pscanf( "" ) ) );
+  PRINT( Int( pscanf( "abc" ) ) );
+  PRINT( Int( pscanf( "  %c", &c ) ) );
+  PRINT( string_from_chars( Int( c ) ) );
+  char buf[100];
+  PRINT( Int( pscanf( "%s", buf ) ) );
+  PRINT( String( buf, 0 ) );
+  return 0;
+}
+
+int test_pprintf(){
+  PRINT( Int( pprintf( "%% abc %c %s\n", 'x', "123" ) ) );
+  return  0;
 }
 
 
@@ -369,7 +500,7 @@ int test_env(){
   return 0;
 }
 
-object b( void *v, object o ){
+object b( object v, object o ){
   //PRINT( o );
   return  one( cons( Int( - x_( o )->Int.i ), xs_( o ) ) );
 }
@@ -418,5 +549,8 @@ int par_main(){
   return 
 	  obj_main(),
 	  test_env(), test_parsers(),
-	  test_regex();
+	  test_regex(),
+          test_pprintf(),
+          test_pscanf(),
+          0;
 }

@@ -1,8 +1,8 @@
-CFLAGS= -std=c99 -g -Wall -Wpedantic -Wno-switch -Wno-return-type -Wno-unused-variable
+CFLAGS= -std=c99 -g -Wall -Wpedantic -Wno-switch -Wreturn-type -Wunused-variable
 CFLAGS+= $(cflags)
 
 test : pc9
-	./$<
+	echo abc j string | ./$<
 
 clean :
 	rm *.o
