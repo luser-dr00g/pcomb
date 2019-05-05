@@ -204,7 +204,7 @@ int test_syntax(){
 
 
 int main(){
-  return  tok_main(),
+  return  //tok_main(),
           test_syntax(),
           0;
 }

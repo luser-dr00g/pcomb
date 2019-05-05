@@ -16,10 +16,11 @@ parser zero( void );
 parser item( void );
 
 parser bind( parser p, oper f );
+
 parser plus( parser p, parser q );
 #define PLUS(...)  reduce( plus, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
-parser sat( predicate pred );
 
+parser sat( predicate pred );
 parser alpha( void );
 parser digit( void );
 parser lit( object a );
@@ -38,8 +39,8 @@ parser maybe( parser p );
 parser forward( void );
 parser many( parser p );
 parser some( parser p );
-parser trim( parser p );
 
+parser trim( parser p );
 parser using( parser p, fOperator *f );
 
 parser regex( char *re );
