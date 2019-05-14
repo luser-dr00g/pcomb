@@ -54,7 +54,6 @@ ptokens_from_chars( object s ){
   }
   list r = parse( p, s );
   take( 1, r );
-  //PRINT( r );
   r = x_( r );
   return  cons( x_( r ), Suspension( xs_( r ), ptokens_from_chars ) );
 }

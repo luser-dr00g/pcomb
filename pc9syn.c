@@ -87,30 +87,29 @@ parser_for_grammar( void ){
   parser statement  = forward();
   parser statement_list = many( statement );
         *statement  =
-      *PLUS(
-	    seq( expression, semi_ ),
-	    SEQ( lbrace_, statement_list, rbrace_ ),
-	    SEQ( k_if_, lparen_, expression, rparen_, statement ),
-	    SEQ( k_if_, lparen_, expression, rparen_, statement, k_else_, statement ),
-	    SEQ( k_do_, statement, k_while_, lparen_, expression, rparen_, semi_ ),
-	    SEQ( k_while_, lparen_, expression, rparen_, statement ),
-	    SEQ( k_for_, lparen_,
-		   maybe( expression ), semi_, maybe( expression ), semi_, maybe( expression ),
-		 rparen_, statement ),
-	    SEQ( k_switch_, lparen_, expression, rparen_, statement ),
-	    SEQ( k_case_, constant_expression, colon_, statement ),
-	    SEQ( k_default_, colon_, statement ),
-	    seq( k_break_, semi_ ),
-	    seq( k_continue_, semi_ ),
-	    seq( k_return_, semi_ ),
-	    SEQ( k_return_, expression, semi_ ),
-	    SEQ( k_goto_, expression, semi_ ),
-	    SEQ( identifier, colon_, statement ),
-	    semi_
-      );
+	    *PLUS(
+		  seq( expression, semi_ ),
+		  SEQ( lbrace_, statement_list, rbrace_ ),
+		  SEQ( k_if_, lparen_, expression, rparen_, statement ),
+		  SEQ( k_if_, lparen_, expression, rparen_, statement, k_else_, statement ),
+		  SEQ( k_do_, statement, k_while_, lparen_, expression, rparen_, semi_ ),
+		  SEQ( k_while_, lparen_, expression, rparen_, statement ),
+		  SEQ( k_for_, lparen_,
+			 maybe( expression ), semi_, maybe( expression ), semi_, maybe( expression ),
+		       rparen_, statement ),
+		  SEQ( k_switch_, lparen_, expression, rparen_, statement ),
+		  SEQ( k_case_, constant_expression, colon_, statement ),
+		  SEQ( k_default_, colon_, statement ),
+		  seq( k_break_, semi_ ),
+		  seq( k_continue_, semi_ ),
+		  seq( k_return_, semi_ ),
+		  SEQ( k_return_, expression, semi_ ),
+		  SEQ( k_goto_, expression, semi_ ),
+		  SEQ( identifier, colon_, statement ),
+		  semi_
+	    );
 
-  parser constant_expression_list = forward();
-      *constant_expression_list = *seq( constant_expression, maybe( seq( comma_, constant_expression_list ) ) );
+  parser constant_expression_list = seq( constant_expression, many( seq( comma_, constant_expression ) ) );
   parser initializer = plus( constant, constant_expression_list );
 
   parser type_specifier = forward();
@@ -135,22 +134,21 @@ parser_for_grammar( void ){
 					   SEQ( lbrack_, constant_expression, rbrack_ )
 			    ) )
 			  );
-	*declarator_list = *seq( declarator, many( seq( comma_, declarator_list ) ) );
+	*declarator_list = *seq( declarator, many( seq( comma_, declarator ) ) );
   parser decl_specifiers = PLUS( type_specifier, sc_specifier,
 				 seq( type_specifier, sc_specifier ),
 				 seq( sc_specifier, type_specifier ) );
   parser declaration = seq( decl_specifiers, maybe( declarator_list ) );
-  parser declaration_list = forward();
-	*declaration_list = *seq( declaration, maybe( seq( comma_, declaration_list ) ) );
+  parser declaration_list = seq( declaration, many( seq( comma_, declaration ) ) );
   parser init_declarator = seq( declarator, maybe( initializer ) );
-  parser init_declarator_list = forward();
-        *init_declarator_list = *seq( init_declarator, maybe( seq( comma_, init_declarator_list ) ) );
-  parser data_def = using( SEQ( maybe( k_extern_ ), maybe( type_specifier ), maybe( init_declarator_list ), semi_ ),
+  parser init_declarator_list = seq( init_declarator, many( seq( comma_, init_declarator ) ) );
+  parser data_def = using( SEQ( maybe( k_extern_ ),
+                                maybe( type_specifier ),
+                                maybe( init_declarator_list ), semi_ ),
                            on_data_def );
 
-  parser parameter_list = forward();
-	*parameter_list = *maybe( seq( expression, maybe( seq( comma_, parameter_list ) ) ) );
-  parser function_declarator = SEQ( declarator, lparen_, maybe( parameter_list ), rparen_ );
+  parser parameter_list = maybe( seq( expression, many( seq( comma_, expression ) ) ) );
+  parser function_declarator = SEQ( declarator, lparen_, parameter_list, rparen_ );
   parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
   parser function_body = seq( maybe( type_decl_list ), function_statement );
   parser function_def = using( SEQ( maybe( type_specifier ), function_declarator, function_body ),
@@ -204,7 +202,7 @@ int test_syntax(){
 
 
 int main(){
-  return  //tok_main(),
+  return  tok_main(),
           test_syntax(),
           0;
 }

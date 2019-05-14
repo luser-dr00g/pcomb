@@ -5,9 +5,6 @@
 
 boolean
 eq( object a, object b ){
-  //*a = *at_( a );
-  //*b = *at_( b );
-  //PRINT( cons( a, b ) );
   return (
            !valid( a ) && !valid( b )  ? 1  :
            !valid( a ) || !valid( b )  ? 0  :
@@ -17,21 +14,11 @@ eq( object a, object b ){
          )  ? T_  : NIL_;
 }
 
-/*
-static
-char *strdup( char *s ){
-  char *p = calloc( strlen(s) + 1, 1 );
-  return  p  ? strcpy( p, s )  : NULL;
-}
-*/
-
 list
 copy( list a ){
-  return  !valid( a )  ? NIL_  :
+  return  !valid( a )   ? NIL_                                       :
           a->t == LIST  ? cons( copy( x_( a ) ), copy( xs_( a ) ) )  :
-          //a->t == STRING  ? String( strdup( a->String.string ), 1 )  :
-          a //new_( a )
-	  ;
+          		  a;
 }
 
 list
@@ -45,16 +32,14 @@ env( list tail, int n, ... ){
     r = cons( cons( a, b ), r );
   }
   va_end( v );
-  //PRINT( r );
   return  r;
 }
 
 object
 assoc( object a, list b ){
-  //PRINT( cons( a, b ) );
-  return  !valid( b )  ? NIL_  :
+  return  !valid( b )                      ? NIL_            :
           valid( eq( a, x_( x_( b ) ) ) )  ? xs_( x_( b ) )  :
-          assoc( a, xs_( b ) );
+                                             assoc( a, xs_( b ) );
 }
 
 static list
@@ -66,14 +51,9 @@ pappend( object v ){
 }
 list
 append( list a, list b ){
-  //PRINT( cons( a, b ) );
-  return  //!valid( b )         ? a  :
-          !valid( a )         ? b  :
+  return  !valid( a )         ? b                                                               :
           a->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(A), a, Symbol(B), b ), pappend )  :
-          //valid( x_( a ) )    ? 
-                                cons( x_( a ), append( xs_( a ), b ) )
-                                //: append( xs_( a ), b )
-          ;
+                                cons( x_( a ), append( xs_( a ), b ) );
 }
 
 
@@ -92,7 +72,7 @@ apply( oper f, object o ){
                         : f->Operator.f( f->Operator.v, o )
                   : f->Operator.f( f->Operator.v, o )    // for using( maybe(), ... )
               : NIL_;
-  return  f->t == OPERATOR  ? f->Operator.f( f->Operator.v, o )  : NIL_;
+  //return  f->t == OPERATOR  ? f->Operator.f( f->Operator.v, o )  : NIL_;
 }
 
 
@@ -105,13 +85,12 @@ pmap( object v ){
 }
 list
 map( oper f, list o ){
-  //PRINT( cons( f, o ) ); 
   return  valid( o )  ?
               o->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(F), f, Symbol(X), o ), pmap ) :
               cons( apply( f, x_( o ) ),
                     Suspension( env( 0, 2, Symbol(F), f, Symbol(X), xs_( o ) ), pmap ) )
                       : NIL_;
-  return  valid( o )  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )  : NIL_;
+  //return  valid( o )  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )  : NIL_;
 }
 
 
@@ -127,7 +106,7 @@ join( list o ){
               o->t == SUSPENSION  ? Suspension( env( 0, 1, Symbol(X), o ), pjoin )  :
                   append( x_( o ), Suspension( env( 0, 1, Symbol(X), xs_( o ) ), pjoin ) )
                       : NIL_;
-  return  valid( o )  ? append( x_( o ), join( xs_( o ) ) )  : NIL_;
+  //return  valid( o )  ? append( x_( o ), join( xs_( o ) ) )  : NIL_;
 }
 
 static object

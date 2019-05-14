@@ -33,46 +33,27 @@ static list
 pitem( object v, list input ){
   drop( 1, input );
   return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) ) : NIL_;
-  return  valid( input ) ? one( cons( x_( take( 1, input ) ), xs_( input ) ) )  : NIL_;  //strict
-  return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;             //lazy
+  //return  valid( input ) ? one( cons( x_( take( 1, input ) ), xs_( input ) ) )  : NIL_;  //strict
+  //return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;             //lazy
 }
 parser
 item( void ){
   return  Parser( 0, pitem );
 }
 
-/*
-static list
-cbind( void *v ){
-  oper f = assoc( Symbol(FF), v );
-  list r = assoc( Symbol(R), v );
-  *r = *at_( r );
-  return  valid( r )  ? join( map( Operator( valid( f->Operator.v ) ?
-                                             append( copy( f->Operator.v ), v )  : v,
-                                             f->Operator.f ),
-                                   r) )
-                      : NIL_;
-}
-*/
 static list
 pbind( object v, list input ){
-  //PRINT( (object)v );
   parser p = assoc( Symbol(P), v );
   oper f = assoc( Symbol(FF), v );
-  //PRINT( cons( p, f ) );
   list r = parse( p, input );
-  //PRINT( r );
-  return  valid( r )  ?
-              //r->t == SUSPENSION  ? Suspension( env( 0, 1, Symbol(R), r, Symbol(FF), f  ), cbind )  :
-                                    join( map( Operator( valid( f->Operator.v ) ?
-                                                         append( copy( f->Operator.v ), v )  : v,
-                                                         f->Operator.f ),
-                                               r) )
+  return  valid( r )  ? join( map( Operator( valid( f->Operator.v ) ?
+                                               append( copy( f->Operator.v ), v )  : v,
+                                             f->Operator.f ),
+                                   r ) )
                       : NIL_;
 }
 parser
 bind( parser p, oper f ){
-  //PRINT( cons( p, f ) );
   return  Parser( env( 0, 2, Symbol(P), p, Symbol(FF), f ), pbind );
 }
 
@@ -94,7 +75,6 @@ pplus( object v, list input ){
   parser p = assoc( Symbol(P), v );
   parser q = assoc( Symbol(Q), v );
   list r = parse( p, input );
-  //PRINT( r );
   object qq = Suspension( env( 0, 2, Symbol(Q), q, Symbol(X), input ), cplus );
   return  valid( r )  ? 
               r->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(R), r, Symbol(Q), qq ), bplus )
@@ -262,8 +242,6 @@ trim( parser p ){
 static list
 pusing( object v, list o ){
   oper f = assoc( Symbol(USE), v );
-  //f->Operator.v = v;
-  //PRINT( o );
   return  one( cons( apply( f, x_( o ) ), xs_( o ) ) );
 }
 parser
@@ -326,10 +304,10 @@ boolean nz( object v, object o ){ return  o->Int.i ? T_ : NIL_; }
 
 
 static object p_char( object v, list o ){
-  va_list *p = v; return  putchar(va_arg( *p, int )), Int(1);
+  va_list *p = (void *)v; return  putchar(va_arg( *p, int )), Int(1);
 }
 static object p_string( object v, list o ){
-  va_list *p = v;
+  va_list *p = (void *)v;
   char *s = va_arg( *p, char* );
   return  fputs( s, stdout ), Int(strlen( s ));
 }
@@ -347,8 +325,8 @@ pprintf( char const *fmt, ... ){
   static parser p;
   if(  !p  ){
     parser directive = PLUS( using( chr('%'), p_lit ),
-                             vusing( chr('c'), &v, p_char ),
-                             vusing( chr('s'), &v, p_string ) );
+                             vusing( chr('c'), (void *)&v, p_char ),
+                             vusing( chr('s'), (void *)&v, p_string ) );
     parser term = PLUS( xthen( chr('%'), directive ),
                         using( sat( Operator( 0, nz ) ), p_lit ) );
     parser format = many( term );
@@ -357,20 +335,19 @@ pprintf( char const *fmt, ... ){
   }
   object r = parse( p, chars_from_string( (char*)fmt ) );
   drop( 1, r );
-  //PRINT( r );
   va_end( v );
   return  x_( x_( r ) )->Int.i;
 }
 
 
 static object  convert_char( object v, list o ){
-  va_list *p = v;
+  va_list *p = (void *)v;
   char *cp = va_arg( *p, char* );
   *cp = o->Int.i;
   return  Int(1);
 }
 static object  convert_string( object v, list o ){
-  va_list *p = v;
+  va_list *p = (void *)v;
   char *sp = va_arg( *p, char* );
   fill_string( &sp, o );
   return  Int(1);
@@ -403,12 +380,11 @@ pscanf( char const *fmt, ... ){
   if(  !p  ){
     parser space = using( many( anyof( " \t\n" ) ), on_space );
     parser directive = PLUS( using( chr('%'), on_percent ),
-                             vusing( chr('c'), &v, on_char ),
-                             vusing( chr('s'), &v, on_string ) );
+                             vusing( chr('c'), (void *)&v, on_char ),
+                             vusing( chr('s'), (void *)&v, on_string ) );
     parser term  = PLUS( xthen( chr('%'), directive ),
                          using( sat( Operator( 0, nz ) ), on_lit ) );
     parser format = many( seq( space, term ) );
-    //p = format;
     p = using( format, on_terms );
     add_global_root( p );
   }
@@ -416,10 +392,8 @@ pscanf( char const *fmt, ... ){
   drop( 1, fp );
   parser f = x_( x_( fp ) );
   if(  !valid( f )  ) return 0;
-  //PRINT( f );
   list r = parse( f, chars_from_file( stdin ) );
   drop( 1, r );
-  //PRINT( r );
   va_end( v );
   return  valid( r ) ? x_( x_( r ) )->Int.i : 0;
 }
@@ -501,7 +475,6 @@ int test_env(){
 }
 
 object b( object v, object o ){
-  //PRINT( o );
   return  one( cons( Int( - x_( o )->Int.i ), xs_( o ) ) );
 }
 

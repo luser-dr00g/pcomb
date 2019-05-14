@@ -26,3 +26,11 @@ https://codereview.stackexchange.com/questions/166009/5912/parser-combinators-in
 
 The next C version, which should be pc6.{c,h}, will attempt to implement
 the same behavior as pc9.ps in C following the example of the small exercise lazy.c.
+
+...Sigh, pc6 didn't work out. pc7 kinda worked, but I rewrote it as pc8 and that one
+worked but it did not scale well. Memory usage and execution speed very quickly got
+ridiculous when parsing anything longer than 5 or 6 lines.
+
+So, pc9 finally implements lazy evaluation in the parsers, particularly the `plus`
+combinator which handles alternates. It tries the first one and returns a Suspension
+for the remainder.

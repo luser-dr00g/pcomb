@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include "pc9objpriv.h"
 
+static void mark_objects( list a );
+static int sweep_objects( list *po );
+
 object T_ = (union uobject[]){{ .Symbol = { SYMBOL, T, "T" } }},
        NIL_ = (union uobject[]){{ .t = INVALID }};
 
@@ -83,20 +86,22 @@ add_global_root( object a ){
   global_roots = cons( a, global_roots );
 }
 
-void
-mark_this( object a, int m ){
-  a[-1].Header.t = m;
-}
-
 int
-mark( object a ){
-  return  a[-1].Header.t;
+garbage_collect( object local_roots ){
+  mark_objects( local_roots );
+  mark_objects( global_roots );
+  return  sweep_objects( &allocation_list );
 }
 
-void
+static tag *
+mark( object a ){
+  return  &a[-1].Header.t;
+}
+
+static void
 mark_objects( list a ){
-  if(  !valid(a) || mark( a )  ) return;
-  mark_this( a, 1 );
+  if(  !valid(a) || *mark( a )  ) return;
+  *mark( a ) = 1;
   switch(  a->t  ){
   case LIST:       mark_objects( a->List.a ); 
                    mark_objects( a->List.b );       break;
@@ -107,7 +112,7 @@ mark_objects( list a ){
   }
 }
 
-int
+static int
 sweep_objects( list *po ){
   int count = 0;
   while(  *po  )
@@ -123,13 +128,6 @@ sweep_objects( list *po ){
       ++count;
     }
   return  count;
-}
-
-int
-garbage_collect( object local_roots ){
-  mark_objects( local_roots );
-  mark_objects( global_roots );
-  return  sweep_objects( &allocation_list );
 }
 
 
@@ -250,7 +248,6 @@ print( object o ){
 
 void
 print_listn( list a ){
-  //if(  !valid( a )  ) return;
   switch(  a  ? a->t  : 0  ){
   default: print( a ); return;
   case LIST: print_list( x_( a ) ), print_listn( xs_( a ) ); return;
@@ -259,7 +256,6 @@ print_listn( list a ){
 
 void
 print_list( list a ){
-  //if(  !valid( a )  ) return;
   switch(  a  ? a->t  : 0  ){
   default: print( a ); return;
   case LIST: printf( "(" ), print_list( x_( a ) ), print_listn( xs_( a ) ), printf( ")" ); return;
