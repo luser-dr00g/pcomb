@@ -304,10 +304,10 @@ boolean nz( object v, object o ){ return  o->Int.i ? T_ : NIL_; }
 
 
 static object p_char( object v, list o ){
-  va_list *p = (void *)v; return  putchar(va_arg( *p, int )), Int(1);
+  va_list *p = v->Void.v; return  putchar(va_arg( *p, int )), Int(1);
 }
 static object p_string( object v, list o ){
-  va_list *p = (void *)v;
+  va_list *p = v->Void.v;
   char *s = va_arg( *p, char* );
   return  fputs( s, stdout ), Int(strlen( s ));
 }
@@ -325,8 +325,8 @@ pprintf( char const *fmt, ... ){
   static parser p;
   if(  !p  ){
     parser directive = PLUS( using( chr('%'), p_lit ),
-                             vusing( chr('c'), (void *)&v, p_char ),
-                             vusing( chr('s'), (void *)&v, p_string ) );
+                             vusing( chr('c'), Void( &v ), p_char ),
+                             vusing( chr('s'), Void( &v ), p_string ) );
     parser term = PLUS( xthen( chr('%'), directive ),
                         using( sat( Operator( 0, nz ) ), p_lit ) );
     parser format = many( term );
@@ -341,13 +341,13 @@ pprintf( char const *fmt, ... ){
 
 
 static object  convert_char( object v, list o ){
-  va_list *p = (void *)v;
+  va_list *p = v->Void.v;
   char *cp = va_arg( *p, char* );
   *cp = o->Int.i;
   return  Int(1);
 }
 static object  convert_string( object v, list o ){
-  va_list *p = (void *)v;
+  va_list *p = v->Void.v;
   char *sp = va_arg( *p, char* );
   fill_string( &sp, o );
   return  Int(1);
@@ -380,8 +380,8 @@ pscanf( char const *fmt, ... ){
   if(  !p  ){
     parser space = using( many( anyof( " \t\n" ) ), on_space );
     parser directive = PLUS( using( chr('%'), on_percent ),
-                             vusing( chr('c'), (void *)&v, on_char ),
-                             vusing( chr('s'), (void *)&v, on_string ) );
+                             vusing( chr('c'), Void( &v ), on_char ),
+                             vusing( chr('s'), Void( &v ), on_string ) );
     parser term  = PLUS( xthen( chr('%'), directive ),
                          using( sat( Operator( 0, nz ) ), on_lit ) );
     parser format = many( seq( space, term ) );

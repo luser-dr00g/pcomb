@@ -249,7 +249,7 @@ print( object o ){
 void
 print_listn( list a ){
   switch(  a  ? a->t  : 0  ){
-  default: print( a ); return;
+  default:   print( a ); return;
   case LIST: print_list( x_( a ) ), print_listn( xs_( a ) ); return;
   }
 }
@@ -257,7 +257,7 @@ print_listn( list a ){
 void
 print_list( list a ){
   switch(  a  ? a->t  : 0  ){
-  default: print( a ); return;
+  default:   print( a ); return;
   case LIST: printf( "(" ), print_list( x_( a ) ), print_listn( xs_( a ) ), printf( ")" ); return;
   }
 }
@@ -274,7 +274,7 @@ void
 print_data( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:  print_data( a->List.a), print_data( a->List.b );  break;
+  case LIST:   print_data( a->List.a), print_data( a->List.b );  break;
   case STRING: printf( "%s", a->String.string ); break;
   case SYMBOL: print_data( a->Symbol.data );  break;
   }
@@ -310,7 +310,9 @@ test_basics(){
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( take( 2, ch ) );
   PRINT( Int( garbage_collect( ch ) ) );
-  return 0;
+  return  0;
 }
 
-int obj_main(){ return test_basics(); }
+int obj_main(){
+  return  test_basics();
+}
