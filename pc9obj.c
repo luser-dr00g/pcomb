@@ -4,7 +4,7 @@
 static void mark_objects( list a );
 static int sweep_objects( list *po );
 
-object T_ = (union uobject[]){{ .Symbol = { SYMBOL, T, "T" } }},
+object T_ = &(1[(union uobject[]){{ .t = 0 },{ .Symbol = { SYMBOL, T, "T" } }}]),
        NIL_ = (union uobject[]){{ .t = INVALID }};
 
 static list global_roots = NULL;
