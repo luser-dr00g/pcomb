@@ -18,12 +18,14 @@
 
 /spaces  ( \t\n) anyof many  { length    } handle  def
 /ps-token
-	//rad-integer        { cvi       } handle 
-	//real	             { cvr       } handle  plus
-	//integer            { cvi       } handle  plus
-	//name	             { cvn cvx   } handle  plus
-	(/) char //name seq  { rest cvn  } handle  plus
-	//delimiter          { cvn cvx   } handle  plus
+	//rad-integer        { cvi                } handle 
+	//real	             { cvr                } handle  plus
+	//integer            { cvi                } handle  plus
+	//name	             { cvn cvx            } handle  plus
+	(/) char //name seq  { rest cvn           } handle  plus
+	(/) char (/) char seq //name seq
+                             { rest rest dup == cvn } handle  plus
+	//delimiter          { cvn cvx            } handle  plus
 	def
 
 /tail {
@@ -41,6 +43,13 @@
     }{ pop false } ifelse
 } def
 
-(    16#25 name /word 123 2.65 [    ) {mytoken {dup type = ==}{exit} ifelse} loop pc
+/this 42 def
+(    16#25 name /word //this 123 2.65 [    )
+  {mytoken {
+    dup dup type =
+        xcheck{(x)}{(lit)}ifelse =
+    ==
+  }{exit} ifelse} loop
+  pc
 
 quit

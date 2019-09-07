@@ -44,8 +44,8 @@ static object  on_token( object v, list o ){
   return  cons( symbol, cons( space, string ) );
 }
 
-list
-ptokens_from_chars( object s ){
+static list
+at_tokens_from_chars( object s ){
   if(  !valid( s )  ) return  Symbol(EOF);
   static parser p;
   if(  !p  ){
@@ -55,12 +55,12 @@ ptokens_from_chars( object s ){
   list r = parse( p, s );
   take( 1, r );
   r = x_( r );
-  return  cons( x_( r ), Suspension( xs_( r ), ptokens_from_chars ) );
+  return  cons( x_( r ), Suspension( xs_( r ), at_tokens_from_chars ) );
 }
 
 list
 tokens_from_chars( object s ){
-  return  valid( s )  ? Suspension( s, ptokens_from_chars )  : Symbol(EOF);
+  return  valid( s )  ? Suspension( s, at_tokens_from_chars )  : Symbol(EOF);
 }
 
 

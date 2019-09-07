@@ -3,6 +3,7 @@
   #include "pc9par.h"
 #endif
 
+// Symbol objects for these names are returned by parsers matching these strings
 #define Each_Symbolic(_) \
   _("int", k_int) _("char", k_char) _("float", k_float) _("double", k_double) _("struct", k_struct) \
   _("auto", k_auto) _("extern", k_extern) _("register", k_register) _("static", k_static) \

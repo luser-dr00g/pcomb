@@ -4,12 +4,14 @@
 static void mark_objects( list a );
 static int sweep_objects( list *po );
 
+// The T_ object has a dummy allocation record
 object T_ = &(1[(union uobject[]){{ .t = 0 },{ .Symbol = { SYMBOL, T, "T" } }}]),
        NIL_ = (union uobject[]){{ .t = INVALID }};
 
 static list global_roots = NULL;
 static list allocation_list = NULL;
 
+// Allocate an allocation record and uobject, return pointer to uobject
 object
 new_( object a ){
   object p = calloc( 2, sizeof *p );
@@ -23,7 +25,7 @@ new_( object a ){
 int
 valid( object a ){
   switch( a  ? a->t  : 0 ){
-  default:
+  default:  // null, NIL_ or unknown
     return 0;
   case INTEGER:
   case LIST:
@@ -32,9 +34,13 @@ valid( object a ){
   case OPERATOR:
   case SYMBOL:
   case STRING:
+  case VOID:
     return 1;
   }
 }
+
+
+// Constructors
 
 object
 Int( int i ){
@@ -80,6 +86,9 @@ object
 Void( void *v ){
   return  OBJECT( .Void = { VOID, v } );
 }
+
+
+// Garbage Collector
 
 void
 add_global_root( object a ){
@@ -132,14 +141,17 @@ sweep_objects( list *po ){
 
 
 
+// Force execution of Suspension
 object
 at_( object a ){
   return  valid( a ) && a->t == SUSPENSION  ? at_( a->Suspension.f( a->Suspension.v ) )  : a;
 }
 
 
-object
-px_( object v ){
+// Lists
+
+static object
+at_x_( object v ){
   list a = v;
   *a = *at_( a );
   return  x_( a );
@@ -148,12 +160,12 @@ object
 x_( list a ){
   return  valid( a )  ?
               a->t == LIST        ? a->List.a             :
-              a->t == SUSPENSION  ? Suspension( a, px_ )  : NIL_
+              a->t == SUSPENSION  ? Suspension( a, at_x_ )  : NIL_
           : NIL_;
 }
 
-object
-pxs_( object v ){
+static object
+at_xs_( object v ){
   list a = v;
   *a = *at_( a );
   return  xs_( a );
@@ -162,7 +174,7 @@ object
 xs_( list a ){
   return  valid( a )  ?
               a->t == LIST        ? a->List.b              :
-              a->t == SUSPENSION  ? Suspension( a, pxs_ )  : NIL_
+              a->t == SUSPENSION  ? Suspension( a, at_xs_ )  : NIL_
           : NIL_;
 }
 
@@ -180,26 +192,131 @@ drop( int n, list o ){
 }
 
 
-list
-pchars_from_string( object v ){
+static list
+at_chars_from_string( object v ){
   char *p = v->String.string;
-  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), pchars_from_string ) )  : Symbol(EOF);
+  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), at_chars_from_string ) )  : Symbol(EOF);
 }
 list
 chars_from_string( char *p ){
-  return  p  ?  Suspension( String( p, 0 ), pchars_from_string )  : NIL_;
+  return  p  ?  Suspension( String( p, 0 ), at_chars_from_string )  : NIL_;
 }
 
 
-list
-pchars_from_file( object v ){
+static list
+at_chars_from_file( object v ){
   FILE *f = v->Void.v;
   int c = fgetc( f );
-  return  c != EOF  ? cons( Int( c ), Suspension( v, pchars_from_file ) )  : Symbol(EOF);
+  return  c != EOF  ? cons( Int( c ), Suspension( v, at_chars_from_file ) )  : Symbol(EOF);
 }
 list
 chars_from_file( FILE *f ){
-  return  f  ? Suspension( Void( f ), pchars_from_file ) : NIL_;
+  return  f  ? Suspension( Void( f ), at_chars_from_file ) : NIL_;
+}
+
+// 00-7f  0   7f
+// 80-bf  1   3f
+// c0-df  2   1f
+// e0-ef  3   0f
+// f0-f7  4   07
+// f8-fb  5   03
+// fc-ff  6   03
+static int
+leading_ones( object x ){
+  unsigned int y = x->Int.i;
+  return  y <= 0x7f  ? 0 :
+          y <= 0xbf  ? 1 :
+          y <= 0xdf  ? 2 :
+          y <= 0xef  ? 3 :
+          y <= 0xf7  ? 4 :
+          y <= 0xfb  ? 5 :
+          y <= 0xff  ? 6 : -1;
+}
+
+static object
+mask_off( object x, int m ){
+  return  Int( x->Int.i & 
+               ((int[]){ 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[m] );
+}
+
+static list
+at_ucs4_from_utf8( object v ){
+  object x = x_( take( 1, v ) );
+  int lead = 0;
+  if(  valid( x )  )  switch(  x = mask_off( x, lead = leading_ones( x ) ), lead  ){
+  case 6:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 5:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 4:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 3:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 2:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 1:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
+  case 0:  default:  break;
+  }
+  if (x->Int.i < ((int[]){0,0,0x80,0x800,0x10000})[lead])
+    fprintf( stderr, "overlength encoding in utf8 char\n" );
+  return  x->Int.i != EOF ? cons( x, Suspension( drop( 1, v ), at_ucs4_from_utf8 ) ) : Symbol(EOF);
+}
+list
+ucs4_from_utf8( list o ){
+  return  valid( o )  ? Suspension( o, at_ucs4_from_utf8 ) : NIL_;
+}
+
+//          7f   7                                                    0111 1111
+//        7 ff  11                                          1101 1111 1011 1111
+//       ff ff  16                                1110 1111 1011 1111 1011 1111
+//    10 ff ff  21                      1111 0111 1011 1111 1011 1111 1011 1111 
+//  3 ff ff ff  26            1111 1011 1011 1111 1011 1111 1011 1111 1011 1111
+// 1f ff ff ff  31  1111 1101 1011 1111 1011 1111 1011 1111 1011 1111 1011 1111
+
+static list
+at_utf8_from_ucs4( list v ){
+  object x = x_( take( 1, v ) );
+  if(  valid( x )  ) {
+    if(  x->Int.i <= 0x7f  ){
+      return  x->Int.i != EOF  ? 
+              cons( x, Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) : Symbol(EOF);
+    } else if(  x->Int.i <=      0x7ff  ){
+      return  cons( Int( (x->Int.i >> 6)    | 0xc0 ),
+	      cons( Int( (x->Int.i & 0x3f ) | 0x80 ),
+                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) );
+    } else if(  x->Int.i <=     0xffff  ){
+      return  cons( Int(   (x->Int.i >> 12)         | 0xe0 ),
+	      cons( Int( ( (x->Int.i >> 6) & 0x3f ) | 0x80 ),
+              cons( Int(   (x->Int.i & 0x3f )       | 0x80 ),
+                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) );
+    } else if(  x->Int.i <=   0x10ffff  ){
+      return  cons( Int(   (x->Int.i >> 18)          | 0xf0 ),
+              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
+              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
+                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) );
+    } else if(  x->Int.i <=  0x3ffffff  ){
+      return  cons( Int(   (x->Int.i >> 24)          | 0xf8 ),
+              cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
+              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
+                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) ) );
+    } else if(  x->Int.i <= 0x1fffffff  ){
+      return  cons( Int(   (x->Int.i >> 30)          | 0xfc ),
+              cons( Int( ( (x->Int.i >> 24) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
+              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
+              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
+                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) ) ) );
+    } else {
+      fprintf(stderr, "Invalid unicode code point in ucs4 char.\n");
+      return  drop( 1, v );
+    }
+  } else {
+    return  v;
+  }
+}
+  
+list
+utf8_from_ucs4( list v ){
+  return  valid( v )  ?  Suspension( v, at_utf8_from_ucs4 ) : NIL_;
 }
 
 
@@ -293,8 +410,7 @@ test_basics(){
   PRINT( x_( xs_( ch ) ) );
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( take( 1, x_( xs_( ch ) ) ) );
-  PRINT( Int( garbage_collect( ch ) ) );
-  PRINT( take( 5, ch ) );
+  PRINT( Int( garbage_collect( ch ) ) );  PRINT( take( 5, ch ) );
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( ch );
   PRINT( Int( garbage_collect( ch ) ) );

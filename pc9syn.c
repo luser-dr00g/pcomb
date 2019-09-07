@@ -7,15 +7,19 @@
 #define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
 #define Parser_for_symbol_(b)      parser b##_ = lit( Symbol(b) );
 
+object pass_through(   object sym, list o ){ return  o; }
+object prepend_symbol( object sym, list o ){ return  cons( sym, o ); }
+object embed_data(     object sym, list o ){ return  sym->Symbol.data = o, sym; }
+object (*syntax_annotation)( object, list ) = embed_data;
+
 static object on_func_def( object v, list o ){ 
-  object s = Symbol(func_def); return  s->Symbol.data = o, s;
-  return  cons( Symbol(func_def), o ); 
+  return  syntax_annotation( Symbol(func_def), o );
 }
 static object on_data_def( object v, list o ){
-  object s = Symbol(data_def); return  s->Symbol.data = o, s;
+  return  syntax_annotation( Symbol(data_def), o );
 }
 
-parser
+static parser
 parser_for_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
   Extra_Symbols( Parser_for_symbol_ )
@@ -201,7 +205,7 @@ int test_syntax(){
 }
 
 
-int main(){
+int syn_main(){
   return  tok_main(),
           test_syntax(),
           0;

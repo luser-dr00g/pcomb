@@ -10,3 +10,4 @@ enum syntax_analysis_symbols {
 };
 
 list tree_from_tokens( object s );
+int syn_main();

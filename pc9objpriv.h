@@ -5,7 +5,8 @@
 typedef enum object_tag {
   INVALID, INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING, VOID,
 } tag;
-union uobject { tag t;
+union uobject {
+                tag t;
        struct { tag t; int i;                                } Int;
        struct { tag t; object a, b;                          } List;
        struct { tag t; object v; fSuspension *f;             } Suspension;
@@ -16,8 +17,11 @@ union uobject { tag t;
        struct { tag t; object next;                          } Header;
        struct { tag t; void *v;                              } Void;
 };
-object new_( object a );
+// Base Constructor
 #define OBJECT(...) new_( (union uobject[]){{ __VA_ARGS__ }} )
+object new_( object a );
+
+// Force execution of Suspension
 object at_( object a );
 
 object fill_string( char **s, list o );

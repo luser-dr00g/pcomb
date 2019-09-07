@@ -11,6 +11,8 @@ parse( parser p, list input ){
 }
 
 
+// Unit constructors
+
 static list
 presult( object v, list input ){
   return  one( cons( assoc( Symbol(VALUE), v ), input ) );
@@ -41,6 +43,9 @@ item( void ){
   return  Parser( 0, pitem );
 }
 
+
+// Attach operator to process parser results
+
 static list
 pbind( object v, list input ){
   parser p = assoc( Symbol(P), v );
@@ -56,6 +61,9 @@ parser
 bind( parser p, oper f ){
   return  Parser( env( 0, 2, Symbol(P), p, Symbol(FF), f ), pbind );
 }
+
+
+// Logical OR
 
 static list
 bplus( object v ){
@@ -87,6 +95,9 @@ plus( parser p, parser q ){
   return  Parser( env( 0, 2, Symbol(P), p, Symbol(Q), q ), pplus );
 }
 
+
+// check item with predicate
+
 static list
 psat( object v, list input ){
   predicate pred = assoc( Symbol(PRED), v );
@@ -97,6 +108,9 @@ parser
 sat( predicate pred ){
   return  bind( item(), Operator( env( 0, 1, Symbol(PRED), pred ), psat ) );
 }
+
+
+// characters
 
 static boolean
 palpha( object v, object o ){
@@ -114,16 +128,6 @@ pdigit( object v, object o ){
 parser
 digit( void ){
   return  sat( Operator( 0, pdigit ) );
-}
-
-static boolean
-plit( object v, object o ){
-  object a = assoc( Symbol(X), v );
-  return  eq( a, o );
-}
-parser
-lit( object a ){
-  return  sat( Operator( env( 0, 1, Symbol(X), a ), plit ) );
 }
 
 parser
@@ -153,6 +157,21 @@ noneof( char *s ){
   return  Parser( env( 0, 1, Symbol(NN), anyof( s ) ), pnone );
 }
 
+
+// check item against typed object a
+
+static boolean
+plit( object v, object o ){
+  object a = assoc( Symbol(X), v );
+  return  eq( a, o );
+}
+parser
+lit( object a ){
+  return  sat( Operator( env( 0, 1, Symbol(X), a ), plit ) );
+}
+
+
+// Sequencing
 
 static list
 pprepend( object v, list o ){
@@ -204,14 +223,19 @@ into( parser p, object id, parser q ){
 }
 
 
-parser
-maybe( parser p ){
-  return  plus( p, result(0) );
-}
+// Construct emtpy parser to fill in later
 
 parser
 forward( void ){
   return  Parser( 0, 0 );
+}
+
+
+// ? * +
+
+parser
+maybe( parser p ){
+  return  plus( p, result(0) );
 }
 
 parser
@@ -227,6 +251,9 @@ some( parser p ){
   return  seq( p, many( p ) );
 }
 
+
+// return only first result
+
 static list
 ptrim( object v, list input ){
   parser p = assoc( Symbol(PP), v );
@@ -239,6 +266,8 @@ trim( parser p ){
 }
 
 
+// map results through user callback
+
 static list
 pusing( object v, list o ){
   oper f = assoc( Symbol(USE), v );
@@ -249,6 +278,8 @@ using( parser p, fOperator *f ){
   return  bind( p, Operator( env( 0, 1, Symbol(USE), Operator( 0, f ) ), pusing ) );
 }
 
+
+// Construct a parser defined by regular expression
 
 static parser
 do_meta( parser a, object o ){
@@ -292,6 +323,9 @@ regex( char *re ){
   list r = parse( p, chars_from_string( re ) );
   return  valid( r )  ? ( x_( x_( r ) ) )  : r;
 }
+
+
+// example, simple printf() implementatino
 
 parser
 vusing( parser p, object v, fOperator *f ){
@@ -339,6 +373,8 @@ pprintf( char const *fmt, ... ){
   return  x_( x_( r ) )->Int.i;
 }
 
+
+// example, simple scanf() implementation
 
 static object  convert_char( object v, list o ){
   va_list *p = v->Void.v;
