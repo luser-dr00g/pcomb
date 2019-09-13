@@ -1,0 +1,76 @@
+%!
+%cf. https://tools.ietf.org/html/rfc7159
+(pc9re2.ps)run 
+%errordict/typecheck{/typecheck = pstack / = countexecstack array execstack == quit}put
+/SEQ {{seq}reduce} def
+/PLUS {{plus}reduce} def
+/str {{lit}map SEQ} def
+/snip-ends { 1 1 index length 2 sub getinterval } def
+
+/ws ( \t\n\r) anyof many def
+/begin-array     [ //ws ([) char //ws ] SEQ def
+/begin-object    [ //ws ({) char //ws ] SEQ def
+/end-array       [ //ws (]) char //ws ] SEQ def
+/end-object      [ //ws (}) char //ws ] SEQ def
+/name-separator  [ //ws (:) char //ws ] SEQ def
+/value-separator [ //ws (,) char //ws ] SEQ def
+/value {-777 exec} def
+
+/decimal-point (.) char def
+/digit1-9      (19) spill range def
+/digit         (09) spill range def
+/Jzero         (0) char def
+/e             (eE) anyof def
+/Jplus         (+) char def
+/minus         (-) char def
+/expn          [ //e //minus //Jplus plus maybe //digit some ] SEQ def
+/frac          [ //decimal-point //digit some ] SEQ def
+/int           //Jzero  //digit1-9 //digit many seq  plus def
+/number        [ //minus maybe //int //frac maybe //expn maybe ] SEQ 
+               {
+                 to-string
+                 dup (.) search { pop pop pop cvr }{
+		     pop dup (e) search { pop pop pop cvr }{
+			 pop dup (E) search { pop pop pop cvr }{ pop cvi } ifelse
+                     } ifelse
+                 } ifelse
+               } using def
+
+/quotation-mark  (") char def
+/unescaped       [ 16#20 16#21 range  16#23 16#5B range  16#5D 16#10FFFF range ] PLUS def
+/escape          (\\) char def
+/4hexdig         (u) char  //digit  (AF) spill range plus  3{dup seq}repeat seq def
+/escape-sequence //escape [ ("\\/bfnrt) anyof //4hexdig ] PLUS seq def
+/Jchar           //unescaped //escape-sequence plus def
+/Jstring         [ //quotation-mark //Jchar many //quotation-mark ] SEQ 
+                 { to-string snip-ends } using def
+
+/member  [ //Jstring //name-separator //value ] SEQ def
+/Jobject [ //begin-object
+           //member //value-separator //member seq many seq maybe
+           //end-object ] SEQ
+         {
+           1 dict begin
+           flatten snip-ends
+           3 { spill exch pop def } fortuple
+	   currentdict end
+         } using def
+
+/Jarray  [ //begin-array
+           //value  //value-separator //value  seq many seq maybe
+           //end-array  ] SEQ 
+         { flatten snip-ends } using def
+
+//value 0  [ (false) str (null) str (true) str
+	     //Jobject //Jarray //number //Jstring ] PLUS  put
+/JSON-text       [ //ws //value //ws ] SEQ def
+
+/JSON-parse { JSON-text first first second } def
+
+(4) string-input JSON-parse pc
+(4.0) string-input JSON-parse pc
+(4e3) string-input JSON-parse pc
+("4") string-input JSON-parse pc
+([4]) string-input JSON-parse pc
+({"a":4}) string-input JSON-parse ps ===
+quit
