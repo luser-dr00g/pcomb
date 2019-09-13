@@ -20,7 +20,7 @@
     none   {p}    { { dup /p exec [] ne { zero }{ item } ifelse exec } ll } @func
     xthen         { seq { second result exec } bind }
     thenx         { seq { first result exec } bind }
-    maybe         { [] result plus }
+    maybe         { /0 result plus }
     many          { {{-777 exec}exec} ll dup first 3 1 roll seq maybe
 		    2 copy 0 exch put  exch pop executeonly }
     some          { dup many seq }

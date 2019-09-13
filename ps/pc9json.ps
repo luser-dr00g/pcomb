@@ -2,18 +2,32 @@
 %cf. https://tools.ietf.org/html/rfc7159
 (pc9re2.ps)run 
 %errordict/typecheck{/typecheck = pstack / = countexecstack array execstack == quit}put
-/SEQ {{seq}reduce} def
+%errordict/rangecheck{/rangecheck = pstack / = countexecstack array execstack == quit}put
+/SEQ  {{seq}reduce} def
 /PLUS {{plus}reduce} def
-/str {{lit}map SEQ} def
+/str  {{lit}map SEQ} def
+/filter-zeros { { dup /0 eq {pop} if } map } def
 /snip-ends { 1 1 index length 2 sub getinterval } def
+/! { { dup /0 eq { pop [] } if } using } def
+/maybe! { maybe ! } def
+/many! { many ! } def
+/dump { dup first exch
+        second dup type /nametype eq 1 index /0 eq and { pop }{ dump } ifelse } def
+/to-array { dup type /arraytype ne { one }{ [ exch dump ] } ifelse } def
+/to-pairs {
+	    dup length 1 eq { first pairs }{
+		[ exch dup first exch second dump ]
+		{spill spill} map pairs
+            } ifelse
+          } def
 
 /ws ( \t\n\r) anyof many def
-/begin-array     [ //ws ([) char //ws ] SEQ def
-/begin-object    [ //ws ({) char //ws ] SEQ def
-/end-array       [ //ws (]) char //ws ] SEQ def
-/end-object      [ //ws (}) char //ws ] SEQ def
-/name-separator  [ //ws (:) char //ws ] SEQ def
-/value-separator [ //ws (,) char //ws ] SEQ def
+/begin-array     //ws ([) char xthen //ws thenx def
+/begin-object    //ws ({) char xthen //ws thenx def
+/end-array       //ws (]) char xthen //ws thenx def
+/end-object      //ws (}) char xthen //ws thenx def
+/name-separator  //ws (:) char xthen //ws thenx def
+/value-separator //ws (,) char xthen //ws thenx def
 /value {-777 exec} def
 
 /decimal-point (.) char def
@@ -23,18 +37,19 @@
 /e             (eE) anyof def
 /Jplus         (+) char def
 /minus         (-) char def
-/expn          [ //e //minus //Jplus plus maybe //digit some ] SEQ def
-/frac          [ //decimal-point //digit some ] SEQ def
+/frac          //decimal-point //digit some seq def
+/expn          [ //e //minus //Jplus plus maybe! //digit some ] SEQ def
 /int           //Jzero  //digit1-9 //digit many seq  plus def
-/number        [ //minus maybe //int //frac maybe //expn maybe ] SEQ 
+/number        [ //minus maybe! //int //frac maybe! //expn maybe! ] SEQ 
                {
-                 to-string
+                 flatten filter-zeros to-string
                  dup (.) search { pop pop pop cvr }{
 		     pop dup (e) search { pop pop pop cvr }{
 			 pop dup (E) search { pop pop pop cvr }{ pop cvi } ifelse
                      } ifelse
                  } ifelse
-               } using def
+               } using
+               def
 
 /quotation-mark  (") char def
 /unescaped       [ 16#20 16#21 range  16#23 16#5B range  16#5D 16#10FFFF range ] PLUS def
@@ -42,35 +57,46 @@
 /4hexdig         (u) char  //digit  (AF) spill range plus  3{dup seq}repeat seq def
 /escape-sequence //escape [ ("\\/bfnrt) anyof //4hexdig ] PLUS seq def
 /Jchar           //unescaped //escape-sequence plus def
-/Jstring         [ //quotation-mark //Jchar many //quotation-mark ] SEQ 
-                 { to-string snip-ends } using def
+/Jstring         [ //quotation-mark //Jchar many! //quotation-mark ] SEQ 
+		 { flatten filter-zeros snip-ends to-string } using
+                 def
 
-/member  [ //Jstring //name-separator //value ] SEQ def
-/Jobject [ //begin-object
-           //member //value-separator //member seq many seq maybe
-           //end-object ] SEQ
-         {
-           1 dict begin
-           flatten snip-ends
-           3 { spill exch pop def } fortuple
-	   currentdict end
-         } using def
+/member  //Jstring //name-separator thenx //value seq 
+         { one } using
+         def
+/Jobject //begin-object
+           //member xthen
+           //value-separator //member xthen many! seq maybe!
+         //end-object thenx
+	 { to-pairs } using
+         def
 
-/Jarray  [ //begin-array
-           //value  //value-separator //value  seq many seq maybe
-           //end-array  ] SEQ 
-         { flatten snip-ends } using def
+/Jarray  //begin-array
+           //value xthen
+           //value-separator //value xthen many! seq maybe!
+         //end-array thenx
+	 { to-array } using
+         def
 
 //value 0  [ (false) str (null) str (true) str
 	     //Jobject //Jarray //number //Jstring ] PLUS  put
-/JSON-text       [ //ws //value //ws ] SEQ def
+/JSON-text   //ws //value xthen //ws thenx def
 
-/JSON-parse { JSON-text first first second } def
+/JSON-parse {
+  JSON-text first first
+ } def
 
-(4) string-input JSON-parse pc
-(4.0) string-input JSON-parse pc
-(4e3) string-input JSON-parse pc
-("4") string-input JSON-parse pc
-([4]) string-input JSON-parse pc
-({"a":4}) string-input JSON-parse ps ===
+%(4) dup string-input JSON-parse pc
+%( 4) dup string-input JSON-parse pc
+%(4 ) dup string-input JSON-parse pc
+%( 4 ) dup string-input JSON-parse pc
+%( 4.0 ) dup string-input JSON-parse pc
+( 4e3 ) dup string-input JSON-parse pc
+(  "4"  ) dup string-input JSON-parse pc
+( [ 4 ] ) dup string-input JSON-parse pc
+( [ 4, 5 ] ) dup string-input JSON-parse pc
+( [ 3, [ 4, [ 5 ] ] ] ) dup string-input JSON-parse pc
+( {"a":4,"b":5} ) dup string-input JSON-parse ps === clear
+( { "a" : 4 , "b" : 5 } ) dup string-input JSON-parse ps === clear
+( [ {"a":4,"b":5}, 6, {"c":"7"}] ) dup string-input JSON-parse ps === clear
 quit
