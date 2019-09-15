@@ -3,11 +3,12 @@
 errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit } put
 /handle { {to-string dup} exch compose {cons} compose using } def
 
-/delimiter   ( \t\n()/%[]<>{}) anyof   def
+/delimiters  ( \t\n()/%[]<>{})         def
+/delimiter   delimiters anyof          def
 /digit       (09) spill range          def
 /alpha       (az) spill range (AZ) spill range plus  def
-%/regular     ( \t\n()/%[]<>{}) noneof  def
-/regular     //alpha //digit plus  def
+/regular     delimiters noneof  def
+%/regular     //alpha //digit plus  def
 
 /number      //digit some      def
 /opt-number  //digit many      def
@@ -20,8 +21,18 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
 /name        //regular some  def
 
 /ps-char     {-777 exec}  def
-//ps-char 0  (()) noneof  put
-/ps-string   (\() char //ps-char many seq (\)) char seq def
+/escape      (\\) char
+                  (\() char
+		  (\)) char  plus
+		  (n) char { pop (\n) first } using  plus
+             xthen  def
+/substring   (\() char //ps-char many seq (\)) char  seq  def
+//ps-char 0
+             //escape
+	     //substring  plus
+             (()) noneof  plus
+             put
+/ps-string   (\() char //ps-char many seq (\)) char  seq  def
 
 /spaces  ( \t\n) anyof many  { length    } handle  def
 /ps-token
@@ -33,7 +44,8 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
     (/) char (/) char seq //name seq 
 		         { rest rest cvn
                            dup {load}stopped not{ exch pop }if } handle  plus
-    //ps-string          { 1 1 index length 2 sub getinterval  } handle  plus
+    //ps-string          { 1 1 index length 2 sub getinterval
+                         } handle  plus
     //delimiter          { cvn cvx            } handle  plus
     def
 
@@ -45,7 +57,7 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
     dup length 0 gt {
 	dup string-input //spaces exec first %ps
         xs-x second 3 2 roll exch tail exch
-        //ps-token exec dup length 0 gt {
+        //ps-token exec dup length 0 gt { %ps stack
 	    first first %ps
 	    spill 3 1 roll length tail exch true
 	}{ pop pop false } ifelse
@@ -53,7 +65,8 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
 } def
 
 /this 42 def
-(   ()  (abc) 16#FF name /word //this 123 2.65 [    )
+(   (\\\n)  (abc) (()) (\\\() 16#FF name /word //this 123 2.65 [    )
+dup = %dup ==
   {mytoken {
     dup dup type =only ( )print
         xcheck{(x)}{(lit)}ifelse =only ( )print
