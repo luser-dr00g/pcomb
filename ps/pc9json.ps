@@ -6,7 +6,6 @@
 /SEQ  {{seq}reduce} def
 /PLUS {{plus}reduce} def
 /str  {{lit}map SEQ} def
-/filter-zeros { { dup /0 eq {pop} if } map } def
 /snip-ends { 1 1 index length 2 sub getinterval } def
 /! { { dup /0 eq { pop [] } if } using } def
 /maybe! { maybe ! } def
@@ -42,7 +41,7 @@
 /int           //Jzero  //digit1-9 //digit many seq  plus def
 /number        [ //minus maybe! //int //frac maybe! //expn maybe! ] SEQ 
                {
-                 flatten filter-zeros to-string
+                 to-string
                  dup (.) search { pop pop pop cvr }{
 		     pop dup (e) search { pop pop pop cvr }{
 			 pop dup (E) search { pop pop pop cvr }{ pop cvi } ifelse
@@ -84,7 +83,7 @@
 
 /JSON-parse {
   JSON-text first first
- } def
+} def
 
 %(4) dup string-input JSON-parse pc
 %( 4) dup string-input JSON-parse pc

@@ -42,7 +42,8 @@
     deep-map { 1 index type /arraytype ne { exec }{
       1 index xcheck 3 1 roll  [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if } ifelse }
     flatten { [ exch { dup type /arraytype eq {{}forall}if}dup 4 get 0 2 index put exec ] }
-    to-string { flatten dup length dup string exch 1 sub -1 0 { % A S i
+    filter-zeros { { dup /0 eq {pop} if } map }
+    to-string { flatten filter-zeros dup length dup string exch 1 sub -1 0 { % A S i
 		    3 copy 3 copy exch pop get put pop pop
 		} for exch pop }
     cons-non-nil { dup [] eq { pop }{ cons } ifelse }
