@@ -251,37 +251,25 @@ mask_off( object x, int m ){
                ((int[]){ 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[ m ] );
 }
 
+static object
+process_utf8_byte( object x, list v ){
+  return Int( ( x->Int.i << 6 ) |
+	      ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+}
+
 static list
-force_ucs4_from_utf8( object v ){
+force_ucs4_from_utf8( list v ){
   object x = x_( take( 1, v ) );
   int lead = 0;
   if(  valid( x )  ){
     x = mask_off( x, lead = leading_ones( x ) );
     switch(  lead  ){
-    case 6:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
-    case 5:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
-    case 4:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
-    case 3:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
-    case 2:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
-    case 1:
-      x = Int( ( x->Int.i << 6 ) |
-	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
-      //fallthrough
+    case 6:  x = process_utf8_byte( x, v ); //fallthrough
+    case 5:  x = process_utf8_byte( x, v ); //fallthrough
+    case 4:  x = process_utf8_byte( x, v ); //fallthrough
+    case 3:  x = process_utf8_byte( x, v ); //fallthrough
+    case 2:  x = process_utf8_byte( x, v ); //fallthrough
+    case 1:  x = process_utf8_byte( x, v ); //fallthrough
     case 0:  default:  break;
     }
   }
