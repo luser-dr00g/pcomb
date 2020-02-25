@@ -78,8 +78,8 @@ String( char *s, int disposable ){
 }
 
 object
-Symbol_( int sym, char *pname ){
-  return  OBJECT( .Symbol = { SYMBOL, sym, pname } );
+Symbol_( int sym, char *printname ){
+  return  OBJECT( .Symbol = { SYMBOL, sym, printname } );
 }
 
 object
@@ -121,6 +121,11 @@ mark_objects( list a ){
   }
 }
 
+// This one's a little weird. The argument is a pointer to
+// a pointer to the left side of the most recent
+// (allocation record, object data) pair. The allocation
+// record is accessible through the .Header member.
+// *(po+1) points to the object data.
 static int
 sweep_objects( list *po ){
   int count = 0;
@@ -144,7 +149,9 @@ sweep_objects( list *po ){
 // Force execution of Suspension
 object
 force_( object a ){
-  return  valid( a ) && a->t == SUSPENSION  ? force_( a->Suspension.f( a->Suspension.v ) )  : a;
+  return  valid( a ) && a->t == SUSPENSION  ?
+            force_( a->Suspension.f( a->Suspension.v ) )
+          : a;
 }
 
 
@@ -195,7 +202,10 @@ drop( int n, list o ){
 static list
 force_chars_from_string( object v ){
   char *p = v->String.string;
-  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), force_chars_from_string ) )  : Symbol(EOF);
+  return  *p  ?
+            cons( Int( *p ),
+		  Suspension( String( p+1, 0 ), force_chars_from_string ) )
+          : Symbol(EOF);
 }
 list
 chars_from_string( char *p ){
@@ -207,7 +217,9 @@ static list
 force_chars_from_file( object v ){
   FILE *f = v->Void.v;
   int c = fgetc( f );
-  return  c != EOF  ? cons( Int( c ), Suspension( v, force_chars_from_file ) )  : Symbol(EOF);
+  return  c != EOF  ?
+            cons( Int( c ), Suspension( v, force_chars_from_file ) )
+          : Symbol(EOF);
 }
 list
 chars_from_file( FILE *f ){
@@ -243,18 +255,42 @@ static list
 force_ucs4_from_utf8( object v ){
   object x = x_( take( 1, v ) );
   int lead = 0;
-  if(  valid( x )  )  switch(  x = mask_off( x, lead = leading_ones( x ) ), lead  ){
-  case 6:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 5:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 4:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 3:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 2:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 1:  x = Int( ( x->Int.i << 6 ) | ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) ); //fallthrough
-  case 0:  default:  break;
+  if(  valid( x )  ){
+    x = mask_off( x, lead = leading_ones( x ) );
+    switch(  lead  ){
+    case 6:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 5:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 4:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 3:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 2:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 1:
+      x = Int( ( x->Int.i << 6 ) |
+	       ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+      //fallthrough
+    case 0:  default:  break;
+    }
   }
+
   if (x->Int.i < ((int[]){0,0,0x80,0x800,0x10000})[lead])
     fprintf( stderr, "overlength encoding in utf8 char\n" );
-  return  x->Int.i != EOF ? cons( x, Suspension( drop( 1, v ), force_ucs4_from_utf8 ) ) : Symbol(EOF);
+  return  x->Int.i != EOF ?
+            cons( x, Suspension( drop( 1, v ), force_ucs4_from_utf8 ) )
+          : Symbol(EOF);
 }
 list
 ucs4_from_utf8( list o ){
@@ -280,7 +316,8 @@ ucs4_from_utf8( list o ){
 static list force_utf8_from_ucs4( list v );
 list utf_one_byte( object x, list v ){
   return  x->Int.i != EOF  ? 
-	  cons( x, Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) : Symbol(EOF);
+	    cons( x, Suspension( drop( 1, v ), force_utf8_from_ucs4 ) )
+          : Symbol(EOF);
 }
 list utf_two_byte( object x, list v ){
   return  cons( Int( (x->Int.i >> 6)    | 0xc0 ),
@@ -356,7 +393,8 @@ object
 fill_string( char **s, list o ){
   return  !o    ? NULL :
           o->t == INTEGER  ? *(*s)++ = o->Int.i, NULL :
-          o->t == LIST     ? fill_string( s, o->List.a ), fill_string( s, o->List.b ) :
+          o->t == LIST     ? fill_string( s, o->List.a ),
+                             fill_string( s, o->List.b ) :
           NULL;
 }
 
@@ -376,9 +414,9 @@ print( object o ){
                      print( o->List.a );
                      print( o->List.b );
                    printf( ") " );                       break;
-  case SUSPENSION: printf( "... " );              break;
+  case SUSPENSION: printf( "... " );                     break;
   case PARSER:     printf( "Parser " );                  break;
-  case OPERATOR:   printf( "Oper " );                break;
+  case OPERATOR:   printf( "Oper " );                    break;
   case STRING:     printf( "\"%s\"", o->String.string ); break;
   case SYMBOL:     printf( "%s ", o->Symbol.pname );     break;
   case INVALID:    printf( "_ " );                       break;
@@ -390,7 +428,8 @@ void
 print_listn( list a ){
   switch(  a  ? a->t  : 0  ){
   default:   print( a ); return;
-  case LIST: print_list( x_( a ) ), print_listn( xs_( a ) ); return;
+  case LIST: print_list( x_( a ) ),
+             print_listn( xs_( a ) ); return;
   }
 }
 
@@ -398,7 +437,10 @@ void
 print_list( list a ){
   switch(  a  ? a->t  : 0  ){
   default:   print( a ); return;
-  case LIST: printf( "(" ), print_list( x_( a ) ), print_listn( xs_( a ) ), printf( ")" ); return;
+  case LIST: printf( "(" ),
+               print_list( x_( a ) ),
+               print_listn( xs_( a ) ),
+             printf( ")" ); return;
   }
 }
 
@@ -414,9 +456,11 @@ void
 print_data( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   print_data( a->List.a), print_data( a->List.b );  break;
+  case LIST:   print_data( a->List.a),
+               print_data( a->List.b );  break;
   case STRING: printf( "%s", a->String.string ); break;
   case SYMBOL: print_data( a->Symbol.data );  break;
+  default: print( a );
   }
 }
 
