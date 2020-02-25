@@ -24,4 +24,5 @@ object reduce( fBinOper *f, int n, object *po );
 object rreduce( fBinOper *f, int n, object *po );
 
 // Construct a list from variable args
-#define LIST(...)  reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+#define LIST(...)  \
+  reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )

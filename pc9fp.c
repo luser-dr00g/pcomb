@@ -57,9 +57,11 @@ force_append( object v ){
 }
 list
 append( list a, list b ){
-  return  !valid( a )         ? b                                                               :
-          a->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(A), a, Symbol(B), b ), force_append )  :
-                                cons( x_( a ), append( xs_( a ), b ) );
+  return  !valid( a )  ?
+            b
+          : a->t == SUSPENSION  ?
+            Suspension( env( 0, 2, Symbol(A), a, Symbol(B), b ), force_append )
+          : cons( x_( a ), append( xs_( a ), b ) );
 }
 
 
@@ -75,11 +77,12 @@ force_apply( object v ){
 object
 apply( oper f, object o ){
   return  f->t == OPERATOR  ? 
-              valid( o )  ?
-                  o->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(F), f, Symbol(X), o ), force_apply )
-                        : f->Operator.f( f->Operator.v, o )
-                  : f->Operator.f( f->Operator.v, o )    // for using( maybe(), ... )
-              : NIL_;
+            valid( o )  ?
+              o->t == SUSPENSION  ?
+                Suspension( env( 0,2,Symbol(F),f,Symbol(X),o ), force_apply )
+              : f->Operator.f( f->Operator.v, o )
+            : f->Operator.f( f->Operator.v, o ) //for using(maybe(),...)
+          : NIL_;
   //return  f->t == OPERATOR  ? f->Operator.f( f->Operator.v, o )  : NIL_;
 }
 
@@ -89,16 +92,19 @@ force_map( object v ){
   oper f = assoc( Symbol(F), v );
   list o = assoc( Symbol(X), v );
   *o = *force_( o );
-  return  valid( o )  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) ) : NIL_;
+  return  valid( o )  ?
+            cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )
+          : NIL_;
 }
 list
 map( oper f, list o ){
   return  valid( o )  ?
-              o->t == SUSPENSION  ? Suspension( env( 0, 2, Symbol(F), f, Symbol(X), o ), force_map ) :
-              cons( apply( f, x_( o ) ),
-                    Suspension( env( 0, 2, Symbol(F), f, Symbol(X), xs_( o ) ), force_map ) )
-                      : NIL_;
-  //return  valid( o )  ? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )  : NIL_;
+            o->t == SUSPENSION  ?
+              Suspension( env( 0,2,Symbol(F),f,Symbol(X),o ), force_map )
+            : cons( apply( f, x_( o ) ),
+	      Suspension( env( 0,2,Symbol(F),f,Symbol(X),xs_(o) ), force_map ) )
+	  : NIL_;
+  //return  valid( o )? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) ): NIL_;
 }
 
 
@@ -111,9 +117,11 @@ force_join( object v ){
 list
 join( list o ){
   return  valid( o )  ? 
-              o->t == SUSPENSION  ? Suspension( env( 0, 1, Symbol(X), o ), force_join )  :
-                  append( x_( o ), Suspension( env( 0, 1, Symbol(X), xs_( o ) ), force_join ) )
-                      : NIL_;
+            o->t == SUSPENSION  ?
+              Suspension( env( 0, 1, Symbol(X), o ), force_join )
+            : append( x_( o ),
+	        Suspension( env( 0,1,Symbol(X),xs_( o ) ), force_join ) )
+          : NIL_;
   //return  valid( o )  ? append( x_( o ), join( xs_( o ) ) )  : NIL_;
 }
 
@@ -128,9 +136,10 @@ do_collapse( fBinOper *f, object a, object b ){
 object
 collapse( fBinOper *f, list o ){
   return  valid( o )  ?
-              o->t == LIST  ? do_collapse( f, collapse( f, x_( o ) ), collapse( f, xs_( o ) ) )
-                            : o
-                      : NIL_;
+            o->t == LIST  ?
+              do_collapse( f, collapse( f, x_( o ) ), collapse( f, xs_( o ) ) )
+	    : o
+	  : NIL_;
 }
 
 // f( po[0], f( po[1], ... f( po[n-2], po[n-1] ) ... ) )
