@@ -125,14 +125,14 @@ static int
 sweep_objects( list *po ){
   int count = 0;
   while(  *po  )
-    if(  (*po)->t  ){
-      (*po)->t = 0;
+    if(  *mark( *po+1 )  ){
+      *mark( *po+1 ) = 0;
       po = &(*po)->Header.next;
     } else {
       object z = *po;
       *po = (*po)->Header.next;
-      if(  z[1].t == STRING && z[1].String.disposable  )
-        free( z[1].String.string );
+      if(  (z+1)->t == STRING && (z+1)->String.disposable  )
+        free( (z+1)->String.string );
       free( z );
       ++count;
     }
@@ -143,75 +143,75 @@ sweep_objects( list *po ){
 
 // Force execution of Suspension
 object
-at_( object a ){
-  return  valid( a ) && a->t == SUSPENSION  ? at_( a->Suspension.f( a->Suspension.v ) )  : a;
+force_( object a ){
+  return  valid( a ) && a->t == SUSPENSION  ? force_( a->Suspension.f( a->Suspension.v ) )  : a;
 }
 
 
 // Lists
 
 static object
-at_x_( object v ){
+force_x_( object v ){
   list a = v;
-  *a = *at_( a );
+  *a = *force_( a );
   return  x_( a );
 }
 object
 x_( list a ){
   return  valid( a )  ?
               a->t == LIST        ? a->List.a             :
-              a->t == SUSPENSION  ? Suspension( a, at_x_ )  : NIL_
+              a->t == SUSPENSION  ? Suspension( a, force_x_ )  : NIL_
           : NIL_;
 }
 
 static object
-at_xs_( object v ){
+force_xs_( object v ){
   list a = v;
-  *a = *at_( a );
+  *a = *force_( a );
   return  xs_( a );
 }
 object
 xs_( list a ){
   return  valid( a )  ?
               a->t == LIST        ? a->List.b              :
-              a->t == SUSPENSION  ? Suspension( a, at_xs_ )  : NIL_
+              a->t == SUSPENSION  ? Suspension( a, force_xs_ )  : NIL_
           : NIL_;
 }
 
 list
 take( int n, list o ){
   if(  n == 0  ) return NIL_;
-  *o = *at_( o );
+  *o = *force_( o );
   return  valid( o )  ? cons( x_( o ), take( n-1, xs_( o ) ) )  : NIL_;
 }
 list
 drop( int n, list o ){
   if(  n == 0  ) return o;
-  *o = *at_( o );
+  *o = *force_( o );
   return  valid( o )  ? drop( n-1, xs_( o ) )  : NIL_;
 }
 
 
 static list
-at_chars_from_string( object v ){
+force_chars_from_string( object v ){
   char *p = v->String.string;
-  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), at_chars_from_string ) )  : Symbol(EOF);
+  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), force_chars_from_string ) )  : Symbol(EOF);
 }
 list
 chars_from_string( char *p ){
-  return  p  ?  Suspension( String( p, 0 ), at_chars_from_string )  : NIL_;
+  return  p  ?  Suspension( String( p, 0 ), force_chars_from_string )  : NIL_;
 }
 
 
 static list
-at_chars_from_file( object v ){
+force_chars_from_file( object v ){
   FILE *f = v->Void.v;
   int c = fgetc( f );
-  return  c != EOF  ? cons( Int( c ), Suspension( v, at_chars_from_file ) )  : Symbol(EOF);
+  return  c != EOF  ? cons( Int( c ), Suspension( v, force_chars_from_file ) )  : Symbol(EOF);
 }
 list
 chars_from_file( FILE *f ){
-  return  f  ? Suspension( Void( f ), at_chars_from_file ) : NIL_;
+  return  f  ? Suspension( Void( f ), force_chars_from_file ) : NIL_;
 }
 
 // 00-7f  0   7f
@@ -236,11 +236,11 @@ leading_ones( object x ){
 static object
 mask_off( object x, int m ){
   return  Int( x->Int.i & 
-               ((int[]){ 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[m] );
+               ((int[]){ 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[ m ] );
 }
 
 static list
-at_ucs4_from_utf8( object v ){
+force_ucs4_from_utf8( object v ){
   object x = x_( take( 1, v ) );
   int lead = 0;
   if(  valid( x )  )  switch(  x = mask_off( x, lead = leading_ones( x ) ), lead  ){
@@ -254,58 +254,81 @@ at_ucs4_from_utf8( object v ){
   }
   if (x->Int.i < ((int[]){0,0,0x80,0x800,0x10000})[lead])
     fprintf( stderr, "overlength encoding in utf8 char\n" );
-  return  x->Int.i != EOF ? cons( x, Suspension( drop( 1, v ), at_ucs4_from_utf8 ) ) : Symbol(EOF);
+  return  x->Int.i != EOF ? cons( x, Suspension( drop( 1, v ), force_ucs4_from_utf8 ) ) : Symbol(EOF);
 }
 list
 ucs4_from_utf8( list o ){
-  return  valid( o )  ? Suspension( o, at_ucs4_from_utf8 ) : NIL_;
+  return  valid( o )  ? Suspension( o, force_ucs4_from_utf8 ) : NIL_;
 }
 
-//          7f   7                                                    0111 1111
-//        7 ff  11                                          1101 1111 1011 1111
-//       ff ff  16                                1110 1111 1011 1111 1011 1111
-//    10 ff ff  21                      1111 0111 1011 1111 1011 1111 1011 1111 
-//  3 ff ff ff  26            1111 1011 1011 1111 1011 1111 1011 1111 1011 1111
-// 1f ff ff ff  31  1111 1101 1011 1111 1011 1111 1011 1111 1011 1111 1011 1111
+// x=format .=data
+//              data bits 
+//      maxval
+//               7                                                     x... ....
+//          7f                                                         0111 1111
+//              11                                           xxx. .... xx.. ....
+//        7 ff                                               1101 1111 1011 1111
+//              16                                 xxxx .... xx.. .... xx.. ....
+//       ff ff                                     1110 1111 1011 1111 1011 1111
+//              21                       xxxx x... xx.. .... xx.. .... xx.. ....
+//    10 ff ff                           1111 0111 1011 1111 1011 1111 1011 1111 
+//              26             xxxx xx.. xx.. .... xx.. .... xx.. .... xx.. ....
+//  3 ff ff ff                 1111 1011 1011 1111 1011 1111 1011 1111 1011 1111
+//              31   xxxx xx.. xx.. .... xx.. .... xx.. .... xx.. .... xx.. ....
+// 3f ff ff ff       1111 1101 1011 1111 1011 1111 1011 1111 1011 1111 1011 1111
+
+static list force_utf8_from_ucs4( list v );
+list utf_one_byte( object x, list v ){
+  return  x->Int.i != EOF  ? 
+	  cons( x, Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) : Symbol(EOF);
+}
+list utf_two_byte( object x, list v ){
+  return  cons( Int( (x->Int.i >> 6)    | 0xc0 ),
+	  cons( Int( (x->Int.i & 0x3f ) | 0x80 ),
+		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) );
+}
+list utf_three_byte( object x, list v ){
+  return  cons( Int(   (x->Int.i >> 12)          | 0xe0 ),
+	  cons( Int( ( (x->Int.i >>  6) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  0) & 0x3f ) | 0x80 ),
+		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) );
+}
+list utf_four_byte( object x, list v ){
+  return  cons( Int(   (x->Int.i >> 18)           | 0xf0 ),
+	  cons( Int( ( (x->Int.i >> 12) & 0x3f )  | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  6) & 0x3f )  | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  0) & 0x3f )  | 0x80 ),
+		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) ) );
+}
+list utf_five_byte( object x, list v ){
+  return  cons( Int(   (x->Int.i >> 24)          | 0xf8 ),
+	  cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  6) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  0) & 0x3f ) | 0x80 ),
+		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) ) ) );
+}
+list utf_six_byte( object x, list v ){
+  return  cons( Int(   (x->Int.i >> 30)          | 0xfc ),
+	  cons( Int( ( (x->Int.i >> 24) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  6) & 0x3f ) | 0x80 ),
+	  cons( Int( ( (x->Int.i >>  0) & 0x3f ) | 0x80 ),
+		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) ) ) ) );
+}
 
 static list
-at_utf8_from_ucs4( list v ){
+force_utf8_from_ucs4( list v ){
   object x = x_( take( 1, v ) );
   if(  valid( x )  ) {
-    if(  x->Int.i <= 0x7f  ){
-      return  x->Int.i != EOF  ? 
-              cons( x, Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) : Symbol(EOF);
-    } else if(  x->Int.i <=      0x7ff  ){
-      return  cons( Int( (x->Int.i >> 6)    | 0xc0 ),
-	      cons( Int( (x->Int.i & 0x3f ) | 0x80 ),
-                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) );
-    } else if(  x->Int.i <=     0xffff  ){
-      return  cons( Int(   (x->Int.i >> 12)         | 0xe0 ),
-	      cons( Int( ( (x->Int.i >> 6) & 0x3f ) | 0x80 ),
-              cons( Int(   (x->Int.i & 0x3f )       | 0x80 ),
-                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) );
-    } else if(  x->Int.i <=   0x10ffff  ){
-      return  cons( Int(   (x->Int.i >> 18)          | 0xf0 ),
-              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
-              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
-                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) );
-    } else if(  x->Int.i <=  0x3ffffff  ){
-      return  cons( Int(   (x->Int.i >> 24)          | 0xf8 ),
-              cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
-              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
-                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) ) );
-    } else if(  x->Int.i <= 0x1fffffff  ){
-      return  cons( Int(   (x->Int.i >> 30)          | 0xfc ),
-              cons( Int( ( (x->Int.i >> 24) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
-              cons( Int( ( (x->Int.i >> 6) & 0x3f )  | 0x80 ),
-              cons( Int(   (x->Int.i & 0x3f)         | 0x80 ),
-                    Suspension( drop( 1, v ), at_utf8_from_ucs4 ) ) ) ) ) ) );
-    } else {
+    if(       x->Int.i <=       0x7f  ) return  utf_one_byte(   x, v );
+    else if(  x->Int.i <=      0x7ff  ) return  utf_two_byte(   x, v );
+    else if(  x->Int.i <=     0xffff  ) return  utf_three_byte( x, v );
+    else if(  x->Int.i <=   0x10ffff  ) return  utf_four_byte(  x, v );
+    else if(  x->Int.i <=  0x3ffffff  ) return  utf_five_byte(  x, v );
+    else if(  x->Int.i <= 0x3fffffff  ) return  utf_six_byte(   x, v );
+    else {
       fprintf(stderr, "Invalid unicode code point in ucs4 char.\n");
       return  drop( 1, v );
     }
@@ -316,14 +339,14 @@ at_utf8_from_ucs4( list v ){
   
 list
 utf8_from_ucs4( list v ){
-  return  valid( v )  ?  Suspension( v, at_utf8_from_ucs4 ) : NIL_;
+  return  valid( v )  ?  Suspension( v, force_utf8_from_ucs4 ) : NIL_;
 }
 
 
 static int
 count_ints( list o ){
   return  !o               ? 0 :
-          o->t == SUSPENSION ? *o = *at_( o ), count_ints( o ) :
+          o->t == SUSPENSION ? *o = *force_( o ), count_ints( o ) :
           o->t == INTEGER  ? 1 :
           o->t == LIST     ? count_ints( o->List.a ) + count_ints( o->List.b ) :
           0;

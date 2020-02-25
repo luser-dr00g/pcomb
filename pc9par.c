@@ -69,7 +69,7 @@ static list
 bplus( object v ){
   list r = assoc( Symbol(R), v );
   object qq = assoc( Symbol(Q), v );
-  *r = *at_( r );
+  *r = *force_( r );
   return  valid( r )  ? append( r, qq ) : qq;
 }
 static list
@@ -149,7 +149,7 @@ static list
 pnone( object v, list input ){
   parser p = assoc( Symbol(NN), v );
   object r = parse( p, input );
-  *r = *at_( r );
+  *r = *force_( r );
   return  valid( r )  ? NIL_  : pitem( 0, input );
 }
 parser

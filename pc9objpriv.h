@@ -22,7 +22,7 @@ union uobject {
 object new_( object a );
 
 // Force execution of Suspension
-object at_( object a );
+object force_( object a );
 
 object fill_string( char **s, list o );
 int obj_main( void );
