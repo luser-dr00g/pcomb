@@ -23,14 +23,26 @@
   _("/", o_slant) _("%", o_percent)                                     \
   _("<<", o_ltlt) _("<=", o_le) _("<", o_lt)                            \
   _(">>", o_gtgt) _(">=", o_ge) _(">", o_gt)				\
-  _("=+", o_eplus) _("=-", o_eminus)                                    \
-  _("=*", o_estar) _("=/", o_eslant) _("=%", o_epercent)		\
-  _("=>>", o_egtgt) _("=<<", o_eltlt)                                   \
-  _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe)			\
   _("(", lparen) _(")", rparen)                                         \
   _(",", comma) _(";", semi) _(":", colon) _("?", quest)                \
   _("{", lbrace) _("}", rbrace) _("[", lbrack) _("]", rbrack)           \
-//End Symbolic
+  Each_assignop(_) \
+//End Each_Symbolic
+
+#ifdef KANDR
+  #define Each_assignop(_) \
+    _("=+", o_eplus) _("=-", o_eminus)                                  \
+    _("=*", o_estar) _("=/", o_eslant) _("=%", o_epercent)		\
+    _("=>>", o_egtgt) _("=<<", o_eltlt)                                 \
+    _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe)
+#else
+  #define Each_assignop(_) \
+    _("+=", o_eplus) _("-=", o_eminus)                                  \
+    _("*=", o_estar) _("/=", o_eslant) _("%=", o_epercent)		\
+    _(">>=", o_egtgt) _("<<=", o_eltlt)                                 \
+    _("&=", o_eamp) _("^=", o_ecaret) _("|=", o_epipe)
+#endif
+
 
 #define Enum_name(x,y) y ,
 

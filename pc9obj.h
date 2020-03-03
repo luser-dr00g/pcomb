@@ -28,7 +28,7 @@ int valid( object a );  // not null and not NIL_
 // Constructors
 object  Int( int i );
 list    one( object a ); // make a one element list
-list    cons( object a, object b );
+list    cons( object a, object b ); // list node
 object  Suspension( object v, fSuspension *f );
 parser  Parser( object v, fParser *f );
 oper    Operator( object v, fOperator *f );

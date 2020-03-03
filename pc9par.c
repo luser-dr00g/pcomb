@@ -123,21 +123,21 @@ sat( predicate pred ){
 // characters
 
 static boolean
-palpha( object v, object o ){
+oper_alpha( object v, object o ){
   return  isalpha( o->Int.i )  ? T_  : NIL_;
 }
 parser
 alpha( void ){
-  return  sat( Operator( 0, palpha ) );
+  return  sat( Operator( 0, oper_alpha ) );
 }
 
 static boolean
-pdigit( object v, object o ){
+oper_digit( object v, object o ){
   return  isdigit( o->Int.i )  ? T_  : NIL_;
 }
 parser
 digit( void ){
-  return  sat( Operator( 0, pdigit ) );
+  return  sat( Operator( 0, oper_digit ) );
 }
 
 parser
@@ -410,7 +410,8 @@ static parser  on_char( object v, list o ){
   return  vusing( item(), v, convert_char );
 }
 static parser  on_string( object v, list o ){
-  return  vusing( xthen( many( anyof( " \t\n" ) ),  many( noneof( " \t\n" ) ) ), v, convert_string );
+  return  vusing( xthen( many( anyof( " \t\n" ) ),  many( noneof( " \t\n" ) ) ),
+		  v, convert_string );
 }
 
 static object  r_zero( object v, list o ){ return  Int(0); }

@@ -125,7 +125,7 @@ mark_objects( list a ){
 // a pointer to the left side of the most recent
 // (allocation record, object data) pair. The allocation
 // record is accessible through the .Header member.
-// *(po+1) points to the object data.
+// (*po+1) points to the object data.
 static int
 sweep_objects( list *po ){
   int count = 0;
@@ -407,6 +407,7 @@ print( object o ){
   case OPERATOR:   printf( "Oper " );                    break;
   case STRING:     printf( "\"%s\"", o->String.string ); break;
   case SYMBOL:     printf( "%s ", o->Symbol.pname );     break;
+  case VOID:       printf( "VOID" );                     break;
   case INVALID:    printf( "_ " );                       break;
   default:         printf( "INVALID " );                 break;
   }
