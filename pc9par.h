@@ -12,9 +12,9 @@ enum parser_symbols {
 list parse( parser p, list input );
 
 // Unit constructors
-parser result( object a );
-parser zero( void );
-parser item( void );
+parser result( object a ); // parser that succeeds and returns a
+parser zero( void ); // parser that fails
+parser item( void ); // 
 
 // Attach operator to process parser results
 parser bind( parser p, oper f );
@@ -29,28 +29,28 @@ parser sat( predicate pred );
 // characters
 parser alpha( void );
 parser digit( void );
-parser chr( int c );
-parser str( char *s );
-parser anyof( char *s );
-parser noneof( char *s );
+parser chr( int c ); // parser for literal char c
+parser str( char *s ); // parser for string s
+parser anyof( char *s ); // PLUS( chr(s[0]), ..., chr(s[n]==0) )
+parser noneof( char *s ); // not( anyof( s ) )
 
 // check item against typed object a
 parser lit( object a );
 
 // Sequencing
-parser seq( parser p, parser q );
+parser seq( parser p, parser q ); // p then q
 #define SEQ(...)  reduce( seq, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
-parser xthen( parser p, parser q );
-parser thenx( parser p, parser q );
-parser into( parser p, object id, parser q );
+parser xthen( parser p, parser q ); // p then q, discard p results
+parser thenx( parser p, parser q ); // p then q, discard q results
+parser into( parser p, object id, parser q ); // r=parse(p), then parse(q,id=r)
 
 // Construct empty parser to fill in later
 parser forward( void );
 
 // ? * +
-parser maybe( parser p );
-parser many( parser p );
-parser some( parser p );
+parser maybe( parser p ); // try parser p 0 or 1 time
+parser many( parser p ); // try parser p 0 or more times
+parser some( parser p ); // try parser p 1 or more times
 
 // return only first result
 parser trim( parser p );

@@ -4,8 +4,7 @@
 #endif
 
 enum syntax_analysis_symbols {
-  func_def = SYM3,
-  data_def,
+  func_def = SYM3, data_def,
   SYM4
 };
 
