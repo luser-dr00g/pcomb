@@ -53,7 +53,11 @@
     fortuple {a n p}{ 0 n /a load length 1 sub
 	{ /a exch /n getinterval /p exec } {load-if-literal-name} map end for
     } @func-begin
-    load-if-literal-name { dup type /nametype eq 1 index xcheck not and { load } if }
+    load-if-literal-name {
+        dup type /nametype eq 1 index xcheck not and {
+            { load } stopped pop
+        } if
+    }
 } pairs-def
 
 /debug where{pop}{currentfile flushfile}ifelse

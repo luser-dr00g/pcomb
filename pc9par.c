@@ -317,10 +317,13 @@ regex( char *re ){
     parser term   = using( some( factor ), on_term );
     parser expr   = using( seq( term, many( xthen( chr('|'), term ) ) ), on_expr );
     *expr_ = *expr;
-    p = trim( expr );
+    //p = trim( expr );
+    p = expr;
     add_global_root( p );
   }
   list r = parse( p, chars_from_string( re ) );
+  drop( 5 , r );
+  PRINT( r );
   return  valid( r )  ? ( x_( x_( r ) ) )  : r;
 }
 
@@ -459,10 +462,15 @@ int test_regex(){
   PRINT( parse( a, chars_from_string( "a" ) ) );
   PRINT( parse( a, chars_from_string( "." ) ) );
   PRINT( parse( a, chars_from_string( "\\." ) ) );
+  PRINT( Int( garbage_collect( 0 ) ) );
+  PRINT( a = regex( "." ) );
+  PRINT( parse( a, chars_from_string( "abc" ) ) );
+  PRINT( Int( garbage_collect( 0 ) ) );
   parser b;
   PRINT( b = regex( "\\\\\\." ) );
   PRINT( parse( b, chars_from_string( "\\." ) ) );
   PRINT( take( 3, parse( b, chars_from_string( "\\." ) ) ) );
+  PRINT( Int( garbage_collect( 0 ) ) );
   parser r;
   PRINT( r = regex( "a?b+(c).|def" ) );
   PRINT( parse( r, chars_from_string( "abc" ) ) );
@@ -529,10 +537,10 @@ int test_parsers(){
   {
     parser r = item();
     PRINT( r );
-    PRINT( parse( r, ch ) );
-    PRINT( x_( parse( r, ch ) ) );
-    PRINT( take( 1, x_( parse( r, ch ) ) ) );
-    PRINT( x_( take( 1, x_( parse( r, ch ) ) ) ) );
+    PRINT(                           parse( r, ch )         );
+    PRINT(                       x_( parse( r, ch ) )       );
+    PRINT(              take( 1, x_( parse( r, ch ) ) )     );
+    PRINT(          x_( take( 1, x_( parse( r, ch ) ) ) )   );
     PRINT( take( 1, x_( take( 1, x_( parse( r, ch ) ) ) ) ) );
     PRINT( parse( bind( r, Operator( 0, b ) ), ch ) );
     PRINT( Int( garbage_collect( cons( ch, r ) ) ) );
@@ -556,10 +564,10 @@ int test_parsers(){
 
 int par_main(){
   return 
-	  obj_main(),
-	  test_env(), test_parsers(),
+	  //obj_main(),
+	  //test_env(), test_parsers(),
 	  test_regex(),
-          test_pprintf(),
-          test_pscanf(),
+          //test_pprintf(),
+          //test_pscanf(),
           0;
 }

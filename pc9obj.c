@@ -27,14 +27,8 @@ valid( object a ){
   switch( a  ? a->t  : 0 ){
   default:  // null, NIL_ or unknown
     return 0;
-  case INTEGER:
-  case LIST:
-  case SUSPENSION:
-  case PARSER:
-  case OPERATOR:
-  case SYMBOL:
-  case STRING:
-  case VOID:
+  case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:
+  case SYMBOL: case STRING: case VOID:
     return 1;
   }
 }
@@ -195,7 +189,8 @@ drop( int n, list o ){
 static list
 at_chars_from_string( object v ){
   char *p = v->String.string;
-  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), at_chars_from_string ) )  : Symbol(EOF);
+  return  *p  ?  cons( Int( *p ), Suspension( String( p+1, 0 ), at_chars_from_string ) )
+              : Symbol(EOF);
 }
 list
 chars_from_string( char *p ){

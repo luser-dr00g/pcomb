@@ -1,0 +1,208 @@
+%errordict/rangecheck{ps countexecstack array execstack == quit}put
+%errordict/typecheck{ps countexecstack array execstack dup length 3 sub 2 getinterval == quit}put
+%errordict/stackunderflow{ps countexecstack array execstack dup length 3 sub 2 getinterval == quit}put
+%errordict/undefined{ps countexecstack array execstack dup length 5 sub 4 getinterval == currentdict === quit}put
+
+(struct2.ps)run {  % comments below
+  nl (\n) @first
+  eof { /z [ -1 a second ] def  z one } % :a
+string-input (s/string) { [ [s [0 0 0]] /string-next cvx ] cvx } @func
+  string-next  (a/array)  { a first length 0 eq { eof }{
+	/z [ a first first  a second ] def
+	/r [ a first rest   a second new-position ] def
+	[ z [ r /string-next cvx ] cvx ] } ifelse } @func
+  new-position { % :z
+    spill 3 2 roll 1 add 3 1 roll exch
+    z first nl eq { pop 1 add 0 }{ 1 add } ifelse  exch 3 aa }
+filename-input { (r) file file-input }
+file-input (f/file)  { [ [f [0 0 0]] /file-next cvx ] cvx } @func
+  file-next  (a/array) { a first read not { eof }{
+	/z [ 3 2 roll  a second ] def
+        /r [ a first   a second new-position ] def
+	[ z [ r /file-next cvx ] cvx ] } ifelse } @func
+
+zero        { { pop [] } }
+result {v}  { { /v exch cons one } ll } @func
+item        { { @ dup first first -1 ne { xs-x result }{ zero } ifelse exec } }
+
+chain {m f} { { /m exec { xs-x /f exec } fmap join } ll } @func
+  join        { {cat} [] fold nop }
+  append      { 1 index second [] eq { 1 exch put }{ exch second exch append } ifelse }
+  cat         { %(cat)= ps / =
+		1 index xcheck { /@ cvx exch /cat cvx 4 aa cvx }{
+		1 index [] eq { exch pop }{ 1 index 3 1 roll append } ifelse } ifelse }
+  nop         {}
+
+satisfy {pred} { item  { first dup /pred exec { one result }{ pop zero } ifelse exec } ll
+                 chain } @func
+lit   {x}   { { /x eq } ll satisfy } @func
+range {a b} { { dup /a ge exch /b le and } ll satisfy } @func
+char        { first lit }
+str         { {lit} map {seq} reduce }
+
+seq   { { /_ load exch cat result exec } chain { <<exch/_ exch>>begin }{ end } wrap chain }
+xthen { seq { second result exec } chain }
+thenx { seq { first result exec } chain }
+
+into {p v q} { /p load { <<exch/v exch>>begin  /q exec  end } ll chain } @func
+tok  {t} { { to-string 
+             /t exch cons 
+	     1 index first second first inp first second spill 3 2 roll pop 3 aa
+             cons exch cons one } ll  chain 
+           { @ <</inp 2 index>>begin }{ end }  wrap  } @func
+
+alt  {p q} { { dup /p exec exch {/q exec} curry 
+               1 index xcheck { { exch @ exch cat } curry curry }{ cat } ifelse
+             } ll } @func
+
+anyof     { {lit} any }
+any       { map {alt} reduce }
+noneof    { anyof none }
+none  {p} { { dup /p exec [] ne { zero }{ item } ifelse exec } ll } @func
+
+maybe     { [] result alt }
+many      { {{-777 exec}exec} ll dup first 3 1 roll seq maybe  % x* = xx*
+	    2 copy 0 exch put  exch pop executeonly }
+some      { dup many seq }
+using     { { result exec } compose chain }
+trim {p}  { { /p exec dup length 0 gt { 0 1 getinterval } if } ll } @func
+
+to-string { dup type /integertype eq { [] cons } if array-from-list string-from-array }
+wrap { 3 2 roll exch compose compose }
+ll   { {load-if-literal-name} deep-map }
+deep-map { 1 index type /arraytype ne { exec }{
+  1 index xcheck 3 1 roll [ 3 1 roll /deep-map cvx 2 aa cvx forall ] exch {cvx} if} ifelse }
+list-from-array   { dup length 0 gt { [ exch dup 0 get exch rest list-from-array ] } if }
+array-from-list   { dup length 0 ne { [ exch all-list-elements ] } if }
+all-list-elements { dup first exch next dup length 0 eq {pop}{ all-list-elements } ifelse}
+string-from-array { dup length string 
+    0 1 2 index length 1 sub {3 copy exch pop get 3 copy put pop pop} for  exch pop }
+
+fold {
+    %(fold)= ps / =
+    2 index xcheck { /@ cvx 3 1 roll /fold cvx  5 aa cvx }{
+	2 index length 0 eq { 3 1 roll pop pop }{
+	    2 index second [] eq { pop pop first }{
+		3 2 roll  % f z l
+		spill % f z l_0 l_1
+		3 index exch 5 3 roll % l0 f l1 f z
+		fold % l0 f l1'
+		exch exec
+            } ifelse
+        } ifelse
+    } ifelse
+}
+
+fmap {
+    1 index xcheck { /@ cvx exch /fmap cvx  4 aa cvx }{
+	1 index length 0 eq { pop }{
+	    1 index first 1 index exec 3 1 roll exch second exch fmap cons
+	} ifelse
+    } ifelse
+}
+
+take   {x n}{ n 0 eq { [] }{ [ /x load x-xs n 1 sub take ] } ifelse } @func
+drop   {n}{ n 0 gt { next n 1 sub drop } if } @func
+x-xs   { @ dup first exch next }   % car and cdr  or  cdr and car
+xs-x   { @ dup next exch first }
+next   { dup second xcheck { dup 1 {@} update } if second }  % force and update cdr
+update { 3 copy pop get exch exec put }                      % a i p    a[i]=p(a[i])
+/@     { { dup xcheck { exec }{ exit } ifelse } loop }       % force
+
+cons  { 2 aa }              one { [] cons }       second { 1 get }
+spill { {} forall }         aa  { array astore }
+ps    { (stack:)= pstack }  pc  { ps clear }      pq     { ps quit }
+} pairs-begin
+
+
+{
+(abc) {} map string-from-array pc
+(abc\ndef) {}map list-from-array ps clear / =
+(abc\ndef) string-input ps @ array-from-list ps clear / =
+(abc\ndef) string-input @ ps array-from-list {first} map ps clear / =
+(abc\nde) string-input ps @ dup 6 drop ps pop array-from-list ps
+    {first} map ps list-from-array ps clear / =
+
+} pop
+{
+(abc\nde) string-input item exec ps first ps first ps clear / =
+() string-input ps item exec ps clear / =
+} pop
+
+{
+(abc) string-input {== ps true} satisfy exec ps first ps first ps clear / =
+(abc) string-input {== ps false} satisfy exec ps clear / =
+(abc) string-input (a) char exec ps clear / =
+(abc) string-input (ab) str exec ps first ps first ps clear / =
+(abc) string-input (ab) str /AB tok exec ps first first ps clear / =
+(bbb) string-input (abc) anyof exec @ ps first ps spill ps clear / =
+{currentfile file-input (ab) str /AB tok exec ps}exec
+abc
+quit
+} pop
+
+1 dict begin
+(../../debug.ps/db5.ps) run stepon
+%(abc) string-input (abc) anyof exec ps
+{
+(bbc) string-input (a) char (b) char (c) char alt alt dup seq 
+ps exec ps / = @ ps
+} debug
+quit
+
+{
+  {dup {{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {97 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec exch {{dup {{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {98 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec exch {{{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {99 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec} curry 1 index xcheck {{exch @ exch cat} curry curry} {cat} ifelse} exec} curry 1 index xcheck {{exch @ exch cat} curry curry} {cat} ifelse}
+ exec 
+{xs-x 
+  {<< exch /_ exch >> begin {dup {{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {97 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec exch {{dup {{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {98 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec exch {{{@ dup first first -1 ne {xs-x result} {zero} ifelse exec} exec {xs-x {first dup {99 eq} exec {one result} {pop zero} ifelse exec} exec} fmap join} exec} curry 1 index xcheck {{exch @ exch cat} curry curry} {cat} ifelse} exec} curry 1 index xcheck {{exch @ exch cat} curry curry} {cat} ifelse} exec {xs-x {/_ load exch cat result exec} exec} fmap join end}
+ exec}
+ fmap join
+}
+
+
+% (string)  string-input  {...}
+%produce lazy list of [char [row col]] records
+
+% (filename)  filename-input  {...}
+% -file-  file-input  {...}
+
+% *-input  parser  [[result remainder]*]
+
+% -  zero  parser
+% parser that fails
+
+% value  result  parser
+% parser that returns [[value remainder]]
+
+% -  item  parser
+% parser that matches non-empty input
+
+% m f  chain  parser
+% map results from m through f and flatten
+
+% [[ [...]* ]*]  join  [[...]*]
+
+% pred  satisfy  parser
+% strip [row col] and validate char with pred
+
+% x  lit  parser
+% match literal x in input
+
+% (c)  char  parser
+% match char from single-char string
+
+% (string)  str  parser
+% match string in input
+
+% p q  seq  parser
+% call p and q in sequence, returning sequence of results
+
+% p v q  into  parser
+% call p and q in sequence, providing to q the result of p defined as v
+
+% p tag  tok  parser
+% call p, returning [[tag (match)] [len row col]]
+
+% x n  take/drop  x'
+% take or drop n elements from front of list x, forcing evaluation
+

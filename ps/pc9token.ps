@@ -2,10 +2,13 @@
 (pc9.ps)run
 errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit } put
 /handle { {to-string dup} exch compose {cons} compose using } def
+/! { { dup /0 eq { pop [] } if } using } def
+/maybe! { maybe ! } def
 
-/delimiters  ( \t\n()/%[]<>{})         def
-/delimiter   delimiters anyof          def
-/digit       (09) spill range          def
+/delimiters  ( \t\n()/%[]<>{})  def
+/delimiter   delimiters anyof   def
+/octal       (07) spill range   def
+/digit       (09) spill range   def
 /alpha       (az) spill range (AZ) spill range plus  def
 /regular     delimiters noneof  def
 %/regular     //alpha //digit plus  def
@@ -22,10 +25,16 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
 
 /ps-char     {-777 exec}  def
 /escape      (\\) char
-                  (\() char
+		  (\\) char
+                  (\() char  plus
 		  (\)) char  plus
 		  (n) char { pop (\n) first } using  plus
-             xthen  def
+		  (r) char { pop (\r) first } using  plus
+		  (t) char { pop (\t) first } using  plus
+		  (b) char { pop (\b) first } using  plus
+		  (f) char { pop (\f) first } using  plus
+		  //octal //octal maybe! seq //octal maybe! seq  plus
+             seq  def
 /substring   (\() char //ps-char many seq (\)) char  seq  def
 //ps-char 0
              //escape
@@ -65,8 +74,8 @@ errordict/typecheck{/typecheck = ps / = countexecstack array execstack == quit }
 } def
 
 /this 42 def
-(   (\\\n)  (abc) (()) (\\\() 16#FF name /word //this 123 2.65 [    )
-dup = %dup ==
+(   (\\n)  (abc) (()) (\\\() 16#FF name /word //this 123 2.65 [    )
+dup = dup ==
   {mytoken {
     dup dup type =only ( )print
         xcheck{(x)}{(lit)}ifelse =only ( )print

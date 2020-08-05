@@ -1,0 +1,43 @@
+(pc10.ps)run
+%errordict/typecheck{ps countexecstack array execstack == quit}put
+%errordict/rangecheck{countexecstack array execstack == quit}put
+/head { 0 exch getinterval } def
+/tail { 1 index length 1 index sub getinterval } def
+/return-length { /space tok { second first } using } def
+
+/spaces    ( \t\n) anyof many return-length def
+
+/delimiters ( \t\n()/%[]<>{}) def
+/delimiter  delimiters anyof  def
+/regular    delimiters noneof def
+/digit      (09) spill range  def
+/alpha      (az) spill range (AZ) spill range alt def
+
+/number     //digit some      def
+/opt-number //digit many      def
+/integer    (+-) anyof maybe //number seq def
+
+/name       //regular some    def
+
+/ps-token //integer    /cvi tok
+          //name       /cvn tok  alt
+          //delimiter  /cvn tok  alt  def
+
+/mytoken {
+    dup length 0 gt {
+	dup string-input //spaces exec @ ps first ps
+	xs-x 3 2 roll exch tail exch
+        //ps-token exec @ dup [] eq { pop pop false }{
+	    first first
+	    spill spill pop pop 3 2 roll exch tail exch
+	    spill exch cvx %exec true
+        } ifelse
+    }{ pop false } ifelse
+} def
+
+(45/) string-input @ ps-token ps %@ ps
+
+%(45/[]) mytoken ps clear / =
+%( ) mytoken ps clear
+%(nom 12) mytoken ps 
+quit
