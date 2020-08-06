@@ -5,8 +5,8 @@ static void mark_objects( list a );
 static int sweep_objects( list *po );
 
 // The T_ object has a dummy allocation record
-object T_ = &(1[(union uobject[]){{ .t = 0 },{ .Symbol = { SYMBOL, T, "T" } }}]),
-       NIL_ = (union uobject[]){{ .t = INVALID }};
+boolean T_ = &(1[(union uobject[]){{ .t = 0 },{ .Symbol = { SYMBOL, T, "T" } }}]),
+        NIL_ = (union uobject[]){{ .t = INVALID }};
 
 static list global_roots = NULL;
 static list allocation_list = NULL;
@@ -220,13 +220,13 @@ chars_from_file( FILE *f ){
   return  f  ? Suspension( Void( f ), force_chars_from_file ) : NIL_;
 }
 
-// 00-7f  0   7f
-// 80-bf  1   3f
-// c0-df  2   1f
-// e0-ef  3   0f
-// f0-f7  4   07
-// f8-fb  5   03
-// fc-ff  6   03
+// 00000000 00-7f 01111111 0   7f
+// 10000000 80-bf 10111111 1   3f
+// 11000000 c0-df 11011111 2   1f
+// 11100000 e0-ef 11101111 3   0f
+// 11110000 f0-f7 11110111 4   07
+// 11111000 f8-fb 11111011 5   03
+// 11111100 fc-ff 11111111 6   03
 static int
 leading_ones( object x ){
   unsigned int y = x->Int.i;

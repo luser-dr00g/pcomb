@@ -50,8 +50,8 @@ copy( list a ){
 
 static list
 force_append( object v ){
-  list a = assoc( Symbol(A), v );
-  list b = assoc( Symbol(B), v );
+  list a = assoc( Symbol(APPEND_A), v );
+  list b = assoc( Symbol(APPEND_B), v );
   *a = *force_( a );
   return  append( a, b );
 }
@@ -60,7 +60,8 @@ append( list a, list b ){
   return  !valid( a )  ?
             b
           : a->t == SUSPENSION  ?
-            Suspension( env( 0, 2, Symbol(A), a, Symbol(B), b ), force_append )
+            Suspension( env( 0, 2, Symbol(APPEND_A), a, Symbol(APPEND_B), b ),
+                        force_append )
           : cons( x_( a ), append( xs_( a ), b ) );
 }
 
@@ -69,8 +70,8 @@ append( list a, list b ){
 
 static object
 force_apply( object v ){
-  oper f = assoc( Symbol(F), v );
-  object o = assoc( Symbol(X), v );
+  oper f = assoc( Symbol(APPLY_F), v );
+  object o = assoc( Symbol(APPLY_X), v );
   *o = *force_( o );
   return  valid( o )  ? f->Operator.f( f->Operator.v, o )  : NIL_;
 }
@@ -79,7 +80,8 @@ apply( oper f, object o ){
   return  f->t == OPERATOR  ? 
             valid( o )  ?
               o->t == SUSPENSION  ?
-                Suspension( env( 0,2,Symbol(F),f,Symbol(X),o ), force_apply )
+                Suspension( env( 0, 2, Symbol(APPLY_F), f, Symbol(APPLY_X), o ),
+                            force_apply )
               : f->Operator.f( f->Operator.v, o )
             : f->Operator.f( f->Operator.v, o ) //for using(maybe(),...)
           : NIL_;
@@ -89,8 +91,8 @@ apply( oper f, object o ){
 
 static list
 force_map( object v ){
-  oper f = assoc( Symbol(F), v );
-  list o = assoc( Symbol(X), v );
+  oper f = assoc( Symbol(MAP_F), v );
+  list o = assoc( Symbol(MAP_X), v );
   *o = *force_( o );
   return  valid( o )  ?
             cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )
@@ -100,9 +102,9 @@ list
 map( oper f, list o ){
   return  valid( o )  ?
             o->t == SUSPENSION  ?
-              Suspension( env( 0,2,Symbol(F),f,Symbol(X),o ), force_map )
+              Suspension( env( 0,2,Symbol(MAP_F),f,Symbol(MAP_X),o ), force_map )
             : cons( apply( f, x_( o ) ),
-	      Suspension( env( 0,2,Symbol(F),f,Symbol(X),xs_(o) ), force_map ) )
+	      Suspension( env( 0,2,Symbol(MAP_F),f,Symbol(MAP_X),xs_(o) ), force_map ) )
 	  : NIL_;
   //return  valid( o )? cons( apply( f, x_( o ) ), map( f, xs_( o ) ) ): NIL_;
 }
@@ -110,7 +112,7 @@ map( oper f, list o ){
 
 static list
 force_join( object v ){
-  list o = assoc( Symbol(X), v );
+  list o = assoc( Symbol(JOIN_X), v );
   *o = *force_( o );
   return  append( x_( take( 1, o ) ), join( xs_( o ) ) );
 }
@@ -118,9 +120,9 @@ list
 join( list o ){
   return  valid( o )  ? 
             o->t == SUSPENSION  ?
-              Suspension( env( 0, 1, Symbol(X), o ), force_join )
+              Suspension( env( 0, 1, Symbol(JOIN_X), o ), force_join )
             : append( x_( o ),
-	        Suspension( env( 0,1,Symbol(X),xs_( o ) ), force_join ) )
+	        Suspension( env( 0,1,Symbol(JOIN_X),xs_( o ) ), force_join ) )
           : NIL_;
   //return  valid( o )  ? append( x_( o ), join( xs_( o ) ) )  : NIL_;
 }

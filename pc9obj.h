@@ -18,10 +18,10 @@ typedef boolean fPredicate( object, object );
 typedef object  fBinOper( object, object );
 
 enum object_symbols {
-  T, F, X, A, B,
+  T, X, F, APPLY_F, APPLY_X, MAP_F, MAP_X, JOIN_X, APPEND_A, APPEND_B,
   SYM1
 };
-object T_, NIL_;
+boolean T_, NIL_;
 
 int valid( object a );  // not null and not NIL_ 
 
