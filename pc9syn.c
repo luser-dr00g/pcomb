@@ -199,6 +199,7 @@ int test_syntax(){
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );
   PRINT_FLAT( x_( x_( program ) ) );
   PRINT_DATA( x_( x_( program ) ) );
+  PRINT_TREE( x_( x_( program ) ) );
   PRINT( xs_( x_( program ) ) );
   PRINT( Int( garbage_collect( program ) ) );
   return  0;

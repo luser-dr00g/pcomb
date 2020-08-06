@@ -5,7 +5,7 @@ static void mark_objects( list a );
 static int sweep_objects( list *po );
 
 // The T_ object has a dummy allocation record
-boolean T_ = &(1[(union uobject[]){{ .t = 0 },{ .Symbol = { SYMBOL, T, "T" } }}]),
+boolean T_ = &(1[(union uobject[]){{ .t = 1 },{ .Symbol = { SYMBOL, T, "T" } }}]),
         NIL_ = (union uobject[]){{ .t = INVALID }};
 
 static list global_roots = NULL;
@@ -292,7 +292,7 @@ ucs4_from_utf8( list o ){
 //    10 ff ff                           1111 0111 1011 1111 1011 1111 1011 1111 
 //              26             xxxx xx.. xx.. .... xx.. .... xx.. .... xx.. ....
 //  3 ff ff ff                 1111 1011 1011 1111 1011 1111 1011 1111 1011 1111
-//              31   xxxx xx.. xx.. .... xx.. .... xx.. .... xx.. .... xx.. ....
+//              32   xxxx xx.. xx.. .... xx.. .... xx.. .... xx.. .... xx.. ....
 // 3f ff ff ff       1111 1101 1011 1111 1011 1111 1011 1111 1011 1111 1011 1111
 
 static list force_utf8_from_ucs4( list v );
@@ -441,8 +441,43 @@ print_data( list a ){
   switch(  a->t  ){
   case LIST:   print_data( a->List.a),
                print_data( a->List.b );  break;
-  case STRING: printf( "%s", a->String.string ); break;
+  case STRING: printf( "%s", a->String.string );  break;
   case SYMBOL: print_data( a->Symbol.data );  break;
+  default: print( a );
+  }
+}
+
+void
+print_tree_branch( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  case LIST:   //printf( "( " ),
+                 print_tree_branch( a->List.a ),
+		 print_tree_branch( a->List.b )//,
+               //printf( ") " )
+               ;
+               break;
+  case SYMBOL: printf("<%s:", a->Symbol.pname ),
+                 print_tree_branch( a->Symbol.data ),
+               printf( "> " );  break;
+  default: print( a );
+  }
+}
+
+void
+print_tree( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  case LIST:   //printf( "( " ),
+                 print_tree_branch( a->List.a ),
+		 printf( "\n" ),
+		 print_tree( a->List.b )//,
+               //printf( ") " )
+               ;
+               break;
+  case SYMBOL: printf("<%s:", a->Symbol.pname ),
+                 print_tree_branch( a->Symbol.data ),
+               printf( "> " );  break;
   default: print( a );
   }
 }
