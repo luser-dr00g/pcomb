@@ -4,6 +4,26 @@
 #include "pc9par.h"
 #include "pc9objpriv.h"
 
+static list parse_result( object v, list input );
+static list parse_zero( object v, list input );
+static list parse_item( object v, list input );
+static list parse_bind( object v, list input );
+static list parse_plus( object v, list input );
+static list force_r_plus( object v );
+static list force_q_plus( object v );
+static list parse_sat( object v, list input );
+static boolean oper_alpha( object v, object o );
+static boolean oper_digit( object v, object o );
+static list parse_noneof( object v, list input );
+static boolean oper_lit( object v, object o );
+static list each_prepend( object v, list o );
+static list prepend( list a, list b );
+static list oper_seq( object v, list output );
+static list oper_xthen( object v, list o );
+static list oper_thenx( object v, list o );
+static list oper_into( object v, list o );
+static list parse_trim( object v, list input );
+static list parse_using( object v, list o );
 
 list
 parse( parser p, list input ){
@@ -15,24 +35,33 @@ parse( parser p, list input ){
 
 // Unit constructors
 
-static list
-parse_result( object v, list input ){
-  return  one( cons( v, input ) );
-  //return  one( cons( assoc( Symbol(VALUE), v ), input ) );
-}
 parser
 result( object a ){
+  return  Parser( env( 0, 1, Symbol(VALUE), a ), parse_result );
   return  Parser( a, parse_result );
-  //return  Parser( env( 0, 1, Symbol(VALUE), a ), parse_result );
+}
+
+static list
+parse_result( object v, list input ){
+  return  one( cons( assoc( Symbol(VALUE), v ), input ) );
+  return  one( cons( v, input ) );
+}
+
+
+parser
+zero( void ){
+  return  Parser( 0, parse_zero );
 }
 
 static list
 parse_zero( object v, list input ){
   return  NIL_;
 }
+
+
 parser
-zero( void ){
-  return  Parser( 0, parse_zero );
+item( void ){
+  return  Parser( 0, parse_item );
 }
 
 static list
@@ -42,13 +71,14 @@ parse_item( object v, list input ){
   //return  valid( input ) ? one( cons( x_( take( 1, input ) ), xs_( input ) ) )  : NIL_;  //strict
   //return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;             //lazy
 }
-parser
-item( void ){
-  return  Parser( 0, parse_item );
-}
 
 
 // Attach operator to process parser results
+
+parser
+bind( parser p, oper f ){
+  return  Parser( env( 0, 2, Symbol(BIND_P), p, Symbol(BIND_F), f ), parse_bind );
+}
 
 static list
 parse_bind( object v, list input ){
@@ -64,29 +94,16 @@ parse_bind( object v, list input ){
 	    ), r ) )
 	  : NIL_;
 }
-parser
-bind( parser p, oper f ){
-  return  Parser( env( 0, 2, Symbol(BIND_P), p, Symbol(BIND_F), f ), parse_bind );
-}
 
 
 // Logical OR
 
-static list
-force_r_plus( object v ){
-  list r = assoc( Symbol(PLUS_R), v );
-  object qq = assoc( Symbol(PLUS_Q), v );
-  *r = *force_( r );
-  return  valid( r )  ?
-            append( r, qq )
-          : qq;
+parser
+plus( parser p, parser q ){
+  if(  !q  ) return  p;
+  return  Parser( env( 0,2,Symbol(PLUS_P),p,Symbol(PLUS_Q),q ), parse_plus );
 }
-static list
-force_q_plus( object v ){
-  parser q = assoc( Symbol(PLUS_Q), v );
-  list input = assoc( Symbol(PLUS_X), v );
-  return  parse( q, input );
-}
+
 static list
 parse_plus( object v, list input ){
   parser p = assoc( Symbol(PLUS_P), v );
@@ -99,14 +116,31 @@ parse_plus( object v, list input ){
 	    : append( r, qq )
 	  : qq;
 }
-parser
-plus( parser p, parser q ){
-  if(  !q  ) return  p;
-  return  Parser( env( 0,2,Symbol(PLUS_P),p,Symbol(PLUS_Q),q ), parse_plus );
+
+static list
+force_r_plus( object v ){
+  list r = assoc( Symbol(PLUS_R), v );
+  object qq = assoc( Symbol(PLUS_Q), v );
+  *r = *force_( r );
+  return  valid( r )  ?
+            append( r, qq )
+          : qq;
+}
+
+static list
+force_q_plus( object v ){
+  parser q = assoc( Symbol(PLUS_Q), v );
+  list input = assoc( Symbol(PLUS_X), v );
+  return  parse( q, input );
 }
 
 
 // check item with predicate
+
+parser
+sat( predicate pred ){
+  return  bind( item(), Operator( env( 0,1,Symbol(SAT_PRED),pred ), parse_sat ) );
+}
 
 static list
 parse_sat( object v, list input ){
@@ -116,45 +150,53 @@ parse_sat( object v, list input ){
             one( cons( x_( input ), xs_( input ) ) )
           : NIL_;
 }
-parser
-sat( predicate pred ){
-  return  bind( item(), Operator( env( 0,1,Symbol(SAT_PRED),pred ), parse_sat ) );
-}
 
 
 // characters
 
-static boolean
-oper_alpha( object v, object o ){
-  return  isalpha( o->Int.i )  ? T_  : NIL_;
-}
 parser
 alpha( void ){
   return  sat( Operator( 0, oper_alpha ) );
 }
 
 static boolean
-oper_digit( object v, object o ){
-  return  isdigit( o->Int.i )  ? T_  : NIL_;
+oper_alpha( object v, object o ){
+  return  isalpha( o->Int.i )  ? T_  : NIL_;
 }
+
+
 parser
 digit( void ){
   return  sat( Operator( 0, oper_digit ) );
 }
+
+static boolean
+oper_digit( object v, object o ){
+  return  isdigit( o->Int.i )  ? T_  : NIL_;
+}
+
 
 parser
 chr( int c ){
   return  lit( Int( c ) );
 }
 
+
 parser
 str( char *s ){
   return  *s  ? seq( chr( *s ), str( s+1 ) )  : result(0);
 }
 
+
 parser
 anyof( char *s ){
   return  *s  ? plus( chr( *s ), anyof( s+1 ) )  : zero();
+}
+
+
+parser
+noneof( char *s ){
+  return  Parser( env( 0, 1, Symbol(NONEOF_P), anyof( s ) ), parse_noneof );
 }
 
 static list
@@ -164,41 +206,24 @@ parse_noneof( object v, list input ){
   *r = *force_( r );
   return  valid( r )  ? NIL_  : parse_item( 0, input );
 }
-parser
-noneof( char *s ){
-  return  Parser( env( 0, 1, Symbol(NONEOF_P), anyof( s ) ), parse_noneof );
-}
 
 
 // check item against typed object a
 
-static boolean
-parse_lit( object v, object o ){
-  object a = assoc( Symbol(LIT_X), v );
-  return  eq( a, o );
-}
 parser
 lit( object a ){
-  return  sat( Operator( env( 0, 1, Symbol(LIT_X), a ), parse_lit ) );
+  return  sat( Operator( env( 0, 1, Symbol(LIT_X), a ), oper_lit ) );
+}
+
+static boolean
+oper_lit( object v, object o ){
+  object a = assoc( Symbol(LIT_X), v );
+  return  eq( a, o );
 }
 
 
 // Sequencing
 
-static list
-each_prepend( object v, list o ){
-  object a = assoc( Symbol(PREPEND_A), v );
-  return  valid( a )  ? cons( cons( a, x_( o ) ), xs_( o ) )  : o;
-}
-static list
-prepend( list a, list b ){
-  return  map( Operator( env( 0, 1, Symbol(PREPEND_A), a ), each_prepend ), b );
-}
-static list
-oper_seq( object v, list output ){
-  parser q = assoc( Symbol(SEQ_Q), v );
-  return  prepend( x_( output ), parse( q, xs_( output ) ) );
-}
 parser
 seq( parser p, parser q ){
   if(  !q  ) return  p;
@@ -206,21 +231,49 @@ seq( parser p, parser q ){
 }
 
 static list
-oper_xthen( object v, list o ){
-  return  one( cons( xs_( x_( o ) ), xs_( o ) ) );
+oper_seq( object v, list output ){
+  parser q = assoc( Symbol(SEQ_Q), v );
+  return  prepend( x_( output ), parse( q, xs_( output ) ) );
 }
+
+static list
+prepend( list a, list b ){
+  return  map( Operator( env( 0, 1, Symbol(PREPEND_A), a ), each_prepend ), b );
+}
+
+static list
+each_prepend( object v, list o ){
+  object a = assoc( Symbol(PREPEND_A), v );
+  return  valid( a )  ? cons( cons( a, x_( o ) ), xs_( o ) )  : o;
+}
+
+
 parser
 xthen( parser p, parser q ){
   return  bind( seq( p, q ), Operator( 0, oper_xthen ) );
 }
 
 static list
-oper_thenx( object v, list o ){
-  return  one( cons( x_( x_( o ) ), xs_( o ) ) );
+oper_xthen( object v, list o ){
+  return  one( cons( xs_( x_( o ) ), xs_( o ) ) );
 }
+
+
 parser
 thenx( parser p, parser q ){
   return  bind( seq( p, q ), Operator( 0, oper_thenx ) );
+}
+
+static list
+oper_thenx( object v, list o ){
+  return  one( cons( x_( x_( o ) ), xs_( o ) ) );
+}
+
+
+parser
+into( parser p, object id, parser q ){
+  return  bind( p,
+		Operator( env( 0,2,Symbol(INTO_ID),id,Symbol(INTO_Q),q ), oper_into ) );
 }
 
 static list
@@ -228,11 +281,6 @@ oper_into( object v, list o ){
   object id = assoc( Symbol(INTO_ID), v );
   parser q = assoc( Symbol(INTO_Q), v );
   return  parse( Parser( env(q->Parser.v,1,id,x_(o)), q->Parser.f ), xs_( o ) );
-}
-parser
-into( parser p, object id, parser q ){
-  return  bind( p,
-		Operator( env( 0,2,Symbol(INTO_ID),id,Symbol(INTO_Q),q ), oper_into ) );
 }
 
 
@@ -267,31 +315,33 @@ some( parser p ){
 
 // return only first result
 
-static list
-parse_trim( object v, list input ){
-  //parser p = assoc( Symbol(PP), v );
-  parser p = v;
-  list r = parse( p, input );
-  return  valid( r )  ? one( x_( take( 1, r ) ) )  : r;
-}
 parser
 trim( parser p ){
-  //return  Parser( env( 0, 1, Symbol(PP), p ), parse_trim );
-  return  Parser( p, parse_trim );
+  return  Parser( env( 0, 1, Symbol(TRIM_P), p ), parse_trim );
+  //return  Parser( p, parse_trim );
+}
+
+static list
+parse_trim( object v, list input ){
+  parser p = assoc( Symbol(TRIM_P), v );
+  //parser p = v;
+  list r = parse( p, input );
+  return  valid( r )  ? one( x_( take( 1, r ) ) )  : r;
 }
 
 
 // map results through user callback
 
-static list
-parse_using( object v, list o ){
-  oper f = assoc( Symbol(USING_F), v );
-  return  one( cons( apply( f, x_( o ) ), xs_( o ) ) );
-}
 parser
 using( parser p, fOperator *f ){
   return  bind( p,
 		Operator( env( 0,1,Symbol(USING_F),Operator(0,f) ), parse_using ) );
+}
+
+static list
+parse_using( object v, list o ){
+  oper f = assoc( Symbol(USING_F), v );
+  return  one( cons( apply( f, x_( o ) ), xs_( o ) ) );
 }
 
 
@@ -587,7 +637,8 @@ int test_parsers(){
 int par_main(){
   return 
 	  //obj_main(),
-	  //test_env(), test_parsers(),
+	  //test_env(), 
+          test_parsers(),
 	  test_regex(),
           //test_pprintf(),
           //test_pscanf(),

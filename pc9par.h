@@ -8,7 +8,7 @@ enum parser_symbols {
   VALUE = SYM1, 
   BIND_P, BIND_F, PLUS_P, PLUS_Q, PLUS_R, PLUS_X,
   SAT_PRED, NONEOF_P, LIT_X, SEQ_Q, PREPEND_A,
-  INTO_ID, INTO_Q, USING_F,
+  INTO_ID, INTO_Q, USING_F, TRIM_P,
   PRED, P, PP, NN, Q, R, FF, XX, AA, ID, USE, ATOM,
   SYM2
 };
@@ -18,7 +18,7 @@ list parse( parser p, list input );
 // Unit constructors
 parser result( object a ); // parser that succeeds and returns a
 parser zero( void ); // parser that fails
-parser item( void ); // 
+parser item( void ); // parser for one item (char or token)
 
 // Attach operator to process parser results
 parser bind( parser p, oper f );

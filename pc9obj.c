@@ -143,6 +143,8 @@ sweep_objects( list *po ){
 // Force execution of Suspension
 object
 force_( object a ){
+  return  !valid( a ) || a->t != SUSPENSION  ?  a
+          : force_( a->Suspension.f( a->Suspension.v ) );
   return  valid( a ) && a->t == SUSPENSION  ?
             force_( a->Suspension.f( a->Suspension.v ) )
           : a;
@@ -301,25 +303,25 @@ list utf_one_byte( object x, list v ){
 	    cons( x, Suspension( drop( 1, v ), force_utf8_from_ucs4 ) )
           : Symbol(EOF);
 }
-list utf_two_byte( object x, list v ){
+static list utf_two_byte( object x, list v ){
   return  cons( Int( (x->Int.i >> 6)    | 0xc0 ),
 	  cons( Int( (x->Int.i & 0x3f ) | 0x80 ),
 		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) );
 }
-list utf_three_byte( object x, list v ){
+static list utf_three_byte( object x, list v ){
   return  cons( Int(   (x->Int.i >> 12)          | 0xe0 ),
 	  cons( Int( ( (x->Int.i >>  6) & 0x3f ) | 0x80 ),
 	  cons( Int( ( (x->Int.i >>  0) & 0x3f ) | 0x80 ),
 		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) );
 }
-list utf_four_byte( object x, list v ){
+static list utf_four_byte( object x, list v ){
   return  cons( Int(   (x->Int.i >> 18)           | 0xf0 ),
 	  cons( Int( ( (x->Int.i >> 12) & 0x3f )  | 0x80 ),
 	  cons( Int( ( (x->Int.i >>  6) & 0x3f )  | 0x80 ),
 	  cons( Int( ( (x->Int.i >>  0) & 0x3f )  | 0x80 ),
 		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) ) );
 }
-list utf_five_byte( object x, list v ){
+static list utf_five_byte( object x, list v ){
   return  cons( Int(   (x->Int.i >> 24)          | 0xf8 ),
 	  cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
 	  cons( Int( ( (x->Int.i >> 12) & 0x3f ) | 0x80 ),
@@ -327,7 +329,7 @@ list utf_five_byte( object x, list v ){
 	  cons( Int( ( (x->Int.i >>  0) & 0x3f ) | 0x80 ),
 		Suspension( drop( 1, v ), force_utf8_from_ucs4 ) ) ) ) ) );
 }
-list utf_six_byte( object x, list v ){
+static list utf_six_byte( object x, list v ){
   return  cons( Int(   (x->Int.i >> 30)          | 0xfc ),
 	  cons( Int( ( (x->Int.i >> 24) & 0x3f ) | 0x80 ),
 	  cons( Int( ( (x->Int.i >> 18) & 0x3f ) | 0x80 ),
@@ -340,22 +342,19 @@ list utf_six_byte( object x, list v ){
 static list
 force_utf8_from_ucs4( list v ){
   object x = x_( take( 1, v ) );
-  if(  valid( x )  ) {
-    if(       x->Int.i <=       0x7f  ) return  utf_one_byte(   x, v );
-    else if(  x->Int.i <=      0x7ff  ) return  utf_two_byte(   x, v );
-    else if(  x->Int.i <=     0xffff  ) return  utf_three_byte( x, v );
-    else if(  x->Int.i <=   0x10ffff  ) return  utf_four_byte(  x, v );
-    else if(  x->Int.i <=  0x3ffffff  ) return  utf_five_byte(  x, v );
-    else if(  x->Int.i <= 0x3fffffff  ) return  utf_six_byte(   x, v );
-    else {
-      fprintf(stderr, "Invalid unicode code point in ucs4 char.\n");
-      return  drop( 1, v );
-    }
-  } else {
-    return  v;
+  if(  !valid( x )  ) return  v;
+  if(       x->Int.i <=       0x7f  ) return  utf_one_byte(   x, v );
+  else if(  x->Int.i <=      0x7ff  ) return  utf_two_byte(   x, v );
+  else if(  x->Int.i <=     0xffff  ) return  utf_three_byte( x, v );
+  else if(  x->Int.i <=   0x10ffff  ) return  utf_four_byte(  x, v );
+  else if(  x->Int.i <=  0x3ffffff  ) return  utf_five_byte(  x, v );
+  else if(  x->Int.i <= 0x3fffffff  ) return  utf_six_byte(   x, v );
+  else {
+    fprintf(stderr, "Invalid unicode code point in ucs4 char.\n");
+    return  drop( 1, v );
   }
 }
-  
+
 list
 utf8_from_ucs4( list v ){
   return  valid( v )  ?  Suspension( v, force_utf8_from_ucs4 ) : NIL_;
@@ -407,7 +406,7 @@ print( object o ){
   }
 }
 
-void
+static void
 print_listn( list a ){
   switch(  a  ? a->t  : 0  ){
   default:   print( a ); return;
@@ -447,16 +446,14 @@ print_data( list a ){
   }
 }
 
-void
+static void
 print_tree_branch( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   //printf( "( " ),
+  case LIST:   printf( "( " ),
                  print_tree_branch( a->List.a ),
-		 print_tree_branch( a->List.b )//,
-               //printf( ") " )
-               ;
-               break;
+		 print_tree_branch( a->List.b ),
+               printf( ") " );  break;
   case SYMBOL: printf("<%s:", a->Symbol.pname ),
                  print_tree_branch( a->Symbol.data ),
                printf( "> " );  break;
@@ -473,8 +470,7 @@ print_tree( list a ){
 		 printf( "\n" ),
 		 print_tree( a->List.b )//,
                //printf( ") " )
-               ;
-               break;
+               ;  break;
   case SYMBOL: printf("<%s:", a->Symbol.pname ),
                  print_tree_branch( a->Symbol.data ),
                printf( "> " );  break;
@@ -483,7 +479,7 @@ print_tree( list a ){
 }
 
 
-int
+static int
 test_basics(){
   list ch = chars_from_string( "abcdef" );
   PRINT( ch );

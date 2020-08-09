@@ -55,14 +55,14 @@ list utf8_from_ucs4( list o );
 object string_from_chars( list o );
 
 // Printing stuff
-#define PRINT(__)      PRINT_WRAPPER( print_list, __, "" )
+#define PRINT(__)      PRINT_WRAPPER( print_list, __, "= " )
 void print( object o );
 void print_list( list a );
 void print_flat( list a );
 void print_data( list a );
 void print_tree( list a );
-#define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat" )
-#define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data" )
-#define PRINT_TREE(__) PRINT_WRAPPER( print_tree, __, "tree" )
+#define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat= " )
+#define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data=\n" )
+#define PRINT_TREE(__) PRINT_WRAPPER( print_tree, __, "tree=\n" )
 #define PRINT_WRAPPER(_, __, ___) \
-  printf( "%s: %s %s= ", __func__, #__, ___ ), _( __ ), puts("")
+  printf( "%s: %s %s", __func__, #__, ___ ), _( __ ), puts("")
