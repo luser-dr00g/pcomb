@@ -333,9 +333,9 @@ parse_trim( object v, list input ){
 // map results through user callback
 
 parser
-using( parser p, fOperator *f ){
+using( parser p, object v, fOperator *f ){
   return  bind( p,
-		Operator( env( 0,1,Symbol(USING_F),Operator(0,f) ), parse_using ) );
+		Operator( env( 0,1,Symbol(USING_F),Operator(v,f) ), parse_using ) );
 }
 
 static list
@@ -371,21 +371,21 @@ parser
 regex( char *re ){
   static parser p;
   if(  !p  ){
-    parser dot    = using( chr('.'), on_dot );
+    parser dot    = using( chr('.'), 0, on_dot );
     parser meta   = anyof( META );
     parser escape = xthen( chr('\\'), anyof( SPECIAL "\\" ) );
     parser chr_   = using( plus( escape,  noneof( SPECIAL ) ),
-			   on_chr );
+			   0, on_chr );
     parser expr_  = forward();
     parser atom   = PLUS( dot,
                           xthen( chr('('), thenx( expr_, chr(')') ) ),
                           chr_ );
     parser factor = into( atom, Symbol(ATOM),
-			  using( maybe( meta ), on_metachar ) );
+			  using( maybe( meta ), 0, on_metachar ) );
     parser term   = using( some( factor ),
-			   on_term );
+			   0, on_term );
     parser expr   = using( seq( term, many( xthen( chr('|'), term ) ) ),
-			   on_expr );
+			   0, on_expr );
     *expr_ = *expr;
     //p = trim( expr );
     p = expr;
@@ -399,12 +399,6 @@ regex( char *re ){
 
 
 // example, simple printf() implementatino
-
-parser
-vusing( parser p, object v, fOperator *f ){
-  return  bind( p,
-		Operator( env( 0,1,Symbol(USING_F),Operator(v,f) ), parse_using ) );
-}
 
 object sum( object a, object b ){ return  Int( a->Int.i + b->Int.i ); }
 
@@ -432,13 +426,13 @@ pprintf( char const *fmt, ... ){
   va_start( v, fmt );
   static parser p;
   if(  !p  ){
-    parser directive = PLUS( using( chr('%'), p_lit ),
-                             vusing( chr('c'), Void( &v ), p_char ),
-                             vusing( chr('s'), Void( &v ), p_string ) );
+    parser directive = PLUS( using( chr('%'), 0, p_lit ),
+                             using( chr('c'), Void( &v ), p_char ),
+                             using( chr('s'), Void( &v ), p_string ) );
     parser term = PLUS( xthen( chr('%'), directive ),
-                        using( sat( Operator( 0, nz ) ), p_lit ) );
+                        using( sat( Operator( 0, nz ) ), 0, p_lit ) );
     parser format = many( term );
-    p = using( format, on_fmt );
+    p = using( format, 0, on_fmt );
     add_global_root( p );
   }
   object r = parse( p, chars_from_string( (char*)fmt ) );
@@ -464,15 +458,15 @@ static object  convert_string( object v, list o ){
 }
 
 static parser  on_char( object v, list o ){
-  return  vusing( item(), v, convert_char );
+  return  using( item(), v, convert_char );
 }
 static parser  on_string( object v, list o ){
-  return  vusing( xthen( many( anyof( " \t\n" ) ),  many( noneof( " \t\n" ) ) ),
+  return  using( xthen( many( anyof( " \t\n" ) ),  many( noneof( " \t\n" ) ) ),
 		  v, convert_string );
 }
 
 static object  r_zero( object v, list o ){ return  Int(0); }
-static parser  pass( parser p ){ return  using( p, r_zero ); }
+static parser  pass( parser p ){ return  using( p, 0, r_zero ); }
 
 static parser  on_space( object v, list o ){ return  valid( o )  ? pass( many( anyof( " \t\n" ) ) )  : o; }
 static parser  on_percent( object v, list o ){ return  pass( chr('%') ); }
@@ -480,7 +474,7 @@ static parser  on_lit( object v, list o ){ return  pass( lit( o ) ); }
 
 static object  sum_up( object v, list o ){ return  collapse( sum, o ); }
 
-static parser  on_terms( object v, list o ){ return  using( collapse( seq, o ), sum_up ); }
+static parser  on_terms( object v, list o ){ return  using( collapse( seq, o ), 0, sum_up ); }
 
 int
 pscanf( char const *fmt, ... ){
@@ -489,14 +483,14 @@ pscanf( char const *fmt, ... ){
   va_start( v, fmt );
   static parser p;
   if(  !p  ){
-    parser space = using( many( anyof( " \t\n" ) ), on_space );
-    parser directive = PLUS( using( chr('%'), on_percent ),
-                             vusing( chr('c'), Void( &v ), on_char ),
-                             vusing( chr('s'), Void( &v ), on_string ) );
+    parser space = using( many( anyof( " \t\n" ) ), 0, on_space );
+    parser directive = PLUS( using( chr('%'), 0, on_percent ),
+                             using( chr('c'), Void( &v ), on_char ),
+                             using( chr('s'), Void( &v ), on_string ) );
     parser term  = PLUS( xthen( chr('%'), directive ),
-                         using( sat( Operator( 0, nz ) ), on_lit ) );
+                         using( sat( Operator( 0, nz ) ), 0, on_lit ) );
     parser format = many( seq( space, term ) );
-    p = using( format, on_terms );
+    p = using( format, 0, on_terms );
     add_global_root( p );
   }
   list fp = parse( p, chars_from_string( (char*)fmt ) );

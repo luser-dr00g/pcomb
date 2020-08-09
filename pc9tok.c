@@ -15,24 +15,24 @@ Each_Symbolic( On_Symbolic )
 
 static parser
 token_parser( void ){
-  parser space      = using( many( anyof( " \t\n" ) ), on_spaces );
+  parser space      = using( many( anyof( " \t\n" ) ), 0, on_spaces );
   parser alpha_     = plus( alpha(), chr('_') );
-  parser integer    = using( some( digit() ), on_integer );
+  parser integer    = using( some( digit() ), 0, on_integer );
   parser floating   = using( SEQ( plus( SEQ( some( digit() ), chr('.'), many( digit() ) ),
                                  seq( chr('.'), some( digit() ) ) ),
                                  maybe( SEQ( anyof("eE"), maybe( anyof("+-") ), some( digit() ) ) ) ),
-                             on_floating );
+                             0, on_floating );
   parser escape     = seq( chr('\\'),
                            plus( seq( digit(), maybe( seq( digit(), maybe( digit() ) ) ) ),
                                  anyof( "'\"bnrt\\" ) ) );
   parser char_      = plus( escape, noneof( "'\n" ) );
   parser schar_     = plus( escape, noneof( "\"\n" ) );
-  parser character  = using( SEQ( chr('\''), char_, chr('\'') ), on_character );
-  parser string     = using( SEQ( chr('"'), many( schar_ ), chr('"') ), on_string );
+  parser character  = using( SEQ( chr('\''), char_, chr('\'') ), 0, on_character );
+  parser string     = using( SEQ( chr('"'), many( schar_ ), chr('"') ), 0, on_string );
   parser constant   = PLUS( floating, integer, character, string );
-# define Handle_Symbolic(a,b)  using( str( a ), on_##b ),
+# define Handle_Symbolic(a,b)  using( str( a ), 0, on_##b ),
   parser symbolic   = PLUS( Each_Symbolic( Handle_Symbolic ) zero() );
-  parser identifier = using( seq( alpha_, many( plus( alpha_, digit() ) ) ), on_identifier );
+  parser identifier = using( seq( alpha_, many( plus( alpha_, digit() ) ) ), 0, on_identifier );
   return  seq( space, PLUS( constant, symbolic, identifier ) );
 }
 
@@ -49,7 +49,7 @@ force_tokens_from_chars( object s ){
   if(  !valid( s )  ) return  Symbol(EOF);
   static parser p;
   if(  !p  ){
-    p = using( token_parser(), on_token );
+    p = using( token_parser(), 0, on_token );
     add_global_root( p );
   }
   list r = parse( p, s );

@@ -149,14 +149,14 @@ parser_for_grammar( void ){
   parser data_def = using( SEQ( maybe( k_extern_ ),
                                 maybe( type_specifier ),
                                 maybe( init_declarator_list ), semi_ ),
-                           on_data_def );
+                           0, on_data_def );
 
   parser parameter_list = maybe( seq( expression, many( seq( comma_, expression ) ) ) );
   parser function_declarator = SEQ( declarator, lparen_, parameter_list, rparen_ );
   parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
   parser function_body = seq( maybe( type_decl_list ), function_statement );
   parser function_def = using( SEQ( maybe( type_specifier ), function_declarator, function_body ),
-                               on_func_def );
+                               0, on_func_def );
 
   parser external_def = plus( function_def, data_def );
   parser program = some( external_def );

@@ -60,7 +60,7 @@ parser some( parser p ); // try parser p 1 or more times
 parser trim( parser p );
 
 // map results through user callback
-parser using( parser p, fOperator *f );
+parser using( parser p, object v, fOperator *f );
 
 // Construct a parser defined by regular expression
 parser regex( char *re );
