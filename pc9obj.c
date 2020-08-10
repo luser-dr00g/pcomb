@@ -156,9 +156,6 @@ object
 force_( object a ){
   return  !valid( a ) || a->t != SUSPENSION  ?  a
           : force_( a->Suspension.f( a->Suspension.v ) );
-  return  valid( a ) && a->t == SUSPENSION  ?
-            force_( a->Suspension.f( a->Suspension.v ) )
-          : a;
 }
 
 

@@ -18,7 +18,7 @@ typedef boolean fPredicate( object, object );
 typedef object  fBinOper( object, object );
 
 enum object_symbols {
-  T, X, F, APPLY_F, APPLY_X, MAP_F, MAP_X, JOIN_X, APPEND_A, APPEND_B,
+  ZERO, T, X, F, APPLY_F, APPLY_X, MAP_F, MAP_X, JOIN_X, APPEND_A, APPEND_B,
   SYM1
 };
 boolean T_, NIL_;

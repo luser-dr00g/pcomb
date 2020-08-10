@@ -12,10 +12,10 @@ static list parse_plus( object v, list input );
 static list force_r_plus( object v );
 static list force_q_plus( object v );
 static list parse_sat( object v, list input );
-static boolean oper_alpha( object v, object o );
-static boolean oper_digit( object v, object o );
+static boolean pred_alpha( object v, object o );
+static boolean pred_digit( object v, object o );
 static list parse_noneof( object v, list input );
-static boolean oper_lit( object v, object o );
+static boolean pred_lit( object v, object o );
 static list each_prepend( object v, list o );
 static list prepend( list a, list b );
 static list oper_seq( object v, list output );
@@ -154,22 +154,22 @@ parse_sat( object v, list input ){
 
 parser
 alpha( void ){
-  return  sat( Operator( 0, oper_alpha ) );
+  return  sat( Operator( 0, pred_alpha ) );
 }
 
 static boolean
-oper_alpha( object v, object o ){
+pred_alpha( object v, object o ){
   return  isalpha( o->Int.i )  ? T_  : NIL_;
 }
 
 
 parser
 digit( void ){
-  return  sat( Operator( 0, oper_digit ) );
+  return  sat( Operator( 0, pred_digit ) );
 }
 
 static boolean
-oper_digit( object v, object o ){
+pred_digit( object v, object o ){
   return  isdigit( o->Int.i )  ? T_  : NIL_;
 }
 
@@ -210,11 +210,11 @@ parse_noneof( object v, list input ){
 
 parser
 lit( object a ){
-  return  sat( Operator( env( 0, 1, Symbol(LIT_X), a ), oper_lit ) );
+  return  sat( Operator( env( 0, 1, Symbol(LIT_X), a ), pred_lit ) );
 }
 
 static boolean
-oper_lit( object v, object o ){
+pred_lit( object v, object o ){
   object a = assoc_symbol( LIT_X, v );
   return  eq( a, o );
 }

@@ -12,7 +12,7 @@ object prepend_symbol( object sym, list o ){ return  cons( sym, o ); }
 object embed_data(     object sym, list o ){ return  sym->Symbol.data = o, sym; }
 object (*syntax_annotation)( object, list ) = embed_data;
 
-static object on_func_def( object v, list o ){ 
+static object on_function_def( object v, list o ){ 
   return  syntax_annotation( Symbol(func_def), o );
 }
 static object on_data_def( object v, list o ){
@@ -156,7 +156,7 @@ parser_for_grammar( void ){
   parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
   parser function_body = seq( maybe( type_decl_list ), function_statement );
   parser function_def = using( SEQ( maybe( type_specifier ), function_declarator, function_body ),
-                               0, on_func_def );
+                               0, on_function_def );
 
   parser external_def = plus( function_def, data_def );
   parser program = some( external_def );
