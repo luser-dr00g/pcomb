@@ -6,6 +6,9 @@
 //payload) and the 'object' type is a pointer to the payload side.
 #define POINTER_TO  *
 typedef union uobject  POINTER_TO object;
+typedef enum object_tag {
+  INVALID, INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING, VOID,
+} tag;
 typedef object  list;
 typedef object  parser;
 typedef object  oper;
@@ -23,7 +26,7 @@ enum object_symbols {
 };
 boolean T_, NIL_;
 
-int valid( object a );  // not null and not NIL_ 
+static int valid( object a );  // not NULL and not NIL_ 
 
 // Constructors
 object  Int( int i );
@@ -67,3 +70,15 @@ void print_tree( list a );
 #define PRINT_TREE(__) PRINT_WRAPPER( print_tree, __, "tree=\n" )
 #define PRINT_WRAPPER(_, __, ___) \
   printf( "%s: %s %s", __func__, #__, ___ ), _( __ ), puts("")
+
+
+static int
+valid( object a ){
+  switch( a  ? *(tag*)a  : 0 ){
+  default:  // null, NIL_ or unknown
+    return 0;
+  case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:
+  case SYMBOL: case STRING: case VOID:
+    return 1;
+  }
+}

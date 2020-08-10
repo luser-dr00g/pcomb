@@ -2,9 +2,6 @@
 #ifndef PC9OBJ_H
   #include "pc9obj.h"
 #endif
-typedef enum object_tag {
-  INVALID, INTEGER, LIST, SUSPENSION, PARSER, OPERATOR, SYMBOL, STRING, VOID,
-} tag;
 union uobject {
                 tag t;
        struct { tag t; int i;                                } Int;

@@ -24,16 +24,6 @@ new_( object a ){
              : 0;
 }
 
-int
-valid( object a ){
-  switch( a  ? a->t  : 0 ){
-  default:  // null, NIL_ or unknown
-    return 0;
-  case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:
-  case SYMBOL: case STRING: case VOID:
-    return 1;
-  }
-}
 
 
 // Constructors
@@ -195,6 +185,7 @@ take( int n, list o ){
   *o = *force_( o );
   return  valid( o )  ? cons( x_( o ), take( n-1, xs_( o ) ) )  : NIL_;
 }
+
 list
 drop( int n, list o ){
   if(  n == 0  ) return o;
