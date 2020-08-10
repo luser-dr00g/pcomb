@@ -38,6 +38,11 @@ assoc( object a, list b ){
                                              assoc( a, xs_( b ) );
 }
 
+object
+assoc_symbol( int sym, list b ){
+  return  assoc( (union uobject[]){ {.Symbol = {SYMBOL, sym,"",0}} }, b );
+}
+
 
 // Lists
 
@@ -50,8 +55,8 @@ copy( list a ){
 
 static list
 force_append( object v ){
-  list a = assoc( Symbol(APPEND_A), v );
-  list b = assoc( Symbol(APPEND_B), v );
+  list a = assoc_symbol( APPEND_A, v );
+  list b = assoc_symbol( APPEND_B, v );
   *a = *force_( a );
   return  append( a, b );
 }
@@ -70,8 +75,8 @@ append( list a, list b ){
 
 static object
 force_apply( object v ){
-  oper f = assoc( Symbol(APPLY_F), v );
-  object o = assoc( Symbol(APPLY_X), v );
+  oper f = assoc_symbol( APPLY_F, v );
+  object o = assoc_symbol( APPLY_X, v );
   *o = *force_( o );
   return  valid( o )  ? f->Operator.f( f->Operator.v, o )  : NIL_;
 }
@@ -91,8 +96,8 @@ apply( oper f, object o ){
 
 static list
 force_map( object v ){
-  oper f = assoc( Symbol(MAP_F), v );
-  list o = assoc( Symbol(MAP_X), v );
+  oper f = assoc_symbol( MAP_F, v );
+  list o = assoc_symbol( MAP_X, v );
   *o = *force_( o );
   return  valid( o )  ?
             cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )
@@ -112,7 +117,7 @@ map( oper f, list o ){
 
 static list
 force_join( object v ){
-  list o = assoc( Symbol(JOIN_X), v );
+  list o = assoc_symbol( JOIN_X, v );
   *o = *force_( o );
   return  append( x_( take( 1, o ) ), join( xs_( o ) ) );
 }

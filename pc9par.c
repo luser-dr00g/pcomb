@@ -43,7 +43,7 @@ result( object a ){
 
 static list
 parse_result( object v, list input ){
-  return  one( cons( assoc( Symbol(VALUE), v ), input ) );
+  return  one( cons( assoc_symbol( VALUE, v ), input ) );
   return  one( cons( v, input ) );
 }
 
@@ -82,16 +82,14 @@ bind( parser p, oper f ){
 
 static list
 parse_bind( object v, list input ){
-  parser p = assoc( Symbol(BIND_P), v );
-  oper f = assoc( Symbol(BIND_F), v );
+  parser p = assoc_symbol( BIND_P, v );
+  oper f = assoc_symbol( BIND_F, v );
   list r = parse( p, input );
   return  valid( r )  ?
             join( map(
-	      Operator( valid( f->Operator.v )  ?
-		append( copy( f->Operator.v ), v )
-	      : v,
-	      f->Operator.f
-	    ), r ) )
+	      Operator( valid( f->Operator.v )  ? append( copy( f->Operator.v ), v )  : v,
+	        f->Operator.f ),
+             r ) )
 	  : NIL_;
 }
 
@@ -106,8 +104,8 @@ plus( parser p, parser q ){
 
 static list
 parse_plus( object v, list input ){
-  parser p = assoc( Symbol(PLUS_P), v );
-  parser q = assoc( Symbol(PLUS_Q), v );
+  parser p = assoc_symbol( PLUS_P, v );
+  parser q = assoc_symbol( PLUS_Q, v );
   list r = parse( p, input );
   object qq = Suspension( env(0,2,Symbol(PLUS_Q),q,Symbol(PLUS_X),input), force_q_plus );
   return  valid( r )  ? 
@@ -119,8 +117,8 @@ parse_plus( object v, list input ){
 
 static list
 force_r_plus( object v ){
-  list r = assoc( Symbol(PLUS_R), v );
-  object qq = assoc( Symbol(PLUS_Q), v );
+  list r = assoc_symbol( PLUS_R, v );
+  object qq = assoc_symbol( PLUS_Q, v );
   *r = *force_( r );
   return  valid( r )  ?
             append( r, qq )
@@ -129,8 +127,8 @@ force_r_plus( object v ){
 
 static list
 force_q_plus( object v ){
-  parser q = assoc( Symbol(PLUS_Q), v );
-  list input = assoc( Symbol(PLUS_X), v );
+  parser q = assoc_symbol( PLUS_Q, v );
+  list input = assoc_symbol( PLUS_X, v );
   return  parse( q, input );
 }
 
@@ -144,7 +142,7 @@ sat( predicate pred ){
 
 static list
 parse_sat( object v, list input ){
-  predicate pred = assoc( Symbol(SAT_PRED), v );
+  predicate pred = assoc_symbol( SAT_PRED, v );
   object r = apply( pred, x_( input ) );
   return  valid( r )  ?
             one( cons( x_( input ), xs_( input ) ) )
@@ -201,7 +199,7 @@ noneof( char *s ){
 
 static list
 parse_noneof( object v, list input ){
-  parser p = assoc( Symbol(NONEOF_P), v );
+  parser p = assoc_symbol( NONEOF_P, v );
   object r = parse( p, input );
   *r = *force_( r );
   return  valid( r )  ? NIL_  : parse_item( 0, input );
@@ -217,7 +215,7 @@ lit( object a ){
 
 static boolean
 oper_lit( object v, object o ){
-  object a = assoc( Symbol(LIT_X), v );
+  object a = assoc_symbol( LIT_X, v );
   return  eq( a, o );
 }
 
@@ -232,7 +230,7 @@ seq( parser p, parser q ){
 
 static list
 oper_seq( object v, list output ){
-  parser q = assoc( Symbol(SEQ_Q), v );
+  parser q = assoc_symbol( SEQ_Q, v );
   return  prepend( x_( output ), parse( q, xs_( output ) ) );
 }
 
@@ -243,7 +241,7 @@ prepend( list a, list b ){
 
 static list
 each_prepend( object v, list o ){
-  object a = assoc( Symbol(PREPEND_A), v );
+  object a = assoc_symbol( PREPEND_A, v );
   return  valid( a )  ? cons( cons( a, x_( o ) ), xs_( o ) )  : o;
 }
 
@@ -278,8 +276,8 @@ into( parser p, object id, parser q ){
 
 static list
 oper_into( object v, list o ){
-  object id = assoc( Symbol(INTO_ID), v );
-  parser q = assoc( Symbol(INTO_Q), v );
+  object id = assoc_symbol( INTO_ID, v );
+  parser q = assoc_symbol( INTO_Q, v );
   return  parse( Parser( env(q->Parser.v,1,id,x_(o)), q->Parser.f ), xs_( o ) );
 }
 
@@ -323,7 +321,7 @@ trim( parser p ){
 
 static list
 parse_trim( object v, list input ){
-  parser p = assoc( Symbol(TRIM_P), v );
+  parser p = assoc_symbol( TRIM_P, v );
   //parser p = v;
   list r = parse( p, input );
   return  valid( r )  ? one( x_( take( 1, r ) ) )  : r;
@@ -340,7 +338,7 @@ using( parser p, object v, fOperator *f ){
 
 static list
 parse_using( object v, list o ){
-  oper f = assoc( Symbol(USING_F), v );
+  oper f = assoc_symbol( USING_F, v );
   return  one( cons( apply( f, x_( o ) ), xs_( o ) ) );
 }
 
@@ -357,7 +355,7 @@ apply_metachar( parser a, object o ){
 }
 static parser
 on_metachar( object v, object o ){
-  parser atom = assoc( Symbol(ATOM), v );
+  parser atom = assoc_symbol( ATOM, v );
   return  valid( o ) ? apply_metachar( atom, o )  : atom;
 }
 static parser  on_dot( object v, object o ){ return  item(); }
@@ -579,8 +577,8 @@ int test_regex(){
 int test_env(){
   object e = env( 0, 2, Symbol(F), Int(2), Symbol(X), Int(4) );
   PRINT( e );
-  PRINT( assoc( Symbol(F), e ) );
-  PRINT( assoc( Symbol(X), e ) );
+  PRINT( assoc_symbol( F, e ) );
+  PRINT( assoc_symbol( X, e ) );
   return 0;
 }
 

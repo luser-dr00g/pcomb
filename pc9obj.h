@@ -35,6 +35,7 @@ oper    Operator( object v, fOperator *f );
 object  String( char *s, int disposable );
 object  Symbol_( int sym, char *pname );
 #define Symbol(n) Symbol_( n, #n )
+object  GenSymbol( char *prefix );
 object  Void( void *v );
 
 // Garbage Collector

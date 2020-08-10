@@ -1,4 +1,6 @@
+#include <ctype.h>
 #include <stdio.h>
+#include <string.h>
 #include "pc9objpriv.h"
 
 static void mark_objects( list a );
@@ -74,6 +76,15 @@ String( char *s, int disposable ){
 object
 Symbol_( int sym, char *printname ){
   return  OBJECT( .Symbol = { SYMBOL, sym, printname } );
+}
+
+object
+GenSymbol( char *prefix ){
+  static int next_sym = -1;
+  int n = strlen(prefix) + 4 + 1;
+  char *printname = malloc( n );
+  if(  printname  ) snprintf( printname, n, "%s%04d", prefix, - next_sym );
+  return OBJECT( .Symbol = { SYMBOL, next_sym--, printname } );
 }
 
 object
@@ -447,15 +458,34 @@ print_data( list a ){
 }
 
 static void
-print_tree_branch( list a ){
+print_escaped_string( char *s ){
+  printf( "\"" );
+  for(  ; *s; s++  )
+    if(  isgraph((int)*s) || *s==' '  ) printf( "%c", *s );
+    else printf( "\\%c", *s=='\n'? 'n' :
+                         *s=='\t'? 't' : -1 );
+  printf( "\" " );
+}
+
+static void
+indent( int level ){
+  printf( "\n" );
+  while( level-- ) printf( "  " );
+}
+
+static void
+print_tree_branch( int level, list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   printf( "( " ),
-                 print_tree_branch( a->List.a ),
-		 print_tree_branch( a->List.b ),
-               printf( ") " );  break;
-  case SYMBOL: printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( a->Symbol.data ),
+  case LIST:   //printf( "( " ),
+                 print_tree_branch( level + 1, a->List.a ),
+		 print_tree_branch( level, a->List.b )//,
+                 //printf( ") " )
+               ;  break;
+  case STRING: print_escaped_string( a->String.string ); break;
+  case SYMBOL: indent( level ),
+                 printf("<%s:", a->Symbol.pname ),
+                 print_tree_branch( level + 1, a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
@@ -465,14 +495,10 @@ void
 print_tree( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   //printf( "( " ),
-                 print_tree_branch( a->List.a ),
-		 printf( "\n" ),
-		 print_tree( a->List.b )//,
-               //printf( ") " )
-               ;  break;
+  case LIST:   print_tree_branch( 1, a->List.a ), printf( "\n" ),
+		 print_tree( a->List.b );  break;
   case SYMBOL: printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( a->Symbol.data ),
+                 print_tree_branch( 1, a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
@@ -491,7 +517,8 @@ test_basics(){
   PRINT( x_( xs_( ch ) ) );
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( take( 1, x_( xs_( ch ) ) ) );
-  PRINT( Int( garbage_collect( ch ) ) );  PRINT( take( 5, ch ) );
+  PRINT( Int( garbage_collect( ch ) ) );
+  PRINT( take( 5, ch ) );
   PRINT( Int( garbage_collect( ch ) ) );
   PRINT( ch );
   PRINT( Int( garbage_collect( ch ) ) );

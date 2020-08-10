@@ -8,6 +8,7 @@ boolean eq( object a, object b );
 // Association Lists
 list env( list tail, int n, ... );
 object assoc( object a, list b );
+object assoc_symbol( int sym, list b );
 
 // Lists
 list copy( list a );
