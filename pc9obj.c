@@ -64,17 +64,17 @@ String( char *s, int disposable ){
 }
 
 object
-Symbol_( int sym, char *printname ){
-  return  OBJECT( .Symbol = { SYMBOL, sym, printname } );
+Symbol_( int symbol, char *printname, object data ){
+  return  OBJECT( .Symbol = { SYMBOL, symbol, printname, data } );
 }
 
 object
 GenSymbol( char *prefix ){
-  static int next_sym = -1;
+  static int next_symbol = -1;
   int n = strlen(prefix) + 4 + 1;
   char *printname = malloc( n );
-  if(  printname  ) snprintf( printname, n, "%s%04d", prefix, - next_sym );
-  return OBJECT( .Symbol = { SYMBOL, next_sym--, printname } );
+  if(  printname  ) snprintf( printname, n, "%s" "%04d", prefix, - next_symbol );
+  return  Symbol_( next_symbol--, printname, 0 );
 }
 
 object
@@ -386,19 +386,18 @@ string_from_chars( list o ){
 }
 
 void
-print( object o ){
-  if(  !o  ){ printf( "() " ); return; }
-  switch( o->t ){
-  case INTEGER:    printf( "%d ", o->Int.i );            break;
-  case LIST:       printf( "(" );
-                     print( o->List.a );
-                     print( o->List.b );
+print( object a ){
+  if(  !a  ){ printf( "() " ); return; }
+  switch( a->t ){
+  case INTEGER:    printf( "%d ", a->Int.i );            break;
+  case LIST:       printf( "(" ),
+                     print( a->List.a ), printf( ". " ), print( a->List.b ),
                    printf( ") " );                       break;
   case SUSPENSION: printf( "... " );                     break;
   case PARSER:     printf( "Parser " );                  break;
   case OPERATOR:   printf( "Oper " );                    break;
-  case STRING:     printf( "\"%s\"", o->String.string ); break;
-  case SYMBOL:     printf( "%s ", o->Symbol.pname );     break;
+  case STRING:     printf( "\"%s\"", a->String.string ); break;
+  case SYMBOL:     printf( "%s ", a->Symbol.pname );     break;
   case VOID:       printf( "VOID" );                     break;
   case INVALID:    printf( "_ " );                       break;
   default:         printf( "INVALID " );                 break;
@@ -449,10 +448,25 @@ static void
 print_escaped_string( char *s ){
   printf( "\"" );
   for(  ; *s; s++  )
-    if(  isgraph((int)*s) || *s==' '  ) printf( "%c", *s );
+    if(  ( isgraph((int)*s) && !strchr("\"\'\\",*s) ) || *s==' '  ) printf( "%c", *s );
     else printf( "\\%c", *s=='\n'? 'n' :
-                         *s=='\t'? 't' : -1 );
+                         *s=='\t'? 't' : *s );
   printf( "\" " );
+}
+
+void
+print_dot( list a ){
+  if(  !a  ) return;
+  switch(  a->t  ){
+  case LIST:   printf( "(" ),
+                 print_dot( a->List.a ), printf( ". " ), print_dot( a->List.b ),
+               printf( ") " );  break;
+  case STRING: print_escaped_string( a->String.string ); break;
+  case SYMBOL: printf("<%s:", a->Symbol.pname );
+               print_dot( a->Symbol.data ); 
+               printf("> ");  break;
+  default: print( a );
+  }
 }
 
 static void
@@ -467,7 +481,7 @@ print_tree_branch( int level, list a ){
   switch(  a->t  ){
   case LIST:   //printf( "( " ),
                  print_tree_branch( level + 1, a->List.a ),
-		 print_tree_branch( level, a->List.b )//,
+		 print_tree_branch( level + 1, a->List.b )//,
                  //printf( ") " )
                ;  break;
   case STRING: print_escaped_string( a->String.string ); break;

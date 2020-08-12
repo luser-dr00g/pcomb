@@ -7,6 +7,9 @@ test : pc9
 clean :
 	rm *.o
 
+count :
+	wc *[ch]
+
 pc9 : pc9obj.o pc9fp.o pc9par.o pc9tok.o pc9syn.o pc9form.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 

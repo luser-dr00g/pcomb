@@ -1,28 +1,45 @@
+#include <string.h>
 #include "pc9syn.h"
 #include "pc9objpriv.h"
 
-#define Extra_Symbols(_) \
+#define Semantic_Tokens(_) \
   _(t_id) _(c_int) _(c_float) _(c_char) _(c_string)
 
 #define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
-#define Parser_for_symbol_(b)      parser b##_ = lit( Symbol(b) );
+#define Parser_for_token_(b)      parser b##_ = lit( Symbol(b) );
+
+#define FLAT(p) using( p, 0, flatten )
+
+//object flatten( object v, list o ){ return  collapse( cons, o ); }
+//object flatten( object v, list o ){ return  collapse( append, o ); }
+list listify( object a, object b ){
+  return  a && a->t == LIST  ? cons( x_(a), listify( xs_(a), b ) )  :
+          b && b->t == LIST  ? cons( a, b )  :
+          cons( a, cons( b, 0 ) );
+}
+object flatten( object v, list o ){ return  collapse( listify, o ); }
 
 object pass_through(   object sym, list o ){ return  o; }
 object prepend_symbol( object sym, list o ){ return  cons( sym, o ); }
 object embed_data(     object sym, list o ){ return  sym->Symbol.data = o, sym; }
 object (*syntax_annotation)( object, list ) = embed_data;
 
-static object on_function_def( object v, list o ){ 
-  return  syntax_annotation( Symbol(func_def), o );
-}
-static object on_data_def( object v, list o ){
-  return  syntax_annotation( Symbol(data_def), o );
+#define Annotations(_) \
+ _(func_def) _(data_def) _(type_spec) _(body) _(statement) _(expr) \
+ _(decl_list)
+
+#define Handler_for_annotation(a)             \
+static object on_##a( object v, list o ){     \
+  return  syntax_annotation( Symbol(a), o );  \
 }
 
+Annotations( Handler_for_annotation )
+
+
 static parser
-parser_for_grammar( void ){
+parser_for_c75_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
-  Extra_Symbols( Parser_for_symbol_ )
+  Semantic_Tokens( Parser_for_token_ )
 
   parser identifier = t_id_;
   parser asgnop     = PLUS( o_equal_, o_eplus_, o_eminus_, o_estar_, o_eslant_, o_epercent_,
@@ -56,7 +73,7 @@ parser_for_grammar( void ){
       );
 
   *expression =
-      *seq(
+      *using( seq(
 	   PLUS(
 	     primary,
 	     seq( o_star_, expression ),
@@ -85,13 +102,13 @@ parser_for_grammar( void ){
 			SEQ( quest_, expression, colon_, expression ),
 			seq( comma_, expression )
 	   ) )
-      );
+      ), 0, on_expr );
   parser constant_expression = expression;
 
   parser statement  = forward();
   parser statement_list = many( statement );
         *statement  =
-	    *PLUS(
+	    *using( PLUS(
 		  seq( expression, semi_ ),
 		  SEQ( lbrace_, statement_list, rbrace_ ),
 		  SEQ( k_if_, lparen_, expression, rparen_, statement ),
@@ -111,7 +128,7 @@ parser_for_grammar( void ){
 		  SEQ( k_goto_, expression, semi_ ),
 		  SEQ( identifier, colon_, statement ),
 		  semi_
-	    );
+	    ), 0, on_statement );
 
   parser constant_expression_list = seq( constant_expression, many( seq( comma_, constant_expression ) ) );
   parser initializer = plus( constant, constant_expression_list );
@@ -119,14 +136,14 @@ parser_for_grammar( void ){
   parser type_specifier = forward();
   parser declarator_list = forward();
   parser type_declaration = SEQ( type_specifier, declarator_list, semi_ );
-  parser type_decl_list = some( type_declaration );
+  parser type_decl_list = using( some( type_declaration ), 0, on_decl_list );
   parser sc_specifier = PLUS( k_auto_, k_static_, k_extern_, k_register_ );
-	*type_specifier = *PLUS(
+	*type_specifier = *using( PLUS(
 				k_int_, k_char_, k_float_, k_double_,
 				SEQ( k_struct_, lbrace_, type_decl_list, rbrace_ ),
 				SEQ( k_struct_, identifier, lbrace_, type_decl_list, rbrace_ ),
 				SEQ( k_struct_, identifier )
-			       );
+			       ), 0, on_type_spec );
 
   parser declarator = forward();
 	*declarator = *seq( PLUS(
@@ -139,13 +156,14 @@ parser_for_grammar( void ){
 			    ) )
 			  );
 	*declarator_list = *seq( declarator, many( seq( comma_, declarator ) ) );
-  parser decl_specifiers = PLUS( type_specifier, sc_specifier,
+  parser decl_specifiers = PLUS( type_specifier, 
+                                 sc_specifier,
 				 seq( type_specifier, sc_specifier ),
 				 seq( sc_specifier, type_specifier ) );
   parser declaration = seq( decl_specifiers, maybe( declarator_list ) );
-  parser declaration_list = seq( declaration, many( seq( comma_, declaration ) ) );
+  parser declaration_list = SEQ( declaration, many( seq( comma_, declaration ) ), semi_ );
   parser init_declarator = seq( declarator, maybe( initializer ) );
-  parser init_declarator_list = seq( init_declarator, many( seq( comma_, init_declarator ) ) );
+  parser init_declarator_list = seq( FLAT( init_declarator ), many( FLAT( seq( comma_, init_declarator ) ) ) );
   parser data_def = using( SEQ( maybe( k_extern_ ),
                                 maybe( type_specifier ),
                                 maybe( init_declarator_list ), semi_ ),
@@ -153,10 +171,17 @@ parser_for_grammar( void ){
 
   parser parameter_list = maybe( seq( expression, many( seq( comma_, expression ) ) ) );
   parser function_declarator = SEQ( declarator, lparen_, parameter_list, rparen_ );
-  parser function_statement = SEQ( lbrace_, maybe( declaration_list ), many( statement ), rbrace_ );
-  parser function_body = seq( maybe( type_decl_list ), function_statement );
-  parser function_def = using( SEQ( maybe( type_specifier ), function_declarator, function_body ),
-                               0, on_function_def );
+  parser function_statement = SEQ( lbrace_,
+                                   maybe( declaration_list ),
+                                   many( statement ),
+                                   rbrace_ );
+  parser function_body = using( seq( maybe( type_decl_list ),
+                                     function_statement ),
+                                0, on_body );
+  parser function_def = using( SEQ( maybe( type_specifier ),
+                                    function_declarator,
+                                    function_body ),
+                               0, on_func_def );
 
   parser external_def = plus( function_def, data_def );
   parser program = some( external_def );
@@ -169,11 +194,121 @@ tree_from_tokens( object s ){
   if(  !s  ) return  NIL_;
   static parser p;
   if(  !p  ){
-    p = parser_for_grammar();
+    p = parser_for_c75_grammar();
     add_global_root( p );
   }
   return  parse( p, s );
 }
+
+#define Test_for_symbol(b)  || !strcmp(pname, #b)
+
+static int
+ss_traverse( char *pname ){
+  return 0  Annotations( Test_for_symbol );
+}
+
+static int
+ss_keep( char *pname ){
+  return  0  Semantic_Tokens( Test_for_symbol );
+}
+
+list
+suppress_strings( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST: return  cons( suppress_strings( a->List.a ),
+                           suppress_strings( a->List.b ) );
+  case SYMBOL: return
+    Symbol_( a->Symbol.symbol, a->Symbol.pname, 
+        ss_traverse( a->Symbol.pname ) ? suppress_strings( a->Symbol.data ) :
+        ss_keep( a->Symbol.pname ) ? xs_( a->Symbol.data ): 0 );
+  }
+  return  a;
+}
+
+static int
+ast_traverse( char *pname ){
+  return  ss_traverse( pname );
+}
+
+static int
+ast_keep( char *pname ){
+  return  ast_traverse( pname )
+      ||  ss_keep( pname )
+      ||  !strcmp( pname, "quest" )
+      ||  !strcmp( pname, "colon" )
+//      ||  !strcmp( pname, "lbrace" )
+//      ||  !strcmp( pname, "rbrace" )
+      ||  strstr( pname, "o_" ) == pname
+      ||  strstr( pname, "k_" ) == pname
+      ||  0;
+}
+
+list
+ast_from_tree( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST: return  cons( ast_from_tree( a->List.a ),
+                           ast_from_tree( a->List.b ) );
+  case SYMBOL: return
+    ast_keep( a->Symbol.pname )  ?
+    Symbol_( a->Symbol.symbol, a->Symbol.pname,
+        ast_traverse( a->Symbol.pname )  ? ast_from_tree( a->Symbol.data )  :
+        ast_keep( a->Symbol.pname )  ? a->Symbol.data  : 0 )
+    : 0;
+  }
+  return  a;
+}
+
+static int
+structure_traverse( char *pname ){
+  return  ast_traverse( pname );
+}
+
+static int
+structure_keep( char *pname ){
+  return  structure_traverse( pname );
+}
+
+list
+structure_from_ast( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST: return  cons( structure_from_ast( a->List.a ),
+                           structure_from_ast( a->List.b ) );
+  case SYMBOL: return
+    structure_keep( a->Symbol.pname )  ?
+    Symbol_( a->Symbol.symbol, a->Symbol.pname,
+        structure_traverse( a->Symbol.pname )  ? structure_from_ast( a->Symbol.data )  :
+        structure_keep( a->Symbol.pname )  ? a->Symbol.data  : 0 )
+    : 0;
+  }
+  return  a;
+}
+
+static int
+prune_traverse( char *pname ){
+  return  structure_traverse( pname );
+}
+
+list
+prune_twigs( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST: {
+    object x = prune_twigs( x_( a ) );
+    object y = prune_twigs( xs_( a ) );
+    return  x && y  ? cons( x , y )  :
+            x       ? x  : y;
+    }
+  case SYMBOL: return
+      Symbol_( a->Symbol.symbol, a->Symbol.pname,
+          prune_traverse( a->Symbol.pname )  ? prune_twigs( a->Symbol.data )  :
+          a->Symbol.data );
+  }
+  return  a;
+}
+
 
 int test_syntax(){
   char *source =
@@ -195,19 +330,30 @@ int test_syntax(){
   add_global_root( tokens );
   PRINT( take( 4, tokens ) );
   object program = tree_from_tokens( tokens );
+  PRINT( Int( garbage_collect( program ) ) );
   PRINT( program );
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );
+  PRINT_DOT( x_( x_( program ) ) );
   PRINT_FLAT( x_( x_( program ) ) );
   PRINT_DATA( x_( x_( program ) ) );
   PRINT_TREE( x_( x_( program ) ) );
   PRINT( xs_( x_( program ) ) );
+  PRINT_TREE( program = suppress_strings( x_( x_( program ) ) ) );
+  PRINT_DOT( program );
+  PRINT( Int( garbage_collect( program ) ) );
+  PRINT_TREE( program = ast_from_tree( program ) );
+  PRINT_DOT( program );
+  PRINT_TREE( program = prune_twigs( program ) );
+  PRINT_DOT( program );
+  PRINT_TREE( program = structure_from_ast( program ) );
+  PRINT_DOT( program );
   PRINT( Int( garbage_collect( program ) ) );
   return  0;
 }
 
 
 int syn_main(){
-  return  tok_main(),
+  return  //tok_main(),
           test_syntax(),
           0;
 }

@@ -5,6 +5,8 @@
 
 enum syntax_analysis_symbols {
   func_def = SYM3, data_def,
+  type_spec, body, statement, expr,
+  decl_list,
   SYM4
 };
 

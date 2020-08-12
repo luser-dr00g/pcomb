@@ -67,7 +67,9 @@ append( list a, list b ){
           : a->t == SUSPENSION  ?
             Suspension( env( 0, 2, Symbol(APPEND_A), a, Symbol(APPEND_B), b ),
                         force_append )
-          : cons( x_( a ), append( xs_( a ), b ) );
+          : a->t == LIST  ?
+            cons( x_( a ), append( xs_( a ), b ) )
+          : cons( a, b );
 }
 
 
@@ -155,7 +157,7 @@ reduce( fBinOper *f, int n, object *po ){
   return  n==1  ? *po  : f( *po, reduce( f, n-1, po+1 ) );
 }
 
-// f( ... f( f( po[0], po[1] ), po[2] ) ... , po[n-1] )
+// f( f( ... f( f( po[0], po[1] ), po[2] ) ... , po[n-2] ), po[n-1] )
 object
 rreduce( fBinOper *f, int n, object *po ){
   return  n==1  ? *po  : f( reduce( f, n-1, po ), po[ n-1 ] );

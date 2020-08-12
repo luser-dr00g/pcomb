@@ -36,8 +36,8 @@ object  Suspension( object v, fSuspension *f );
 parser  Parser( object v, fParser *f );
 oper    Operator( object v, fOperator *f );
 object  String( char *s, int disposable );
-object  Symbol_( int sym, char *pname );
-#define Symbol(n) Symbol_( n, #n )
+object  Symbol_( int sym, char *pname, object data );
+#define Symbol(n) Symbol_( n, #n, 0 )
 object  GenSymbol( char *prefix );
 object  Void( void *v );
 
@@ -63,8 +63,10 @@ object string_from_chars( list o );
 void print( object o );
 void print_list( list a );
 void print_flat( list a );
+void print_dot( list a );
 void print_data( list a );
 void print_tree( list a );
+#define PRINT_DOT(__) PRINT_WRAPPER( print_dot, __, "dot= " )
 #define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat= " )
 #define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data=\n" )
 #define PRINT_TREE(__) PRINT_WRAPPER( print_tree, __, "tree=\n" )
