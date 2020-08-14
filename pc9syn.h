@@ -10,5 +10,5 @@ enum syntax_analysis_symbols {
   SYM4
 };
 
-list tree_from_tokens( language lang, object s );
+list tree_from_tokens( object s );
 int syn_main();

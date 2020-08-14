@@ -49,10 +49,11 @@ enum token_symbols {
   Each_Symbolic( Enum_name )
   Each_assignop( Enum_name )
   Each_C75_assignop( Enum_name )
+  LANG_C75, LANG_C79, LANG_C90, LANG_C99, LANG_C11, LANG_C2X,
   SYM3
 };
 
-typedef enum language { C75, C78, C90, C99, C11, C2X } language;
+typedef enum language { C75, C79, C90, C99, C11, C2X } language;
 
 list tokens_from_chars( language lang, object v );
 

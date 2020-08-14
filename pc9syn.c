@@ -38,7 +38,7 @@ Annotations( Handler_for_annotation )
 
 
 static parser
-parser_for_c75_grammar( void ){
+parser_for_c_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
   Each_C75_assignop( Parser_for_symbolic_ )
   Semantic_Tokens( Parser_for_token_ )
@@ -183,20 +183,17 @@ parser_for_c75_grammar( void ){
                                     function_body ) );
 
   parser external_def = plus( function_def, data_def );
-  parser program = some( external_def );
+  parser program = seq( lit( Symbol(LANG_C75) ), some( external_def ) );
 
   return  program;
 }
 
 list
-tree_from_tokens( language lang, object s ){
+tree_from_tokens( object s ){
   if(  !s  ) return  NIL_;
   static parser p;
-  static language plang;
-  if(  !p || lang != plang  ){
-    p = lang == C75  ? parser_for_c75_grammar()
-                     : (printf("lang not implemented\n"),exit(1),NIL_);
-    plang = lang;
+  if(  !p  ){
+    p = parser_for_c_grammar();
     add_global_root( p );
   }
   return  parse( p, s );
@@ -316,7 +313,7 @@ int test_syntax(){
   object tokens = tokens_from_chars( C75, chars_from_string( source ) );
   add_global_root( tokens );
   PRINT( take( 4, tokens ) );
-  object program = tree_from_tokens( C75, tokens );
+  object program = tree_from_tokens( tokens );
   PRINT( Int( garbage_collect( program ) ) );
   PRINT( program );
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );

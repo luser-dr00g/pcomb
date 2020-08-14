@@ -71,9 +71,11 @@ force_tokens_from_chars( object v ){
                             force_tokens_from_chars ) );
 }
 
+
 list
 tokens_from_chars( language lang, object s ){
-  return  valid( s )  ? Suspension( cons( Int(lang), s ), force_tokens_from_chars )
+  return  valid( s )  ? cons( Symbol_( LANG_C75 + lang, "LANG", 0 ),
+                          Suspension( cons( Int(lang), s ), force_tokens_from_chars ) )
                       : Symbol(EOF);
 }
 
