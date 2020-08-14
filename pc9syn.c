@@ -202,17 +202,19 @@ tree_from_tokens( language lang, object s ){
   return  parse( p, s );
 }
 
+
 #define Test_for_symbol(b)  || !strcmp(pname, #b)
 
 static int
-ss_traverse( char *pname ){
-  return 0  Annotations( Test_for_symbol );
+annotationq( char *pname ){
+  return  0  Annotations( Test_for_symbol );
 }
 
 static int
-ss_keep( char *pname ){
+semantictokenq( char *pname ){
   return  0  Semantic_Tokens( Test_for_symbol );
 }
+
 
 list
 suppress_strings( list a ){
@@ -222,27 +224,23 @@ suppress_strings( list a ){
                            suppress_strings( a->List.b ) );
   case SYMBOL: return
     Symbol_( a->Symbol.symbol, a->Symbol.pname, 
-        ss_traverse( a->Symbol.pname ) ? suppress_strings( a->Symbol.data ) :
-        ss_keep( a->Symbol.pname ) ? xs_( a->Symbol.data ): 0 );
+        annotationq( a->Symbol.pname ) ? suppress_strings( a->Symbol.data ) :
+        semantictokenq( a->Symbol.pname ) ? xs_( a->Symbol.data ): 0 );
   }
   return  a;
 }
 
-static int
-ast_traverse( char *pname ){
-  return  ss_traverse( pname );
-}
 
 static int
 ast_keep( char *pname ){
-  return  ast_traverse( pname )
-      ||  ss_keep( pname )
+  return  annotationq( pname )
+      ||  semantictokenq( pname )
       ||  !strcmp( pname, "quest" )
       ||  !strcmp( pname, "colon" )
 //      ||  !strcmp( pname, "lbrace" )
 //      ||  !strcmp( pname, "rbrace" )
-      ||  strstr( pname, "o_" ) == pname
-      ||  strstr( pname, "k_" ) == pname
+      ||  !strncmp( pname, "o_", 2 )
+      ||  !strncmp( pname, "k_", 2 )
       ||  0;
 }
 
@@ -254,23 +252,14 @@ ast_from_tree( list a ){
                            ast_from_tree( a->List.b ) );
   case SYMBOL: return
     ast_keep( a->Symbol.pname )  ?
-    Symbol_( a->Symbol.symbol, a->Symbol.pname,
-        ast_traverse( a->Symbol.pname )  ? ast_from_tree( a->Symbol.data )  :
-        ast_keep( a->Symbol.pname )  ? a->Symbol.data  : 0 )
-    : 0;
+      Symbol_( a->Symbol.symbol, a->Symbol.pname,
+               annotationq( a->Symbol.pname )  ? ast_from_tree( a->Symbol.data )  :
+               ast_keep( a->Symbol.pname )  ? a->Symbol.data  : 0 )
+      : 0;
   }
   return  a;
 }
 
-static int
-structure_traverse( char *pname ){
-  return  ast_traverse( pname );
-}
-
-static int
-structure_keep( char *pname ){
-  return  structure_traverse( pname );
-}
 
 list
 structure_from_ast( list a ){
@@ -279,19 +268,15 @@ structure_from_ast( list a ){
   case LIST: return  cons( structure_from_ast( a->List.a ),
                            structure_from_ast( a->List.b ) );
   case SYMBOL: return
-    structure_keep( a->Symbol.pname )  ?
-    Symbol_( a->Symbol.symbol, a->Symbol.pname,
-        structure_traverse( a->Symbol.pname )  ? structure_from_ast( a->Symbol.data )  :
-	    a->Symbol.data )
-    : 0;
+    annotationq( a->Symbol.pname )  ?
+      Symbol_( a->Symbol.symbol, a->Symbol.pname,
+               annotationq( a->Symbol.pname )  ? structure_from_ast( a->Symbol.data )  :
+	       a->Symbol.data )
+      : 0;
   }
   return  a;
 }
 
-static int
-prune_traverse( char *pname ){
-  return  structure_traverse( pname );
-}
 
 list
 prune_twigs( list a ){
@@ -305,8 +290,8 @@ prune_twigs( list a ){
     }
   case SYMBOL: return
       Symbol_( a->Symbol.symbol, a->Symbol.pname,
-          prune_traverse( a->Symbol.pname )  ? prune_twigs( a->Symbol.data )  :
-	    a->Symbol.data );
+               annotationq( a->Symbol.pname )  ? prune_twigs( a->Symbol.data )  :
+	       a->Symbol.data );
   }
   return  a;
 }
