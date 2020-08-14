@@ -9,15 +9,16 @@
 #define Parser_for_token_(b)      parser b##_ = lit( Symbol(b) );
 
 #define FLAT(p) using( p, 0, flatten )
+#define ANN(sym, p) using( p, 0, on_##sym );
 
-//object flatten( object v, list o ){ return  collapse( cons, o ); }
-//object flatten( object v, list o ){ return  collapse( append, o ); }
 list listify( object a, object b ){
   return  a && a->t == LIST  ? cons( x_(a), listify( xs_(a), b ) )  :
           b && b->t == LIST  ? cons( a, b )  :
           cons( a, cons( b, 0 ) );
 }
 object flatten( object v, list o ){ return  collapse( listify, o ); }
+//object flatten( object v, list o ){ return  collapse( cons, o ); }
+//object flatten( object v, list o ){ return  collapse( append, o ); }
 
 object pass_through(   object sym, list o ){ return  o; }
 object prepend_symbol( object sym, list o ){ return  cons( sym, o ); }
@@ -39,6 +40,7 @@ Annotations( Handler_for_annotation )
 static parser
 parser_for_c75_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
+  Each_C75_assignop( Parser_for_symbolic_ )
   Semantic_Tokens( Parser_for_token_ )
 
   parser identifier = t_id_;
@@ -73,7 +75,7 @@ parser_for_c75_grammar( void ){
       );
 
   *expression =
-      *using( seq(
+      *ANN( expr, seq(
 	   PLUS(
 	     primary,
 	     seq( o_star_, expression ),
@@ -102,13 +104,13 @@ parser_for_c75_grammar( void ){
 			SEQ( quest_, expression, colon_, expression ),
 			seq( comma_, expression )
 	   ) )
-      ), 0, on_expr );
+      ) );
   parser constant_expression = expression;
 
   parser statement  = forward();
   parser statement_list = many( statement );
         *statement  =
-	    *using( PLUS(
+	    *ANN( statement, PLUS(
 		  seq( expression, semi_ ),
 		  SEQ( lbrace_, statement_list, rbrace_ ),
 		  SEQ( k_if_, lparen_, expression, rparen_, statement ),
@@ -128,7 +130,7 @@ parser_for_c75_grammar( void ){
 		  SEQ( k_goto_, expression, semi_ ),
 		  SEQ( identifier, colon_, statement ),
 		  semi_
-	    ), 0, on_statement );
+	    ) );
 
   parser constant_expression_list = seq( constant_expression, many( seq( comma_, constant_expression ) ) );
   parser initializer = plus( constant, constant_expression_list );
@@ -136,14 +138,14 @@ parser_for_c75_grammar( void ){
   parser type_specifier = forward();
   parser declarator_list = forward();
   parser type_declaration = SEQ( type_specifier, declarator_list, semi_ );
-  parser type_decl_list = using( some( type_declaration ), 0, on_decl_list );
+  parser type_decl_list = ANN( decl_list, some( type_declaration ) );
   parser sc_specifier = PLUS( k_auto_, k_static_, k_extern_, k_register_ );
-	*type_specifier = *using( PLUS(
+	*type_specifier = *ANN( type_spec, PLUS(
 				k_int_, k_char_, k_float_, k_double_,
 				SEQ( k_struct_, lbrace_, type_decl_list, rbrace_ ),
 				SEQ( k_struct_, identifier, lbrace_, type_decl_list, rbrace_ ),
 				SEQ( k_struct_, identifier )
-			       ), 0, on_type_spec );
+			       ) );
 
   parser declarator = forward();
 	*declarator = *seq( PLUS(
@@ -164,10 +166,9 @@ parser_for_c75_grammar( void ){
   parser declaration_list = SEQ( declaration, many( seq( comma_, declaration ) ), semi_ );
   parser init_declarator = seq( declarator, maybe( initializer ) );
   parser init_declarator_list = seq( FLAT( init_declarator ), many( FLAT( seq( comma_, init_declarator ) ) ) );
-  parser data_def = using( SEQ( maybe( k_extern_ ),
+  parser data_def = ANN( data_def, SEQ( maybe( k_extern_ ),
                                 maybe( type_specifier ),
-                                maybe( init_declarator_list ), semi_ ),
-                           0, on_data_def );
+                                maybe( init_declarator_list ), semi_ ) );
 
   parser parameter_list = maybe( seq( expression, many( seq( comma_, expression ) ) ) );
   parser function_declarator = SEQ( declarator, lparen_, parameter_list, rparen_ );
@@ -175,13 +176,11 @@ parser_for_c75_grammar( void ){
                                    maybe( declaration_list ),
                                    many( statement ),
                                    rbrace_ );
-  parser function_body = using( seq( maybe( type_decl_list ),
-                                     function_statement ),
-                                0, on_body );
-  parser function_def = using( SEQ( maybe( type_specifier ),
+  parser function_body = ANN( body, seq( maybe( type_decl_list ),
+                                     function_statement ) );
+  parser function_def = ANN( func_def, SEQ( maybe( type_specifier ),
                                     function_declarator,
-                                    function_body ),
-                               0, on_func_def );
+                                    function_body ) );
 
   parser external_def = plus( function_def, data_def );
   parser program = some( external_def );
@@ -190,11 +189,14 @@ parser_for_c75_grammar( void ){
 }
 
 list
-tree_from_tokens( object s ){
+tree_from_tokens( language lang, object s ){
   if(  !s  ) return  NIL_;
   static parser p;
-  if(  !p  ){
-    p = parser_for_c75_grammar();
+  static language plang;
+  if(  !p || lang != plang  ){
+    p = lang == C75  ? parser_for_c75_grammar()
+                     : (printf("lang not implemented\n"),exit(1),NIL_);
+    plang = lang;
     add_global_root( p );
   }
   return  parse( p, s );
@@ -280,7 +282,7 @@ structure_from_ast( list a ){
     structure_keep( a->Symbol.pname )  ?
     Symbol_( a->Symbol.symbol, a->Symbol.pname,
         structure_traverse( a->Symbol.pname )  ? structure_from_ast( a->Symbol.data )  :
-        structure_keep( a->Symbol.pname )  ? a->Symbol.data  : 0 )
+	    a->Symbol.data )
     : 0;
   }
   return  a;
@@ -304,7 +306,7 @@ prune_twigs( list a ){
   case SYMBOL: return
       Symbol_( a->Symbol.symbol, a->Symbol.pname,
           prune_traverse( a->Symbol.pname )  ? prune_twigs( a->Symbol.data )  :
-          a->Symbol.data );
+	    a->Symbol.data );
   }
   return  a;
 }
@@ -326,10 +328,10 @@ int test_syntax(){
 "\tprintf(\"Hello, world\");\n"
 "}\n"
 "\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
-  object tokens = tokens_from_chars( chars_from_string( source ) );
+  object tokens = tokens_from_chars( C75, chars_from_string( source ) );
   add_global_root( tokens );
   PRINT( take( 4, tokens ) );
-  object program = tree_from_tokens( tokens );
+  object program = tree_from_tokens( C75, tokens );
   PRINT( Int( garbage_collect( program ) ) );
   PRINT( program );
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );

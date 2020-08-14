@@ -12,9 +12,11 @@ static object  on_identifier( object s, list o ){ return  cons( Symbol(t_id), st
 #define On_Symbolic(a,b) \
   static object  on_##b( object v, list o ){ return  cons( Symbol(b), string_from_chars( o ) ); }
 Each_Symbolic( On_Symbolic )
+Each_C75_assignop( On_Symbolic )
+Each_assignop( On_Symbolic )
 
 static parser
-token_parser( void ){
+token_parser( language lang ){
   parser space      = using( many( anyof( " \t\n" ) ), 0, on_spaces );
   parser alpha_     = plus( alpha(), chr('_') );
   parser integer    = using( some( digit() ), 0, on_integer );
@@ -31,7 +33,11 @@ token_parser( void ){
   parser string     = using( SEQ( chr('"'), many( schar_ ), chr('"') ), 0, on_string );
   parser constant   = PLUS( floating, integer, character, string );
 # define Handle_Symbolic(a,b)  using( str( a ), 0, on_##b ),
-  parser symbolic   = PLUS( Each_Symbolic( Handle_Symbolic ) zero() );
+  parser assignop75 = PLUS( Each_C75_assignop( Handle_Symbolic ) zero() );
+  parser assignop   = PLUS( Each_assignop( Handle_Symbolic )
+                            zero() );
+  parser symbolic   = PLUS( Each_Symbolic( Handle_Symbolic )
+                            lang==C75  ? assignop75  : assignop );
   parser identifier = using( seq( alpha_, many( plus( alpha_, digit() ) ) ), 0, on_identifier );
   return  seq( space, PLUS( constant, symbolic, identifier ) );
 }
@@ -45,27 +51,36 @@ static object  on_token( object v, list o ){
 }
 
 static list
-force_tokens_from_chars( object s ){
+force_tokens_from_chars( object v ){
+  object ilang = x_( v );
+  language lang = ilang->Int.i;
+  object s = xs_( v );
   if(  !valid( s )  ) return  Symbol(EOF);
   static parser p;
-  if(  !p  ){
-    p = using( token_parser(), 0, on_token );
+  static language plang;
+  if(  !p  || lang != plang ){
+    p = using( token_parser( lang ), 0, on_token );
+    plang = lang;
     add_global_root( p );
   }
   list r = parse( p, s );
   take( 1, r );
   r = x_( r );
-  return  cons( x_( r ), Suspension( xs_( r ), force_tokens_from_chars ) );
+  return  cons( x_( r ),
+                Suspension( cons( ilang, xs_( r ) ),
+                            force_tokens_from_chars ) );
 }
 
 list
-tokens_from_chars( object s ){
-  return  valid( s )  ? Suspension( s, force_tokens_from_chars )  : Symbol(EOF);
+tokens_from_chars( language lang, object s ){
+  return  valid( s )  ? Suspension( cons( Int(lang), s ), force_tokens_from_chars )
+                      : Symbol(EOF);
 }
 
 
 int test_tokens(){
-  list tokens = tokens_from_chars( chars_from_string( "'x' auto \"abc\" 12 ;*++'\\42' '\\n' 123 if" ) );
+  list tokens = tokens_from_chars( C75, 
+                chars_from_string( "'x' auto \"abc\" 12 ;*++'\\42' '\\n' 123 if" ) );
   PRINT( tokens );
   PRINT( take( 1, tokens ) );
   PRINT( take( 2, tokens ) );

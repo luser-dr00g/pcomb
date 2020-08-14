@@ -26,22 +26,19 @@
   _("(", lparen) _(")", rparen)                                         \
   _(",", comma) _(";", semi) _(":", colon) _("?", quest)                \
   _("{", lbrace) _("}", rbrace) _("[", lbrack) _("]", rbrack)           \
-  Each_assignop(_) \
 //End Each_Symbolic
 
-#ifdef KANDR
-  #define Each_assignop(_) \
-    _("=+", o_eplus) _("=-", o_eminus)                                  \
-    _("=*", o_estar) _("=/", o_eslant) _("=%", o_epercent)		\
-    _("=>>", o_egtgt) _("=<<", o_eltlt)                                 \
-    _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe)
-#else
-  #define Each_assignop(_) \
-    _("+=", o_eplus) _("-=", o_eminus)                                  \
-    _("*=", o_estar) _("/=", o_eslant) _("%=", o_epercent)		\
-    _(">>=", o_egtgt) _("<<=", o_eltlt)                                 \
-    _("&=", o_eamp) _("^=", o_ecaret) _("|=", o_epipe)
-#endif
+#define Each_assignop(_) \
+  _("+=", o_pluse) _("-=", o_minuse)                                  \
+  _("*=", o_stare) _("/=", o_slante) _("%=", o_percente)		\
+  _(">>=", o_gtgte) _("<<=", o_ltlte)                                 \
+  _("&=", o_ampe) _("^=", o_carete) _("|=", o_pipee)
+
+#define Each_C75_assignop(_) \
+  _("=+", o_eplus) _("=-", o_eminus)                                  \
+  _("=*", o_estar) _("=/", o_eslant) _("=%", o_epercent)		\
+  _("=>>", o_egtgt) _("=<<", o_eltlt)                                 \
+  _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe)
 
 
 #define Enum_name(x,y) y ,
@@ -50,9 +47,13 @@ enum token_symbols {
   t_id = SYM2,
   c_int, c_float, c_char, c_string,
   Each_Symbolic( Enum_name )
+  Each_assignop( Enum_name )
+  Each_C75_assignop( Enum_name )
   SYM3
 };
 
-list tokens_from_chars( object v );
+typedef enum language { C75, C78, C90, C99, C11, C2X } language;
+
+list tokens_from_chars( language lang, object v );
 
 int tok_main( void );
