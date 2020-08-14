@@ -40,12 +40,15 @@
   _("=>>", o_egtgt) _("=<<", o_eltlt)                                 \
   _("=&", o_eamp) _("=^", o_ecaret) _("=|", o_epipe)
 
+#define Semantic_Tokens(_) \
+  _(t_id) _(c_int) _(c_float) _(c_char) _(c_string)
 
+#define Enum_nam(x) x ,
 #define Enum_name(x,y) y ,
 
 enum token_symbols {
-  t_id = SYM2,
-  c_int, c_float, c_char, c_string,
+  token_symbols = SYM2,
+  Semantic_Tokens( Enum_nam )
   Each_Symbolic( Enum_name )
   Each_assignop( Enum_name )
   Each_C75_assignop( Enum_name )
@@ -53,7 +56,10 @@ enum token_symbols {
   SYM3
 };
 
-typedef enum language { C75, C79, C90, C99, C11, C2X } language;
+#define Languages(_) \
+ _(C75) _(C79) _(C90) _(C99) _(C11) _(C2X)
+
+typedef enum language { Languages( Enum_nam ) } language;
 
 list tokens_from_chars( language lang, object v );
 

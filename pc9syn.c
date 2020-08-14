@@ -2,14 +2,9 @@
 #include "pc9syn.h"
 #include "pc9objpriv.h"
 
-#define Semantic_Tokens(_) \
-  _(t_id) _(c_int) _(c_float) _(c_char) _(c_string)
-
-#define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
-#define Parser_for_token_(b)      parser b##_ = lit( Symbol(b) );
-
 #define FLAT(p) using( p, 0, flatten )
 #define ANN(sym, p) using( p, 0, on_##sym );
+
 
 list listify( object a, object b ){
   return  a && a->t == LIST  ? cons( x_(a), listify( xs_(a), b ) )  :
@@ -17,17 +12,13 @@ list listify( object a, object b ){
           cons( a, cons( b, 0 ) );
 }
 object flatten( object v, list o ){ return  collapse( listify, o ); }
-//object flatten( object v, list o ){ return  collapse( cons, o ); }
-//object flatten( object v, list o ){ return  collapse( append, o ); }
+
 
 object pass_through(   object sym, list o ){ return  o; }
 object prepend_symbol( object sym, list o ){ return  cons( sym, o ); }
 object embed_data(     object sym, list o ){ return  sym->Symbol.data = o, sym; }
 object (*syntax_annotation)( object, list ) = embed_data;
 
-#define Annotations(_) \
- _(func_def) _(data_def) _(type_spec) _(body) _(statement) _(expr) \
- _(decl_list)
 
 #define Handler_for_annotation(a)             \
 static object on_##a( object v, list o ){     \
@@ -36,6 +27,9 @@ static object on_##a( object v, list o ){     \
 
 Annotations( Handler_for_annotation )
 
+
+#define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
+#define Parser_for_token_(b)      parser b##_ = lit( Symbol(b) );
 
 static parser
 parser_for_c_grammar( void ){

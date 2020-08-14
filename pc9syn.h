@@ -3,10 +3,13 @@
   #include "pc9tok.h"
 #endif
 
+#define Annotations(_) \
+ _(func_def) _(data_def) _(type_spec) _(body) _(statement) _(expr) \
+ _(decl_list)
+
 enum syntax_analysis_symbols {
-  func_def = SYM3, data_def,
-  type_spec, body, statement, expr,
-  decl_list,
+  syntax_analysis_symbols = SYM3,
+  Annotations( Enum_nam )
   SYM4
 };
 

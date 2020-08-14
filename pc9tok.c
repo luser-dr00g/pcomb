@@ -1,6 +1,7 @@
 #include "pc9tok.h"
 #include "pc9objpriv.h"
 
+
 static object  on_spaces( object v, list o ){ return  string_from_chars( o ); }
 
 static object  on_integer( object v, list o ){ return  cons( Symbol(c_int), string_from_chars( o ) ); }
@@ -71,10 +72,18 @@ force_tokens_from_chars( object v ){
                             force_tokens_from_chars ) );
 }
 
+#define STR(x) #x
+#define Lang_string(x) case x: return STR(LANG_##x) ;
+char *
+lang_string( language lang ){
+  switch(  lang  ){
+  Languages( Lang_string )
+  }
+}
 
 list
 tokens_from_chars( language lang, object s ){
-  return  valid( s )  ? cons( Symbol_( LANG_C75 + lang, "LANG", 0 ),
+  return  valid( s )  ? cons( Symbol_( LANG_C75 + lang, lang_string( lang ), 0 ),
                           Suspension( cons( Int(lang), s ), force_tokens_from_chars ) )
                       : Symbol(EOF);
 }
