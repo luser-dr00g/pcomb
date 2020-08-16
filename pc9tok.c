@@ -18,7 +18,10 @@ Each_assignop( On_Symbolic )
 
 static parser
 token_parser( language lang ){
-  parser space      = using( many( anyof( " \t\n" ) ), 0, on_spaces );
+  parser comment    = SEQ( str("/*"), 
+                           some( seq( many( noneof("*") ), chr('*') ) ), 
+                           chr('/') );
+  parser space      = using( many( plus( anyof( " \t\n" ), comment ) ), 0, on_spaces );
   parser alpha_     = plus( alpha(), chr('_') );
   parser integer    = using( some( digit() ), 0, on_integer );
   parser floating   = using( SEQ( plus( SEQ( some( digit() ), chr('.'), many( digit() ) ),
@@ -33,7 +36,7 @@ token_parser( language lang ){
   parser character  = using( SEQ( chr('\''), char_, chr('\'') ), 0, on_character );
   parser string     = using( SEQ( chr('"'), many( schar_ ), chr('"') ), 0, on_string );
   parser constant   = PLUS( floating, integer, character, string );
-# define Handle_Symbolic(a,b)  using( str( a ), 0, on_##b ),
+# define Handle_Symbolic(a,b)  using( str( a ), 0, on_##b ) ,
   parser assignop75 = PLUS( Each_C75_assignop( Handle_Symbolic ) zero() );
   parser assignop   = PLUS( Each_assignop( Handle_Symbolic )
                             zero() );
@@ -79,6 +82,7 @@ lang_string( language lang ){
   switch(  lang  ){
   Languages( Lang_string )
   }
+  return "LANG_UNKNOWN";
 }
 
 list

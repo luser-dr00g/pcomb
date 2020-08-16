@@ -424,6 +424,28 @@ print_list( list a ){
   }
 }
 
+static void
+print_alln( list a ){
+  drop( 1, a );
+  switch(  a  ? a->t  : 0  ){
+  default:  print( a ); return;
+  case LIST: print_all( x_( a ) ),
+             print_alln( xs_( a ) ); return;
+  }
+}
+
+void
+print_all( list a ){
+  drop( 1, a );
+  switch(  a  ? a->t  : 0  ){
+  default:   print( a ); return;
+  case LIST: printf( "(" ),
+               print_all( x_( a ) ),
+               print_alln( xs_( a ) ),
+             printf( ")" ); return;
+  }
+}
+
 void
 print_flat( list a ){
   if(  !a  ) return;

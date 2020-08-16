@@ -100,6 +100,7 @@ static list
 force_map( object v ){
   oper f = assoc_symbol( MAP_F, v );
   list o = assoc_symbol( MAP_X, v );
+  if(  !valid( o )  ) return  NIL_;
   *o = *force_( o );
   return  valid( o )  ?
             cons( apply( f, x_( o ) ), map( f, xs_( o ) ) )
@@ -161,4 +162,79 @@ reduce( fBinOper *f, int n, object *po ){
 object
 rreduce( fBinOper *f, int n, object *po ){
   return  n==1  ? *po  : f( reduce( f, n-1, po ), po[ n-1 ] );
+}
+
+
+// Pattern Matching
+list matchpat( list v, list pat, list a );
+
+list
+match_list( list v, list pat, list a ){
+  //PRINT(pat);
+  //PRINT(a);
+  if(  xs_( pat )->t == OPERATOR  ){
+    list av = matchpat( v, x_(pat), a );
+    if(  valid( av )  ){
+      return  matchpat( av, xs_(pat), a );
+    }
+  } else {
+    list av = matchpat( v, x_(pat), x_(a) );
+    //PRINT(av);
+    if(  valid( av )  ){
+      list bv = matchpat( av==T_  ? v : av, xs_(pat), xs_(a) );
+      //PRINT(bv);
+      return  bv;
+    }
+  }
+  return  0;
+}
+
+list
+match_symbol( list v, list pat, list a ){
+  //PRINT(pat);
+  //PRINT(a);
+  if(  pat->Symbol.data==T_  ){
+    return  eq( pat, a );
+  } else {
+    return  env( v, 1, pat, a );
+  }
+}
+
+list
+match_operator( list v, list pat, list a ){
+  return  pat->Operator.f( pat->Operator.v, v );
+}
+
+// (t_id x) => print x
+// ( ( <t_id:T> <x:NIL> ) :oper{print x} )
+list
+matchpat( list v, list pat, list a ){
+  if(  !pat  || !a  ) return  0;
+  switch(  pat->t  ){
+  case LIST:     return  match_list( v, pat, a );
+  case SYMBOL:   return  match_symbol( v, pat, a );
+  case OPERATOR: return  match_operator( v, pat, a );
+  default:       return  eq( pat, a );
+  }
+}
+
+list
+match( list pats, list a ){
+  if(  !valid(pats)  ) return  0;
+  list av = matchpat( 0, x_(pats), a );
+  return  valid( av )  ? av  : match( xs_(pats), a );
+}
+
+list
+unembed_symbols( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST: return  cons( unembed_symbols( a->List.a ),
+                           unembed_symbols( a->List.b ) );
+  case SYMBOL: return
+      a->Symbol.data  ? cons( Symbol_( a->Symbol.symbol, a->Symbol.pname, 0 ),
+                              unembed_symbols( a->Symbol.data ) )
+                      : Symbol_( a->Symbol.symbol, a->Symbol.pname, 0 );
+  }
+  return  a;
 }

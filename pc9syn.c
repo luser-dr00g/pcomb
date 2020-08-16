@@ -21,25 +21,27 @@ object (*syntax_annotation)( object, list ) = embed_data;
 
 
 #define Handler_for_annotation(a)             \
-static object on_##a( object v, list o ){     \
-  return  syntax_annotation( Symbol(a), o );  \
-}
+  static object on_##a( object v, list o ){ return  syntax_annotation( Symbol(a), o ); }
 
 Annotations( Handler_for_annotation )
 
 
-#define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) );
-#define Parser_for_token_(b)      parser b##_ = lit( Symbol(b) );
+#define Parser_for_symbolic_(a,b)  parser b##_ = lit( Symbol(b) ) ;
+#define Parser_for_token_(b)       parser b##_ = lit( Symbol(b) ) ;
+#define Parser_ref_(a,b)                  b##_ ,
 
 static parser
 parser_for_c_grammar( void ){
   Each_Symbolic( Parser_for_symbolic_ )
   Each_C75_assignop( Parser_for_symbolic_ )
+  //Each_assignop( Parser_for_symbolic_ )
   Semantic_Tokens( Parser_for_token_ )
 
   parser identifier = t_id_;
-  parser asgnop     = PLUS( o_equal_, o_eplus_, o_eminus_, o_estar_, o_eslant_, o_epercent_,
-			    o_egtgt_, o_eltlt_, o_eamp_, o_ecaret_, o_epipe_ );
+  parser asgnop     = PLUS( o_equal_, 
+			    Each_C75_assignop( Parser_ref_ )
+			    //Each_assignop( Parser_ref_ )
+			  );
   parser constant   = PLUS( c_int_, c_float_, c_char_, c_string_ );
   parser lvalue     = forward();
   parser expression = forward();
@@ -48,7 +50,7 @@ parser_for_c_grammar( void ){
       *PLUS(
 	  identifier,
 	  seq( o_star_, expression ),
-	  //SEQ( primary, o_arrow_, identifier ),  // introduces a left-recursion indirectly
+	  //SEQ( primary, o_arrow_, identifier ),  // introduces an indirect left-recursion
 	  SEQ( lparen_, lvalue, rparen_ )
       );
 
@@ -287,10 +289,36 @@ prune_twigs( list a ){
   return  a;
 }
 
+list
+tree_search( list pats, list a ){
+  //PRINT(a);
+  list v = match( pats, a );
+  //PRINT(v);
+  switch(  a->t  ){
+    case LIST: {
+      list av = tree_search( pats, a->List.a );
+      list bv = tree_search( pats, a->List.b );
+      return  v = append( append( v, av ), bv );
+    }
+  }
+  return  v;
+}
+
+object
+oper_xs( list v, list o ){
+  return  xs_( o );
+}
+
+list
+extract_ids( list a ){
+  if(  !a  ) return  a;
+  list pat = cons( MSymbol(t_id), VSymbol(X) );
+  return  map( Operator( 0, oper_xs ), tree_search( one(pat), a ) );
+}
 
 int test_syntax(){
   char *source =
-"\n"
+"/*test*/\n"
 "int i,j,k 5;\n"
 "float d 3.4;\n"
 "int max(a, b, c)\n"
@@ -311,20 +339,23 @@ int test_syntax(){
   PRINT( Int( garbage_collect( program ) ) );
   PRINT( program );
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );
-  PRINT_DOT( x_( x_( program ) ) );
-  PRINT_FLAT( x_( x_( program ) ) );
+  //PRINT_DOT( x_( x_( program ) ) );
+  //PRINT_FLAT( x_( x_( program ) ) );
   PRINT_DATA( x_( x_( program ) ) );
-  PRINT_TREE( x_( x_( program ) ) );
-  PRINT( xs_( x_( program ) ) );
+  //PRINT_TREE( x_( x_( program ) ) );
+  //PRINT( xs_( x_( program ) ) );
   PRINT_TREE( program = suppress_strings( x_( x_( program ) ) ) );
-  PRINT_DOT( program );
+  //PRINT_DOT( program );
   PRINT( Int( garbage_collect( program ) ) );
   PRINT_TREE( program = ast_from_tree( program ) );
-  PRINT_DOT( program );
+  //PRINT_DOT( program );
   PRINT_TREE( program = prune_twigs( program ) );
-  PRINT_DOT( program );
-  PRINT_TREE( program = structure_from_ast( program ) );
-  PRINT_DOT( program );
+  //PRINT_DOT( program );
+  PRINT_TREE( program = unembed_symbols( program ) );
+  //PRINT_DOT( program );
+  //PRINT_TREE( program = structure_from_ast( program ) );
+  //PRINT_DOT( program );
+  PRINT_ALL( extract_ids( program ) );
   PRINT( Int( garbage_collect( program ) ) );
   return  0;
 }

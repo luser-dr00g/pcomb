@@ -62,10 +62,12 @@ object string_from_chars( list o );
 #define PRINT(__)      PRINT_WRAPPER( print_list, __, "= " )
 void print( object o );
 void print_list( list a );
+void print_all( list a );
 void print_flat( list a );
 void print_dot( list a );
 void print_data( list a );
 void print_tree( list a );
+#define PRINT_ALL(__) PRINT_WRAPPER( print_all, __, "all= " )
 #define PRINT_DOT(__) PRINT_WRAPPER( print_dot, __, "dot= " )
 #define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat= " )
 #define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data=\n" )
