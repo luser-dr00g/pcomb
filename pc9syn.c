@@ -290,14 +290,31 @@ prune_twigs( list a ){
 }
 
 list
-tree_search( list pats, list a ){
+shrink( list a ){
+  if(  !a  ) return  a;
+  switch(  a->t  ){
+  case LIST:
+    if(  a->List.b  )
+	if(  a->List.a  )
+	    return  cons( shrink( a->List.a ), shrink( a->List.b ) );
+	else
+	    return  shrink( a->List.b );
+    else
+        return  shrink( a->List.a );
+  }
+  return  a;
+}
+
+list
+topdown_tree_search( list pats, list a ){
+  if(  !a  ) return  a;
   //PRINT(a);
   list v = match( pats, a );
   //PRINT(v);
   switch(  a->t  ){
-    case LIST: {
-      list av = tree_search( pats, a->List.a );
-      list bv = tree_search( pats, a->List.b );
+  case LIST: {
+      list av = topdown_tree_search( pats, a->List.a );
+      list bv = topdown_tree_search( pats, a->List.b );
       return  v = append( append( v, av ), bv );
     }
   }
@@ -313,7 +330,31 @@ list
 extract_ids( list a ){
   if(  !a  ) return  a;
   list pat = cons( MSymbol(t_id), VSymbol(X) );
-  return  map( Operator( 0, oper_xs ), tree_search( one(pat), a ) );
+  return  map( Operator( 0, oper_xs ), topdown_tree_search( one(pat), a ) );
+}
+
+list
+bottomup_tree_search( list pats, list a ){
+  if(  !a  ) return  a;
+  list v = NIL_;
+  switch(  a->t  ){
+  case LIST: {
+      list av = bottomup_tree_search( pats, a->List.a );
+      list bv = bottomup_tree_search( pats, a->List.b );
+      v = append( av, bv );
+    }
+  }
+  return  v = append( match( pats, a ), v );
+}
+
+list
+extract_constants( list a ){
+  if(  !a  ) return  a;
+  list pats = LIST( cons( MSymbol(c_int), VSymbol(c_int) ),
+                    cons( MSymbol(c_float), VSymbol(c_float) ),
+                    cons( MSymbol(c_char), VSymbol(c_char) ),
+                    cons( MSymbol(c_string), VSymbol(c_string) ) );
+  return  bottomup_tree_search( pats, a );
 }
 
 int test_syntax(){
@@ -349,13 +390,15 @@ int test_syntax(){
   PRINT( Int( garbage_collect( program ) ) );
   PRINT_TREE( program = ast_from_tree( program ) );
   //PRINT_DOT( program );
-  PRINT_TREE( program = prune_twigs( program ) );
+  //PRINT_TREE( program = prune_twigs( program ) );
   //PRINT_DOT( program );
   PRINT_TREE( program = unembed_symbols( program ) );
-  //PRINT_DOT( program );
+  PRINT_TREE( program = shrink( program ) );
+  PRINT_DOT( program );
   //PRINT_TREE( program = structure_from_ast( program ) );
   //PRINT_DOT( program );
   PRINT_ALL( extract_ids( program ) );
+  PRINT_ALL( extract_constants( program ) );
   PRINT( Int( garbage_collect( program ) ) );
   return  0;
 }

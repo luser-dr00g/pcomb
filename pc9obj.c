@@ -426,7 +426,7 @@ print_list( list a ){
 
 static void
 print_alln( list a ){
-  drop( 1, a );
+  if(  a  ) drop( 1, a );
   switch(  a  ? a->t  : 0  ){
   default:  print( a ); return;
   case LIST: print_all( x_( a ) ),
@@ -436,7 +436,7 @@ print_alln( list a ){
 
 void
 print_all( list a ){
-  drop( 1, a );
+  if(  a  ) drop( 1, a );
   switch(  a  ? a->t  : 0  ){
   default:   print( a ); return;
   case LIST: printf( "(" ),
@@ -498,18 +498,48 @@ indent( int level ){
 }
 
 static void
-print_tree_branch( int level, list a ){
+print_path( list path ){
+  if(  !path  ) return;
+  print_path( xs_(path) );
+  object part = x_(path);
+  printf( "%s", part->String.string );
+}
+
+static void
+update_path( list path ){
+  for(  object part; (path && (part = x_(path))), path; path = xs_(path)  ){
+    if(  !strcmp( part->String.string, "|- " )  )
+      //part->String.string = "   ";
+      path->List.a = String("   ", 0);
+    if(  !strcmp( part->String.string, "-- " ) ||
+         !strcmp( part->String.string, ">- " )  )
+      //part->String.string = "|  ";
+      path->List.a = String("|  ", 0);
+  }
+}
+
+static void
+digest( list path ){
+  printf("\n");
+  print_path( path );
+  printf("   ");
+  update_path( path );
+}
+
+static void
+print_tree_branch( list path, list a ){
   if(  !a  ) return;
   switch(  a->t  ){
   case LIST:   //printf( "( " ),
-                 print_tree_branch( level + 1, a->List.a ),
-		 print_tree_branch( level + 1, a->List.b )//,
+                 print_tree_branch( cons( String("-- ", 0), path ), a->List.a ),
+		 print_tree_branch( cons( String("|- ", 0), path ), a->List.b )//,
                  //printf( ") " )
                ;  break;
-  case STRING: print_escaped_string( a->String.string ); break;
-  case SYMBOL: indent( level ),
+  case STRING: digest( path ),
+                 print_escaped_string( a->String.string ); break;
+  case SYMBOL: digest( path ),
                  printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( level + 1, a->Symbol.data ),
+                 print_tree_branch( cons( String(">- ", 0), path ), a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
@@ -519,10 +549,10 @@ void
 print_tree( list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   print_tree_branch( 1, a->List.a ), printf( "\n" ),
-		 print_tree( a->List.b );  break;
+  case LIST:   print_tree_branch( cons( String("-- ", 0), 0 ), a->List.a ),
+		 print_tree_branch( cons( String("|- ", 0), 0), a->List.b );  break;
   case SYMBOL: printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( 1, a->Symbol.data ),
+                 print_tree_branch( cons( String(">  ", 0), 0 ), a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
