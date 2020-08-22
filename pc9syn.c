@@ -295,12 +295,12 @@ shrink( list a ){
   switch(  a->t  ){
   case LIST:
     if(  a->List.b  )
-	if(  a->List.a  )
-	    return  cons( shrink( a->List.a ), shrink( a->List.b ) );
-	else
-	    return  shrink( a->List.b );
-    else
-        return  shrink( a->List.a );
+      if(  a->List.a  ){
+	list ax = shrink( a->List.a );
+        list bx = shrink( a->List.b );
+	return  bx  ? ax  ? cons( ax, bx )  : bx  : ax;
+      } else return  shrink( a->List.b );
+    else return  a->List.a  ? shrink( a->List.a )  : 0;
   }
   return  a;
 }
@@ -381,22 +381,17 @@ int test_syntax(){
   PRINT( program );
   PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );
   //PRINT_DOT( x_( x_( program ) ) );
-  //PRINT_FLAT( x_( x_( program ) ) );
   PRINT_DATA( x_( x_( program ) ) );
   //PRINT_TREE( x_( x_( program ) ) );
-  //PRINT( xs_( x_( program ) ) );
   PRINT_TREE( program = suppress_strings( x_( x_( program ) ) ) );
-  //PRINT_DOT( program );
   PRINT( Int( garbage_collect( program ) ) );
   PRINT_TREE( program = ast_from_tree( program ) );
-  //PRINT_DOT( program );
   //PRINT_TREE( program = prune_twigs( program ) );
-  //PRINT_DOT( program );
   PRINT_TREE( program = unembed_symbols( program ) );
+  //PRINT_DOT( program );
   PRINT_TREE( program = shrink( program ) );
   PRINT_DOT( program );
   //PRINT_TREE( program = structure_from_ast( program ) );
-  //PRINT_DOT( program );
   PRINT_ALL( extract_ids( program ) );
   PRINT_ALL( extract_constants( program ) );
   PRINT( Int( garbage_collect( program ) ) );

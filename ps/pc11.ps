@@ -1,0 +1,187 @@
+%errordict/rangecheck{pstack quit}put
+(struct2.ps)run {
+  input {
+      dup length 0 eq { pop null }{
+	  dup head exch rest input cons
+      } ifelse
+  }
+  input-pos { % r c s -> ( [s0 [r c]] [s1 [r1 c1]] ... )
+      dup length 0 eq { pop pop pop null }{
+	  dup head % r c s s0
+	  4 2 roll % s s0 r c
+          3 copy cons cons 5 1 roll % [s0[r c]] s s0 r c
+	  1 add 3 2 roll % [s0rc] s r c1 s0
+          (\n) eq { pop 1 add 0 } if % [s0rc] s r1 c1
+          3 2 roll rest input-pos cons
+      } ifelse
+  }
+
+  succeed { { exch cons one } curry } % inp v succeed = ([v inp])
+  fail { { pop null } }               % inp fail = ()
+  succeed-m { { exch cons /OK exch cons } curry } % = [OK [v inp]]
+  fail-m { { pop /Fail } }                        % = Fail
+  succeed-n { succeed-m }
+  fail-n { { exch cons /Fail exch cons } }  % = [Fail msg]
+
+  satisfy {pred} { 
+      { dup null eq {fail}{
+          dup first /pred exec { xs-x succeed }{ fail } ifelse
+      } ifelse exec } ll
+  } @func
+  satisfy-m {pred} { 
+      { dup null eq {fail-m}{
+          dup first /pred exec { xs-x succeed-m }{ fail-m } ifelse
+      } ifelse exec } ll
+  } @func
+  satisfy-n {pred} {
+      { dup null eq {(empty input) fail-n}{
+          dup first /pred exec { xs-x succeed-n }
+                               { [ /pred (not satisfied) ] fail-n } ifelse
+      } ifelse exec } ll
+  } @func
+  satisfy-pos {pred} {
+      { dup null eq {fail}{
+	  dup first first /pred exec { xs-x first succeed }{ fail } ifelse
+      } ifelse exec } ll
+  } @func
+  satisfy-pos-m {pred} {
+      { dup null eq {fail-m}{
+	  dup first first /pred exec { xs-x first succeed-m }{ fail-m } ifelse
+      } ifelse exec } ll
+  } @func
+  satisfy-pos-n {pred} {
+       { dup null eq {(empty-input) fail-n}{
+           dup first first /pred exec { xs-x first succeed-n }
+                                      { [ /pred (not satisfied) ] fail-n } ifelse
+       } ifelse exec } ll
+  } @func
+
+  literal { {eq} curry satisfy }
+  literal-m { {eq} curry satisfy-m }
+  literal-n { {eq} curry satisfy-n }
+  literal-pos { {eq} curry satisfy-pos }
+  literal-pos-m { {eq} curry satisfy-pos-m }
+  literal-pos-n { {eq} curry satisfy-pos-n }
+  
+  alt {p q} {
+      { dup /p exec exch /q exec append } ll
+  } @func
+  alt-m {p q} {
+      { dup /p exec dup /Fail eq { pop /q exec }{ exch pop } ifelse } ll
+  } @func
+  alt-n {p q} {
+      { dup /p exec dup first /Fail eq { pop /q exec }{ exch pop } ifelse } ll
+  } @func
+  
+  then {p q} {
+      { /p exec dup null eq { fail }{ 
+	  first x-xs
+	  /q exec dup null eq { pop fail }{
+	      first x-xs
+	      3 1 roll cons exch cons one
+	  } ifelse
+      } ifelse } ll
+  } @func
+  then-m {p q} {
+      { /p exec dup /Fail eq { fail-m }{ 
+	  second x-xs
+          /q exec dup /Fail eq { pop fail-m }{
+              second x-xs
+              3 1 roll cons exch cons /OK exch cons
+          } ifelse
+      } ifelse } ll
+  } @func
+  then-n {p q} {
+      { /p exec dup first /OK ne { }{
+	  second x-xs
+          /q exec dup first /OK ne { x-xs 3 2 roll (after) exch cons exch cons cons }{
+	      second x-xs
+	      3 1 roll cons exch cons /OK exch cons
+          } ifelse
+      } ifelse } ll
+  } @func
+
+  using {p f} {
+      { /p exec { xs-x /f exec exch cons } mapcar } ll
+  } @func
+  using-m {p f} {
+      { /p exec dup /Fail ne { second xs-x /f exec exch cons /OK exch cons } if } ll
+  } @func
+  using-n {p f} {
+      { /p exec dup first /OK eq { second xs-x /f exec exch cons /OK exch cons } if } ll
+  } @func
+
+  %%%%
+
+  nofail {p} {
+      { /p exec dup first /Fail eq { dup 0 /Error put } if } ll
+  } @func
+
+  maybe { /0 succeed-n alt-n }
+  many {
+      {{0 exec}exec} ll dup first 3 1 roll then-n maybe
+      2 copy 0 exch put  exch pop executeonly
+  }
+  some { dup many then-n }
+
+  str {
+      dup length 0 eq { pop [] succeed-n }{
+	  dup head literal-pos-n exch rest str then-n
+      } ifelse
+  }
+
+  xthen { then-n { second } using-n }
+  thenx { then-n { first } using-n }
+
+  return {v} {
+      { pop /v } ll using-n
+  } @func
+
+  %%%%
+
+  mapcar { % list f
+      1 index null eq { pop }{
+	  exch xs-x 2 index exec 3 1 roll exch mapcar cons
+      } ifelse
+  }
+  append {
+      exch dup null eq { pop }{
+	  dup first 3 1 roll second exch append cons
+      } ifelse
+  }
+  x-xs { dup first exch second }
+  xs-x { dup second exch first }
+  one  { null cons }
+  cons { 2 aa }
+  aa   { array astore }
+  second { 1 get }
+  head { 0 1 getinterval }
+  ll       { {load-if-literal-name} deep-map }
+  deep-map { 1 index type /arraytype ne { exec }{ 1 index xcheck 3 1 roll  [ 3 1 roll
+    /deep-map cvx 2 array astore cvx forall ]  exch {cvx} if } ifelse }
+  ps { (stack:)= pstack }
+  pq { ps quit }
+  pc { ps clear }
+} pairs-begin
+
+
+%[ (a) [ (b) null ] ] [ (c) [ (d) null ] ] append
+%(abcd) input {pop 2} mapcar pq
+
+%0 0 (abcd\ne) input-pos
+%12 succeed
+%fail
+%{ (a) eq } satisfy-pos
+%(a) literal-pos-m (b) literal-pos-m {pop 42} using-m alt-m
+%(a) literal-pos-n (c) literal-pos-n nofail then-n
+%first
+%dup second exch first
+
+0 0 (abcd\ne) input-pos
+(abc) str
+exec
+pc
+0 0 (abcd\ne) input-pos
+(abd) str nofail
+exec
+pq
