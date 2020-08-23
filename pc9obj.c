@@ -503,20 +503,22 @@ print_path( list path ){
   if(  !path  ) return;
   print_path( xs_(path) );
   object part = x_(path);
+  if(  part->t == LIST  ) part = x_(part);
   printf( "%s", part->String.string );
 }
 
 static void
 update_path( list path ){
-  for(  object part; path; path = xs_(path)  ){
-    part = x_( path );
-    if(  !strcmp( part->String.string, "|- " )  )
-      //part->String.string = "   ";
+  for(  ; path; path = xs_(path)  ){
+    object part = x_( path );
+    if(  part->t == LIST  ){
+      *part = *xs_( part );
+    } else if(  !strcmp( part->String.string, "|- " ) ||
+                !strcmp( part->String.string, "<> " )  ){
       path->List.a = String("   ", 0);
-    if(  !strcmp( part->String.string, "-- " ) ||
-         !strcmp( part->String.string, ">- " )  )
-      //part->String.string = "|  ";
+    } else if(  !strcmp( part->String.string, "-- " )  ){
       path->List.a = String("|  ", 0);
+    }
   }
 }
 
@@ -532,16 +534,19 @@ static void
 print_tree_branch( list path, list a ){
   if(  !a  ) return;
   switch(  a->t  ){
-  case LIST:   //printf( "( " ),
-                 print_tree_branch( cons( String("-- ", 0), path ), a->List.a ),
-		 print_tree_branch( cons( String("|- ", 0), path ), a->List.b )//,
-                 //printf( ") " )
-               ;  break;
+  case LIST:   print_tree_branch(
+                   cons( cons( String("-- ", 0), String( a->List.b  ? "|  "  : "   ", 0 ) ),
+                         path ),
+                   a->List.a ),
+	       print_tree_branch( 
+                   cons( cons( String("|- ", 0), String("   ", 0 ) ),
+                         path ),
+                   a->List.b );  break;
   case STRING: digest( path ),
-                 print_escaped_string( a->String.string ); break;
+               print_escaped_string( a->String.string ); break;
   case SYMBOL: digest( path ),
-                 printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( cons( String(">- ", 0), path ), a->Symbol.data ),
+               printf("<%s:", a->Symbol.pname ),
+               print_tree_branch( cons( String("<> ", 0), path ), a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
@@ -554,7 +559,7 @@ print_tree( list a ){
   case LIST:   print_tree_branch( cons( String("-- ", 0), 0 ), a->List.a ),
 		 print_tree_branch( cons( String("|- ", 0), 0), a->List.b );  break;
   case SYMBOL: printf("<%s:", a->Symbol.pname ),
-                 print_tree_branch( cons( String(">  ", 0), 0 ), a->Symbol.data ),
+                 print_tree_branch( cons( String("<> ", 0), 0 ), a->Symbol.data ),
                printf( "> " );  break;
   default: print( a );
   }
