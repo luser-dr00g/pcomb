@@ -67,7 +67,10 @@ item( void ){
 static list
 parse_item( object v, list input ){
   drop( 1, input );
-  return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) ) : NIL_;
+  //return  valid( input )  ? one( cons( x_( input ), xs_( input ) ) ) : NIL_;
+  object i = x_( input );
+  if(  i && i->t == LIST  ) i = x_( i );
+  return  valid( input )  ? one( cons( i, xs_( input ) ) ) : NIL_;
   //return  valid( input ) ? one( cons( x_( take( 1, input ) ), xs_( input ) ) )  : NIL_;  //strict
   //return  valid( input ) ? one( cons( x_( input ), xs_( input ) ) )  : NIL_;             //lazy
 }

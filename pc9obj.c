@@ -195,12 +195,12 @@ drop( int n, list o ){
 
 
 static list
-force_chars_from_string( object v ){
-  char *p = v->String.string;
+force_chars_from_string( object s ){
+  char *p = s->String.string;
   return  *p  ?
             cons( Int( *p ),
 		  Suspension( String( p+1, 0 ), force_chars_from_string ) )
-          : Symbol(EOF);
+          : cons( Symbol(EOF), 0 );
 }
 list
 chars_from_string( char *p ){
@@ -209,17 +209,18 @@ chars_from_string( char *p ){
 
 
 static list
-force_chars_from_file( object v ){
-  FILE *f = v->Void.v;
+force_chars_from_file( object file ){
+  FILE *f = file->Void.v;
   int c = fgetc( f );
   return  c != EOF  ?
-            cons( Int( c ), Suspension( v, force_chars_from_file ) )
-          : Symbol(EOF);
+            cons( Int( c ), Suspension( file, force_chars_from_file ) )
+          : cons( Symbol(EOF), 0 );
 }
 list
 chars_from_file( FILE *f ){
-  return  f  ? Suspension( Void( f ), force_chars_from_file ) : NIL_;
+  return  f  ? Suspension( Void( f ), force_chars_from_file )  : NIL_;
 }
+
 
 // 00000000 00-7f 01111111 0   7f
 // 10000000 80-bf 10111111 1   3f
@@ -507,7 +508,8 @@ print_path( list path ){
 
 static void
 update_path( list path ){
-  for(  object part; (path && (part = x_(path))), path; path = xs_(path)  ){
+  for(  object part; path; path = xs_(path)  ){
+    part = x_( path );
     if(  !strcmp( part->String.string, "|- " )  )
       //part->String.string = "   ";
       path->List.a = String("   ", 0);

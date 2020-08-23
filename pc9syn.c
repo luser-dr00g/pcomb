@@ -373,7 +373,9 @@ int test_syntax(){
 "\tprintf(\"Hello, world\");\n"
 "}\n"
 "\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
-  object tokens = tokens_from_chars( C75, chars_from_string( source ) );
+  object tokens = tokens_from_chars( C75, 
+                                     chars_with_positions( 
+                                         chars_from_string( source ) ) );
   add_global_root( tokens );
   PRINT( take( 4, tokens ) );
   object program = tree_from_tokens( tokens );

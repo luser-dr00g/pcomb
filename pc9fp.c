@@ -165,6 +165,31 @@ rreduce( fBinOper *f, int n, object *po ){
 }
 
 
+static list
+force_chars_with_positions( list v ){
+  list input = assoc_symbol( INPUT, v );
+  if(  !valid( input )  ) return  NIL_;
+  object pos = assoc_symbol( POS, v );
+  object c = x_( take( 1, input ) );
+  if(  c->t == SYMBOL && c->Symbol.symbol == EOF  ) return one( c );
+  *input = *xs_( input );
+  if(  c->Int.i == '\n'  )
+      x_( pos )->Int.i = 0, xs_( pos )->Int.i += 1;
+  else
+      x_( pos )->Int.i += 1;
+  return  cons( cons( c, copy( pos ) ), 
+                Suspension( v, force_chars_with_positions ) );
+}
+
+list
+chars_with_positions( list o ){
+  return  o  ? Suspension(
+                   env( 0, 2, Symbol(INPUT), o, Symbol(POS), cons( Int(0), Int(0) ) ), 
+                   force_chars_with_positions )
+             : NIL_;
+}
+
+
 // Pattern Matching
 list matchpat( list v, list pat, list a );
 
