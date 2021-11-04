@@ -35,32 +35,25 @@
     map     { 1 index xcheck 3 1 roll  [ 3 1 roll forall ]  exch {cvx} if }
     reduce  { exch dup first exch rest 3 -1 roll forall }
     rreduce { exch aload length 1 sub dup 3 add -1 roll repeat }
-    curry   { [ 3 1 roll {} forall ] cvx } @pop
-    {   dup xcheck 3 1 roll
-	dup length 1 add array dup 0 5 -1 roll put dup 1 4 -1 roll putinterval
-	exch {cvx}if }
-    compose { 2 array astore cvx { {} forall } map } @pop
-    {   1 index xcheck 3 1 roll
-	1 index length 1 index length add array  dup 0 4 index putinterval
-	dup 4 -1 roll length 4 -1 roll putinterval
-	exch {cvx} if }
-    reverse {
-	dup xcheck exch
-	[ exch dup length 1 sub -1 0 { 2 copy get 3 1 roll pop } for pop ]
-        exch {cvx} if }
+    curry   { dup xcheck 3 1 roll
+	        dup length 1 add array dup 0 5 -1 roll put dup 1 4 -1 roll putinterval
+	      exch {cvx} if }  { [ 3 1 roll {} forall ] cvx } @pop
+    compose { 1 index xcheck 3 1 roll
+	        1 index length 1 index length add array  dup 0 4 index putinterval
+	        dup 4 -1 roll length 4 -1 roll putinterval
+	      exch {cvx} if }  { 2 array astore cvx { {} forall } map } @pop
+    reverse { aload 0 1 2 index length 1 sub { 3 2 roll 3 copy put pop pop } for }
+            { dup xcheck exch  [ exch dup length 1 sub -1 0 { 2 copy get 3 1 roll pop } for pop ]
+              exch {cvx} if } @pop
 } pairs-def {
     fortokens {src proc}{ { src token {exch /src exch store}{exit}ifelse  proc } loop } @func
     fortuple {a n p}{ 0 n /a load length 1 sub
 	{ /a exch /n getinterval /p exec } {load-if-literal-name} map end for
     } @func-begin
-    load-if-literal-name {
-        dup type /nametype eq 1 index xcheck not and {
-            { load } stopped pop
-        } if
-    }
+    load-if-literal-name { dup type /nametype eq 1 index xcheck not and { { load } stopped pop } if }
 } pairs-def
 
-/debug where{pop}{currentfile flushfile}ifelse
+/debugstruct2 where{pop}{currentfile flushfile}ifelse
 {
     main {
 	var ==

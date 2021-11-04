@@ -1,0 +1,61 @@
+errordict/typecheck{pe quit}put
+%errordict/stackunderflow{pe quit}put
+%errordict/stackunderflow{pq}put
+%errordict/undefined{pq}put
+%(../../debug.ps/db5.ps) run
+(pc11a.ps)run 
+{
+    char { literal }
+    anyof { {within} curry satisfy }
+    noneof { {within not} curry satisfy }
+    within { exch search { pop pop pop true }{ pop false } ifelse }
+    item { {pop true} satisfy }
+    into{ p v q }{
+	({ //p exec +is-ok {
+             second xs-x <<exch //v exch>>begin force //q exec end 
+           } if }) cvx exec
+    } @func
+    ? { {maybe} compose }
+    + { {some} compose }
+    * { {many} compose }
+} pairs-begin
+
+/Dot        (.) char 		{pop {item} one} using  def
+/Meta       (*+?) anyof  def
+/Character  (*+?.|()) noneof 	{first {literal} curry one} using  def
+/Expression {-777 exec}  def
+/Atom       //Dot
+            //Character  alt
+            (\() char //Expression executeonly xthen (\)) char thenx  alt  def
+/Factor     //Atom /A
+            //Meta 	{/A load first exch first load exec one} using
+	        maybe 	{dup first /0 eq {pop /A load} if } using
+            into  def
+/Term       //Factor  //Factor many then
+                { flatten { {then} compose compose } reduce one} using
+            def
+//Expression 0  //Term (|) char //Term xthen many then
+                 { flatten { dup /0 eq { pop } if } map
+                   { {plus} compose compose } reduce one} using
+            put
+
+/regex { 0 0 3 2 roll string-input //Expression exec report } def
+
+{
+  0 0 (ab) string-input //Dot maybe exec pc
+  0 0 (ab) string-input //Meta exec pc
+  0 0 (*)  string-input //Meta exec pc
+  0 0 (ab) string-input //Character maybe exec pc
+  0 0 (ab) string-input //Atom maybe exec pc
+  0 0 (.)  string-input //Atom maybe exec pc
+  %0 0 (a*) string-input //Atom //Meta then ==
+  0 0 (a*) string-input //Atom //Meta then exec pc
+  0 0 (ab) string-input Factor pc
+  0 0 (a*) string-input Factor pc
+  0 0 (ab) string-input Term pc
+  0 0 (ab) string-input Expression pc
+} exec
+{
+  (ab) regex
+} pop
+quit

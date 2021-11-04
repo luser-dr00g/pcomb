@@ -1,0 +1,167 @@
+%errordict/rangecheck{pstack countexecstack array execstack == quit}put
+(struct2.ps)run {
+    lazy{ p }{
+      ({dup zero ne 1 index xcheck and {
+         { force //p exec } curry
+       }//p  ifelse}) cvx exec
+    } @func
+} pairs-begin {
+    string-input{ r c s }{ % r c s -> ( [s0 [r c]] {[s1 [r1 c1]] ... })
+	s length 0 eq { zero }{ [ s head [ r c ] ] 
+                                [ s head (\n) eq {r 1 add 0}{r c 1 add} ifelse
+                                  s rest  /string-input cvx ] cvx  cons } ifelse } @func
+    file-input{ r c f }{
+	f read not { zero }{ [ exch [ r c ] ] dup first
+                             [ exch (\n) eq {r 1 add 0}{r c 1 add} ifelse
+                               f  /file-input cvx ] cvx  cons } ifelse } @func
+
+    succeed { { exch cons /OK exch cons } curry } % inp v succeed exec = [OK [v inp]]
+    fail { { exch cons /Fail exch cons } curry }        % inp fail exec = [Fail msg]
+    nofail{ p }{ { /p exec +not-ok { dup 0 /Error put } if } ll } @func
+    report { dup first =
+             dup first /OK eq { dup second first flatten ==
+                                (remainder:) =only second second == }
+                              { second == } ifelse }
+    return{ v }{ { pop /v } ll using } @func
+    using{ p f }{ { /p exec +is-ok { second xs-x /f exec exch cons /OK exch cons } if } ll } @func
+
+    satisfy{ pred }{
+	{ dup zero eq {(empty input) fail}{
+	      dup forcex first first /pred exec { xs-x first one succeed }
+                                         { [ /pred (not satisfied) ] fail } ifelse
+        } ifelse exec } ll %lazy
+    } @func
+    literal { {eq} curry satisfy }
+    range{ a b }{ { dup /a ge exch /b le and } ll satisfy } @func
+
+    alt{ p q }{ { dup /p exec +not-ok { pop /q exec }{ exch pop } ifelse } ll lazy } @func
+
+    then{ p q }{
+	({ //p exec +is-ok {
+            second x-xs force //q exec +is-ok {
+              second x-xs 3 1 roll append exch consok
+            }{
+              x-xs force 3 2 roll (after) exch cons exch cons cons
+            } ifelse
+         } if }) cvx exec
+    } @func
+    xthen { then { second } using }
+    thenx { then { first } using }
+
+    maybe{ p }{
+      ({ dup //p exec +is-ok {
+           exch pop
+         }{
+           pop /0 one exch consok
+         } ifelse }) cvx exec
+    } @func
+    many{ p }{
+	  ({ dup //p exec +is-ok { %input result
+               exch pop
+               { % result
+                 dup second x-xs force //p exec +is-ok { % result x result'
+                   3 -1 roll pop  % x result'
+                   dup second x-xs 3 1 roll append exch  % result' [x[x']] xs'
+                 }{
+                   pop pop second x-xs exit
+                 } ifelse
+               } loop
+             }{ %input result
+               pop /0 one exch %result' remainder
+             } ifelse
+             consok }) cvx exec
+      } @func
+    some { dup many then }
+    str { dup length 0 eq { pop zero succeed }{ dup head literal exch rest str then } ifelse }
+
+    flatten { [ exch { dup zero eq { pop exit } if x-xs } loop ] }
+    force { dup zero ne 1 index xcheck and { exec force } if }
+    forcex { force dup zero ne { dup first xcheck { dup 0 {force} update } if } if }
+    forcexs { force dup zero ne { dup second xcheck { dup 1 {force} update } if } if }
+    drop{ {next}repeat } %{ n }{ n 0 gt {next n 1 sub drop} if } @func
+    take{ x n }{ n 0 eq { zero }{
+                   /x load forcex forcexs  dup zero ne { x-xs*  n 1 sub take  cons } if
+                 } ifelse } @func
+    next { forcexs second }  % force and update cdr
+    update { 3 copy pop get exch exec put }  % a i p    a[i]=p(a[i])
+    x-xs* { dup first exch second }
+    x-xs  1 @index @lazy
+    xs-x* { dup second exch first }
+    xs-x  1 @index @lazy
+    append { 1 index second zero eq { exch first exch cons }
+                                    { exch x-xs 3 2 roll append cons } ifelse }
+    consok { cons /OK exch cons }
+    +is-ok { dup first /OK eq }
+    +not-ok { dup first /OK ne }
+    head { 0 1 getinterval }
+    cons { 2 aa }
+    aa { array astore }
+    second { 1 get }
+    zero { [] }
+    one { zero cons }
+    ll { {load-if-literal-name} deep-map }
+    deep-map { 1 index type /arraytype ne { exec }{ 1 index xcheck 3 1 roll  [ 3 1 roll
+      /deep-map cvx 2 array astore cvx forall ]  exch {cvx} if } ifelse }
+    ps { (stack:)= pstack (:stack)=}
+    pe { (estack:)= countexecstack array execstack {==} forall (:estack)= }
+    pc { ps clear }
+    pq { ps quit }
+} pairs-begin
+
+%quit
+currentfile flushfile
+
+{
+0 0 (abcd\ne) string-input
+dup ==
+9 take ==
+0 0 (abcd\ne) string-input
+dup 2 drop ==
+==
+0 0 (abcd\ne) string-input
+x-xs ps
+force ps
+x-xs ps
+x-xs ps
+force ps
+} pop
+
+
+{
+0 0 (abcd\ne) string-input
+{ pop true } satisfy exec pc
+
+0 0 () string-input
+{ pop true } satisfy %ps
+exec pc
+
+0 0 (abcd\ne) string-input
+(a) literal exec  pc
+
+0 0 (abcd\ne) string-input
+(a) literal
+(b) literal then exec  pc
+
+0 0 (abcd\ne) string-input
+(a) literal
+(c) literal then exec  pc
+} exec %pop
+
+
+0 0 (abcd\ne) string-input
+(abc) str exec
+report
+pc
+
+0 0 (abcd\ne) string-input
+(abd) str
+(abc) str alt exec
+report
+pc
+
+0 0 (abed\ne) string-input
+(a)(c) range
+(a)(c) range then
+exec
+report
+pq
