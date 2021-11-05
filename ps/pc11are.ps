@@ -1,4 +1,4 @@
-errordict/typecheck{ps pe quit}put
+%errordict/typecheck{ps pe quit}put
 %errordict/stackunderflow{pe quit}put
 %errordict/stackunderflow{pq}put
 %errordict/undefined{pq}put
@@ -30,6 +30,7 @@ errordict/typecheck{ps pe quit}put
 /regex { 0 0 3 2 roll string-input //Expression exec report } def
 
 {
+  0 0 (abc) string-input pc
   0 0 (ab) string-input //Dot maybe exec pc
   0 0 (ab) string-input //Meta exec pc
   0 0 (*)  string-input //Meta exec pc
