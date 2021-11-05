@@ -1,43 +1,31 @@
-errordict/typecheck{pe quit}put
+errordict/typecheck{ps pe quit}put
 %errordict/stackunderflow{pe quit}put
 %errordict/stackunderflow{pq}put
 %errordict/undefined{pq}put
 %(../../debug.ps/db5.ps) run
-(pc11a.ps)run 
-{
-    char { literal }
-    anyof { {within} curry satisfy }
-    noneof { {within not} curry satisfy }
-    within { exch search { pop pop pop true }{ pop false } ifelse }
-    item { {pop true} satisfy }
-    into{ p v q }{
-	({ //p exec +is-ok {
-             second xs-x <<exch //v exch>>begin force //q exec end 
-           } if }) cvx exec
-    } @func
+(pc11a.ps)run {
+    fix { flatten clean }
+    clean { { dup zero eq { pop } if } map }
     ? { {maybe} compose }
     + { {some} compose }
     * { {many} compose }
 } pairs-begin
 
-/Dot        (.) char 		{pop {item} one} using  def
+/Dot        (.) char  {pop {item} one} using  def
 /Meta       (*+?) anyof  def
-/Character  (*+?.|()) noneof 	{first {literal} curry one} using  def
+/Character  (*+?.|()) noneof  {first {literal} curry one} using  def
 /Expression {-777 exec}  def
 /Atom       //Dot
-            //Character  alt
-            (\() char //Expression executeonly xthen (\)) char thenx  alt  def
+            (\() char //Expression executeonly xthen (\)) char thenx  alt
+            //Character  alt  def
 /Factor     //Atom /A
-            //Meta 	{/A load first exch first load exec one} using
-	        maybe 	{dup first /0 eq {pop /A load} if } using
+            //Meta 	{/A load first exch first load exec one } using
+	        maybe 	{dup first zero eq {pop /A load} if } using
             into  def
 /Term       //Factor  //Factor many then
-                { flatten { {then} compose compose } reduce one} using
-            def
-//Expression 0  //Term (|) char //Term xthen many then
-                 { flatten { dup /0 eq { pop } if } map
-                   { {plus} compose compose } reduce one} using
-            put
+                { fix { {then} compose compose } reduce one } using  def
+//Expression 0  //Term  (|) char //Term xthen  many  then
+                  { fix { {plus} compose compose } reduce one } using  put
 
 /regex { 0 0 3 2 roll string-input //Expression exec report } def
 
@@ -53,9 +41,9 @@ errordict/typecheck{pe quit}put
   0 0 (ab) string-input Factor pc
   0 0 (a*) string-input Factor pc
   0 0 (ab) string-input Term pc
-  0 0 (ab) string-input Expression pc
+  0 0 (ab|c) string-input Expression pc
+  (ab) regex
 } exec
 {
-  (ab) regex
 } pop
 quit

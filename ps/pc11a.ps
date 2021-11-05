@@ -19,11 +19,12 @@
     fail { { exch cons /Fail exch cons } curry }        % inp fail exec = [Fail msg]
     nofail{ p }{ { /p exec +not-ok { dup 0 /Error put } if } ll } @func
     report { dup first =
-             dup first /OK eq { dup second first flatten ==
-                                (remainder:) =only second second == }
+             dup first /OK eq { second dup first flatten ==
+                                (remainder:) =only second == }
                               { second == } ifelse }
     return{ v }{ { pop /v } ll using } @func
     using{ p f }{ { /p exec +is-ok { second xs-x /f exec exch cons /OK exch cons } if } ll } @func
+    probe{ p }{ { /p exec dup report } ll } @func
 
     satisfy{ pred }{
 	{ dup zero eq {(empty input) fail}{
@@ -46,13 +47,13 @@
          } if }) cvx exec
     } @func
     xthen { then { second } using }
-    thenx { then { first } using }
+    thenx { then { first one } using }
 
     maybe{ p }{
       ({ dup //p exec +is-ok {
            exch pop
          }{
-           pop /0 one exch consok
+           pop zero one exch consok
          } ifelse }) cvx exec
     } @func
     many{ p }{
@@ -67,14 +68,25 @@
                  } ifelse
                } loop
              }{ %input result
-               pop /0 one exch %result' remainder
+               pop zero one exch %result' remainder
              } ifelse
              consok }) cvx exec
       } @func
     some { dup many then }
     str { dup length 0 eq { pop zero succeed }{ dup head literal exch rest str then } ifelse }
+    char { literal }
+    anyof { {within} curry satisfy }
+    noneof { {within not} curry satisfy }
+    within { exch search { pop pop pop true }{ pop false } ifelse }
+    item { {pop true} satisfy }
+    into{ p v q }{
+	({ //p exec +is-ok {
+             second xs-x <<exch //v exch>>begin force //q exec end 
+           } if }) cvx exec
+    } @func
 
     flatten { [ exch { dup zero eq { pop exit } if x-xs } loop ] }
+    list { [[]] compose { cons } rreduce }
     force { dup zero ne 1 index xcheck and { exec force } if }
     forcex { force dup zero ne { dup first xcheck { dup 0 {force} update } if } if }
     forcexs { force dup zero ne { dup second xcheck { dup 1 {force} update } if } if }
@@ -102,8 +114,8 @@
     ll { {load-if-literal-name} deep-map }
     deep-map { 1 index type /arraytype ne { exec }{ 1 index xcheck 3 1 roll  [ 3 1 roll
       /deep-map cvx 2 array astore cvx forall ]  exch {cvx} if } ifelse }
-    ps { (stack:)= pstack (:stack)=}
-    pe { (estack:)= countexecstack array execstack {==} forall (:estack)= }
+    ps { (stack:)= pstack (:stack)= flush }
+    pe { (estack:)= countexecstack array execstack {==} forall (:estack)= flush }
     pc { ps clear }
     pq { ps quit }
 } pairs-begin
