@@ -41,9 +41,10 @@ object  Symbol_( int sym, char *pname, object data );
 #define Symbol(n) Symbol_( n, #n, 0 )
 object  GenSymbol( char *prefix );
 object  Void( void *v );
+object  clone( object o );
 
 // Garbage Collector
-void add_global_root( object a );
+object add_global_root( object a );
 int garbage_collect( object local_roots );
 
 // Lists
@@ -79,7 +80,7 @@ void print_tree( list a );
 
 static int
 valid( object a ){
-  switch( a  ? *(tag*)a  : 0 ){
+  switch( a  ? a->t  : 0 ){
   default:  // null, NIL_ or unknown
     return 0;
   case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:

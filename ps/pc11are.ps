@@ -4,8 +4,6 @@
 %errordict/undefined{pq}put
 %(../../debug.ps/db5.ps) run
 (pc11a.ps)run {
-    fix { flatten clean }
-    clean { { dup zero eq { pop } if } map }
     ? { {maybe} compose }
     + { {some} compose }
     * { {many} compose }

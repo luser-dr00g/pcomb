@@ -34,3 +34,15 @@ ridiculous when parsing anything longer than 5 or 6 lines.
 So, pc9 finally implements lazy evaluation in the parsers, particularly the `plus`
 combinator which handles alternates. It tries the first one and returns a Suspension
 for the remainder.
+
+With ps/pc11, the program was rewritten following Hutton's earlier paper *Higher Order
+Functions for Parsing*. This reconstructs the parsers in a different manner, and 
+with only a passing reference to Monads. He also describes modifying the character
+stream to provide row and column information which is then discarded by the parsers.
+Discarding this information is easiest to accomplish by building everything
+from the `<pred> satisfy` parser. This also turns out to be more efficient for certain
+parsers like `anyof` and `noneof` which otherwise would need to make fans of `alt` 
+parsers to check each character individually.
+
+The paper also describes modifying the parsers to yield error messages upon failure
+instead of just an empty list of results.

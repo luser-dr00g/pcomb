@@ -170,21 +170,26 @@ force_chars_with_positions( list v ){
   list input = assoc_symbol( INPUT, v );
   if(  !valid( input )  ) return  NIL_;
   object pos = assoc_symbol( POS, v );
+  object col = x_( pos );
+  object row = xs_( pos );
   object c = x_( take( 1, input ) );
-  if(  c->t == SYMBOL && c->Symbol.symbol == EOF  ) return one( c );
+  if(  c->t == SYMBOL && c->Symbol.symbol == EOF  ) return  clone( input );//one( c );
   *input = *xs_( input );
-  if(  c->Int.i == '\n'  )
-      x_( pos )->Int.i = 0, xs_( pos )->Int.i += 1;
-  else
-      x_( pos )->Int.i += 1;
-  return  cons( cons( c, copy( pos ) ), 
+  if(  c->Int.i == '\n'  ){
+    col = Int( 0 );
+    row = Int( row->Int.i + 1 );
+  } else {
+    col = Int( col->Int.i + 1 );
+  }
+  *pos = *cons( col, row );
+  return  cons( cons( c, cons( col, row ) ), 
                 Suspension( v, force_chars_with_positions ) );
 }
 
 list
 chars_with_positions( list o ){
   return  o  ? Suspension(
-                   env( 0, 2, Symbol(INPUT), o, Symbol(POS), cons( Int(0), Int(0) ) ), 
+                   env( 0, 2, Symbol(INPUT), o, Symbol(POS), cons( Int(0), Int(1) ) ), 
                    force_chars_with_positions )
              : NIL_;
 }

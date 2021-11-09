@@ -1,0 +1,92 @@
+%errordict/typecheck{pq}put
+(pc11a.ps)run <<
+/interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
+/to-char         { 1 string dup 0 4 3 roll put }
+>> begin
+
+/delimiters  ( \t\n()/%[]<>{}) def
+/delimiter   delimiters anyof  def
+/octal       (0)(7) range  def
+/digit       (0)(9) range  def
+/alpha       (a)(z) range  (A)(Z) range alt  def
+/regular     delimiters noneof  def
+
+/rad-digit   //digit //alpha alt  def
+/rad-integer //digit //digit maybe then  (#) char then  //rad-digit some then  def
+/number      //digit some  def
+/opt-number  //digit many  def
+/integer     (+-) anyof maybe //number then  def
+/real        (+-) anyof maybe
+               //number (.) char then  //opt-number then
+                        (.) char       //number     then  alt  then  def
+
+/name        //regular some  def
+
+/ps-char     {-777 exec}  def
+/escape      (\\) char
+               (\\) char
+               (\() char  alt
+               (\)) char  alt
+	       (n) char  { pop (\n) one } using  alt
+               (r) char  { pop (\r) one } using  alt
+               (t) char  { pop (\t) one } using  alt
+               (b) char  { pop (\b) one } using  alt
+               (f) char  { pop (\f) one } using  alt
+               //octal //octal maybe then //octal maybe then
+                 { fix interpret-octal to-char one } using  alt
+             xthen  def
+/ps-string   (\() char //ps-char executeonly many then (\)) char then  def
+//ps-char 0  //escape
+               //ps-string alt
+               (()) noneof alt  put
+
+/hex-char    //digit  (a)(f) range  (A)(F) range alt  alt  def
+/non-hex-char //hex-char (>) char alt none def
+/hex-string  (<) char
+               //non-hex-char many //hex-char xthen many then //non-hex-char many thenx
+             (>) char then  def
+
+/spaces      ( \t\n) anyof many  def
+/object      {-777 exec}  def
+/ps-token    //spaces //object executeonly xthen  def
+
+//object 0   //rad-integer { fix to-string cvi } using
+             //real  { fix to-string cvr } using  alt
+             //integer { fix to-string cvi } using  alt
+             //name  { fix to-string cvn cvx } using  alt
+             (/) char //name then  { fix to-string rest cvn cvlit } using  alt
+             (/) char (/) char then //name then  { fix to-string rest rest cvn load } using  alt
+             //ps-string  { fix to-string 1 1 index length 2 sub getinterval } using  alt
+	     //hex-string  { fix 1 1 index length 2 sub getinterval } using  alt
+	     ({) char  //ps-token many then  //spaces (}) char xthen  then  alt
+             //delimiter  { fix to-string cvn cvx } using alt
+         put
+
+/mytoken {
+  dup length 0 gt {
+    0 0 3 2 roll string-input //ps-token exec
+  }{ pop false } ifelse
+} def
+
+{
+  0 0 (47) string-input //integer exec pc
+  0 0 (47) string-input //number exec pc
+  0 0 (8#117) string-input 
+    //digit //digit maybe then (#) char then //rad-digit some then exec pc
+  %quit
+  0 0 (8#117) string-input //rad-integer exec pc
+  0 0 (1.17) string-input //real exec pc
+} pop
+
+(8#117) mytoken pc
+(47) mytoken pc
+(string) mytoken pc
+([stuff) mytoken pc
+(/litname) mytoken pc
+(42.42) mytoken pc
+((a\\117 \\\\string\\n)) mytoken ps second first print clear
+/thing 12 def
+(//thing) mytoken pc
+(<abc defg>) mytoken pc
+
+quit

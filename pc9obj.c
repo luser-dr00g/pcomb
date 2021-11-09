@@ -82,12 +82,18 @@ Void( void *v ){
   return  OBJECT( .Void = { VOID, v } );
 }
 
+object
+clone( object o ){
+  return  new_( o );
+}
+
 
 // Garbage Collector
 
-void
+object
 add_global_root( object a ){
   global_roots = cons( a, global_roots );
+  return  a;
 }
 
 int
@@ -182,6 +188,7 @@ xs_( list a ){
 list
 take( int n, list o ){
   if(  n == 0  ) return NIL_;
+  if(  !o  ) return NIL_;
   *o = *force_( o );
   return  valid( o )  ? cons( x_( o ), take( n-1, xs_( o ) ) )  : NIL_;
 }
@@ -189,6 +196,7 @@ take( int n, list o ){
 list
 drop( int n, list o ){
   if(  n == 0  ) return o;
+  if(  !o  ) return NIL_;
   *o = *force_( o );
   return  valid( o )  ? drop( n-1, xs_( o ) )  : NIL_;
 }
@@ -244,36 +252,59 @@ leading_ones( object x ){
 static object
 mask_off( object x, int m ){
   return  Int( x->Int.i & 
-               ((int[]){ 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[ m ] );
+               ((int[]){ -1, 0x7f, 0x3f, 0x1f, 0x0f, 0x07, 0x03, 0x03 })[ m + 1 ] );
+}
+
+static object
+remove_pos( object x ){
+  return  x->t == LIST  ? x_( x )  : x;
 }
 
 static object
 process_utf8_byte( object x, list v ){
   return Int( ( x->Int.i << 6 ) |
-	      ( x_( take( 1, v = drop( 1, v ) ) )->Int.i & 0x3f ) );
+	      ( remove_pos( x_( take( 1, v ) ) )->Int.i & 0x3f ) );
+}
+
+static list force_ucs4_from_utf8( list v );
+static object
+work_around_pos( list (*f)(list), list x, list v ){
+  object c = x_( x );
+  object pos = xs_( x );
+  object r = f( cons( c, xs_( v ) ) );
+  object y = x_( r );
+  if(  y->t == SYMBOL && y->Symbol.symbol == EOF  ) return y;
+  //*y = *cons( y, pos );
+  //return  r;
+  return  cons( cons( y, pos ), xs_( r ) );
 }
 
 static list
 force_ucs4_from_utf8( list v ){
+  if(  !valid( v )  ) return  NIL_;
   object x = x_( take( 1, v ) );
+  if(  x && x->t == LIST ){
+    return  work_around_pos( force_ucs4_from_utf8, x, v );
+  }
+  if(  x && x->t == SYMBOL && x->Symbol.symbol == EOF  ) return  v;
   int lead = 0;
   if(  valid( x )  ){
     x = mask_off( x, lead = leading_ones( x ) );
     switch(  lead  ){
-    case 6:  x = process_utf8_byte( x, v ); //fallthrough
-    case 5:  x = process_utf8_byte( x, v ); //fallthrough
-    case 4:  x = process_utf8_byte( x, v ); //fallthrough
-    case 3:  x = process_utf8_byte( x, v ); //fallthrough
-    case 2:  x = process_utf8_byte( x, v ); //fallthrough
-    case 1:  x = process_utf8_byte( x, v ); //fallthrough
-    case 0:  default:  break;
+    case 6:  x = process_utf8_byte( x, v = drop( 1, v ) ); //fallthrough
+    case 5:  x = process_utf8_byte( x, v = drop( 1, v ) ); //fallthrough
+    case 4:  x = process_utf8_byte( x, v = drop( 1, v ) ); //fallthrough
+    case 3:  x = process_utf8_byte( x, v = drop( 1, v ) ); //fallthrough
+    case 2:  x = process_utf8_byte( x, v = drop( 1, v ) ); //fallthrough
+    case 1:
+    default: v = drop(1, v); break;
     }
   }
 
-  if (x->Int.i < ((int[]){0,0,0x80,0x800,0x10000})[lead])
+  if (x && x->Int.i < ((int[]){0,0,0x80,0x800,0x10000})[lead])
     fprintf( stderr, "overlength encoding in utf8 char\n" );
-  return  x->Int.i != EOF ?
-            cons( x, Suspension( drop( 1, v ), force_ucs4_from_utf8 ) )
+  return  x && x->Int.i != EOF ?
+            cons( x, Suspension( v, force_ucs4_from_utf8 ) )
           : Symbol(EOF);
 }
 list
@@ -341,8 +372,13 @@ static list utf_six_byte( object x, list v ){
 
 static list
 force_utf8_from_ucs4( list v ){
+  if(  !valid( v )  ) return  NIL_;
   object x = x_( take( 1, v ) );
-  if(  !valid( x )  ) return  v;
+  if(  !valid( x )  ) return  NIL_;
+  if(  x->t == LIST  ){
+    return  work_around_pos( force_utf8_from_ucs4, x, v );
+  }
+  if(  x->t == SYMBOL && x->Symbol.symbol == EOF  ) return  v;
   if(       x->Int.i <=       0x7f  ) return  utf_one_byte(   x, v );
   else if(  x->Int.i <=      0x7ff  ) return  utf_two_byte(   x, v );
   else if(  x->Int.i <=     0xffff  ) return  utf_three_byte( x, v );

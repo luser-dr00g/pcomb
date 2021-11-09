@@ -189,8 +189,7 @@ tree_from_tokens( object s ){
   if(  !s  ) return  NIL_;
   static parser p;
   if(  !p  ){
-    p = parser_for_c_grammar();
-    add_global_root( p );
+    add_global_root( p = parser_for_c_grammar() );
   }
   return  parse( p, s );
 }
@@ -321,16 +320,8 @@ topdown_tree_search( list pats, list a ){
   return  v;
 }
 
-object
-oper_xs( list v, list o ){
-  return  xs_( o );
-}
-
 list
-extract_ids( list a ){
-  if(  !a  ) return  a;
-  list pat = cons( MSymbol(t_id), VSymbol(X) );
-  return  map( Operator( 0, oper_xs ), topdown_tree_search( one(pat), a ) );
+topdown_tree_transform( list pats, list a ){
 }
 
 list
@@ -347,6 +338,18 @@ bottomup_tree_search( list pats, list a ){
   return  v = append( match( pats, a ), v );
 }
 
+object
+oper_xs( list v, list o ){
+  return  xs_( o );
+}
+
+list
+extract_ids( list a ){
+  if(  !a  ) return  a;
+  list pat = cons( MSymbol(t_id), VSymbol(X) );
+  return  map( Operator( 0, oper_xs ), topdown_tree_search( one(pat), a ) );
+}
+
 list
 extract_constants( list a ){
   if(  !a  ) return  a;
@@ -355,6 +358,31 @@ extract_constants( list a ){
                     cons( MSymbol(c_char), VSymbol(c_char) ),
                     cons( MSymbol(c_string), VSymbol(c_string) ) );
   return  bottomup_tree_search( pats, a );
+}
+
+list identity( list x ){ return x; }
+
+int test_filters_and_positions(){
+  object ch = LIST( Int(65), Int(1024), Int('\n'), Int(42), Symbol(EOF) );
+  PRINT( take( 12, ch ) );
+  PRINT( take( 12, utf8_from_ucs4( ch ) ) );
+  PRINT( take( 12, ucs4_from_utf8( utf8_from_ucs4( ch ) ) ) );
+  PRINT( take( 12, 
+	chars_with_positions(
+        ucs4_from_utf8(
+	utf8_from_ucs4( 
+	ch ) ) ) ) );
+  PRINT( take( 12, 
+        ucs4_from_utf8(
+	chars_with_positions(
+	utf8_from_ucs4( 
+	ch ) ) ) ) );
+  PRINT( take( 12, 
+        ucs4_from_utf8(
+	utf8_from_ucs4( 
+	chars_with_positions(
+	ch ) ) ) ) );
+  return 0;
 }
 
 int test_syntax(){
@@ -373,36 +401,42 @@ int test_syntax(){
 "\tprintf(\"Hello, world\");\n"
 "}\n"
 "\t if(  2  ){\n\t   x = 5;\n\t   } int auto";
-  object tokens = tokens_from_chars( C75, 
-                                     chars_with_positions( 
-                                         chars_from_string( source ) ) );
-  add_global_root( tokens );
-  PRINT( take( 4, tokens ) );
-  object program = tree_from_tokens( tokens );
-  PRINT( Int( garbage_collect( program ) ) );
-  PRINT( program );
-  PRINT( x_( x_(  ( drop( 1, program ), program ) ) ) );
-  //PRINT_DOT( x_( x_( program ) ) );
-  PRINT_DATA( x_( x_( program ) ) );
-  //PRINT_TREE( x_( x_( program ) ) );
-  PRINT_TREE( program = suppress_strings( x_( x_( program ) ) ) );
-  PRINT( Int( garbage_collect( program ) ) );
-  PRINT_TREE( program = ast_from_tree( program ) );
-  //PRINT_TREE( program = prune_twigs( program ) );
-  PRINT_TREE( program = unembed_symbols( program ) );
-  //PRINT_DOT( program );
-  PRINT_TREE( program = shrink( program ) );
-  PRINT_DOT( program );
-  //PRINT_TREE( program = structure_from_ast( program ) );
-  PRINT_ALL( extract_ids( program ) );
-  PRINT_ALL( extract_constants( program ) );
-  PRINT( Int( garbage_collect( program ) ) );
+  PRINT( Int( garbage_collect( 0 ) ) );
+
+  object chars;
+  PRINT( take( 12,
+         chars = chars_with_positions( ucs4_from_utf8( chars_from_string( source ) ) )
+  ) );
+
+  object tokens;
+  PRINT( take( 4, add_global_root( tokens = tokens_from_chars( C75, chars ) ) ) );
+
+  object results;
+  PRINT( results = tree_from_tokens( tokens ) );
+
+  object cst;
+  PRINT( cst = x_( x_( take( 1, results ) ) ) );
+  PRINT_DATA( cst );
+  PRINT( Int( garbage_collect( cst ) ) );
+
+  object ast;
+  PRINT_TREE( ast = suppress_strings( cst ) );
+  PRINT_TREE( ast = ast_from_tree( ast ) );
+  PRINT_TREE( structure_from_ast( ast ) );
+
+  object tree;
+  PRINT_TREE( tree = shrink( unembed_symbols( ast ) ) );
+  PRINT_DOT( tree );
+  PRINT_ALL( extract_ids( tree ) );
+  PRINT_ALL( extract_constants( tree ) );
+  PRINT( Int( garbage_collect( tree ) ) );
   return  0;
 }
 
 
 int syn_main(){
-  return  //tok_main(),
+  return  tok_main(),
+	  test_filters_and_positions(),
           test_syntax(),
           0;
 }

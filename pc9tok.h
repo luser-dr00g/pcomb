@@ -61,6 +61,6 @@ enum token_symbols {
 
 typedef enum language { Languages( Enum_nam ) } language;
 
-list tokens_from_chars( language lang, object v );
+list tokens_from_chars( language lang, list v );
 
 int tok_main( void );

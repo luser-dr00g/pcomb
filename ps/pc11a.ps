@@ -1,37 +1,35 @@
 %errordict/rangecheck{pstack countexecstack array execstack == quit}put
+%errordict/typecheck{pstack countexecstack array execstack == quit}put
 (struct2.ps)run {
     lazy{ p }{
       ({dup zero ne 1 index xcheck and {
          { force //p exec } curry
        }//p  ifelse}) cvx exec } @func
     lazy-input{ fetch remainder recurse }{
-      ({ //fetch exec  { zero }{
-           [ exch [ r c ] ] dup first (\n) eq {r c add 0}{r c 1 add} ifelse
-           //remainder exec 3 aa cvx  //recurse compose cons
-         } ifelse
+      ({ //fetch exec { zero }{ [ exch [ r c ] ]
+                                dup first (\n) eq {r c add 0}{r c 1 add} ifelse
+                                //remainder exec 3 aa cvx //recurse compose cons } ifelse
       }) cvx exec func } @func
-} pairs-begin
-{
+} pairs-begin {
     % row col str -> ( [s0 [r c]] {[s1 [r1 c1]] ... })
     string-input{r c s} { s {head} stopped {pop pop pop true}{false} ifelse }
       { s rest } { string-input } @lazy-input
-    file-input{r c f} { f read not }
-      { f } { file-input } @lazy-input
+    file-input{r c f} { f read not } { f } { file-input } @lazy-input
 
-    succeed { { exch cons /OK exch cons } curry } % inp v succeed exec = [OK [v inp]]
+    succeed { { exch consok } curry } % inp v succeed exec = [OK [v inp]]
     fail { { exch cons /Fail exch cons } curry }        % inp fail exec = [Fail msg]
     nofail{ p }{ { /p exec +not-ok { dup 0 /Error put } if } ll } @func
     report { dup first =
-             dup first /OK eq { second dup first flatten ==
-                                (remainder:) =only second == }{ second == } ifelse }
+             dup first /OK eq { second dup first flatten == (remainder:) =only second == }
+                              { second == } ifelse }
     return{ v }{ { pop /v } ll using } @func
     using{ p f }{ { /p exec +is-ok { second xs-x /f exec exch consok } if } ll } @func
     probe{ p }{ { /p exec dup report } ll } @func
 
     satisfy{ pred }{
       { dup zero eq {(empty input) fail}{
-	  dup forcex first first /pred exec
-          { xs-x first one succeed }{ [ /pred (not satisfied) ] fail } ifelse
+	  dup forcex first first /pred exec { xs-x first one succeed }
+                                            { [ /pred (not satisfied) ] fail } ifelse
         } ifelse exec } ll } @func
     literal { {eq} curry satisfy }
     range{ a b }{ { dup /a ge exch /b le and } ll satisfy } @func
@@ -39,35 +37,61 @@
     alt{ p q }{ { dup /p exec +not-ok { pop /q exec }{ exch pop } ifelse } ll lazy } @func
     then{ p q }{
       { /p exec +is-ok {
-          second x-xs force /q exec +is-ok { second x-xs 3 1 roll append exch consok }
-            { x-xs force 3 2 roll (after) exch cons exch cons cons } ifelse
-         } if } ll } @func
+          second x-xs force /q exec +is-ok {
+            second x-xs 3 1 roll cons %append %one cons %append
+            exch consok
+          }{
+            x-xs force 3 2 roll (after) exch cons exch cons cons
+          } ifelse
+        } if } ll } @func
     xthen { then { second } using }
     thenx { then { first one } using }
 
     maybe{ p }{
       { dup /p exec +is-ok { exch pop }{ pop zero one exch consok } ifelse } ll } @func
     many{ p }{
-      { dup /p exec +is-ok {
-          exch pop {
-            dup second x-xs force /p exec +is-ok { % result x result'
-              3 -1 roll pop  % x result'
-              dup second x-xs 3 1 roll append exch  % result' [x[x']] xs'
-            }{ pop pop second x-xs exit } ifelse
+      { dup /p exec +is-ok { % input result
+          exch pop second x-xs { % result input'
+            dup force /p exec +is-ok { % result input' result'
+              exch pop  % result result'
+              second x-xs force % result result' input"
+              3 1 roll cons %append %one cons %append
+              exch  % [result [result']] input"
+            }{ % result input' result'
+              pop exit
+            } ifelse
           } loop
-        }{ pop zero one exch } ifelse consok } ll } @func
+        }{ % input result
+          pop zero one exch
+        } ifelse
+        consok
+      } ll } @func
     some { dup many then }
-    str { dup length 0 eq { pop zero succeed }{ dup head literal exch rest str then } ifelse }
+
     char { literal }
+    str { dup length 0 eq { pop zero succeed }{ dup head literal exch rest str then } ifelse }
     anyof { {within} curry satisfy }
     noneof { {within not} curry satisfy }
-    within { exch search { pop pop pop true }{ pop false } ifelse }
     item { {pop true} satisfy }
     into{ p v q }{ ({ //p exec +is-ok {
                         second xs-x <<exch //v exch>>begin force //q exec end 
                       } if }) cvx exec } @func
+    within { exch search { pop pop pop true }{ pop false } ifelse }
+    none{ p }{
+      { dup /p exec +is-ok { pop [ /p ( succeeded) ] fail }{ pop item } ifelse exec } ll
+    } @func
 
+    fix { unwrap clean }
+    clean { { dup zero eq { pop } if } map }
     flatten { [ exch { dup zero eq { pop exit } if x-xs } loop ] }
+    open { dup type /arraytype eq 1 index xcheck not and { /open load forall } if }
+    unwrap { [ exch /open load forall ] }
+    to-string {
+      dup length string 0 % a s i
+      3 2 roll { % s i a[i]
+	  0 get 3 copy put pop 1 add
+      } forall pop
+    }
     list { [[]] compose { cons } rreduce }
     force { dup zero ne 1 index xcheck and { exec force } if }
     forcex { force dup zero ne { dup first xcheck { dup 0 {force} update } if } if }
