@@ -25,7 +25,11 @@
 //Expression 0  //Term  (|) char //Term xthen  many  then
                   { fix { {plus} compose compose } reduce one } using  put
 
-/regex { 0 0 3 2 roll string-input //Expression exec report } def
+/regex { 0 0 3 2 roll string-input //Expression exec +is-ok {
+	     second first first
+         }{
+	     /regex cvx /syntaxerror signalerror
+         } ifelse } def
 
 {
   0 0 (abc) string-input pc
@@ -41,7 +45,12 @@
   0 0 (a*) string-input Factor pc
   0 0 (ab) string-input Term pc
   0 0 (ab|c) string-input Expression pc
-  (ab) regex
+} pop
+{
+  (ab) regex pc
+  (ab|c) regex pc
+  (.*a(bc)) regex pc
+  (*x) regex pc
 } exec
 {
 } pop

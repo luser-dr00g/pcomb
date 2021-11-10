@@ -1,15 +1,23 @@
 %errordict/typecheck{pq}put
 (pc11a.ps)run <<
-/interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
 /to-char         { 1 string dup 0 4 3 roll put }
+/middle   { 1 1 index length 2 sub getinterval }
+/interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
+/interpret-hex {
+    { dup (9) le { first 48 sub }{ first 55 sub dup 15 gt { 32 sub } if } ifelse } map
+    dup length 2 mod 1 eq { [ 0 ] compose } if
+    [ exch 2 { aload pop exch 16 mul add to-char } fortuple ]
+    to-string }
 >> begin
 
 /delimiters  ( \t\n()/%[]<>{}) def
+/initials    ([]) anyof  def
 /delimiter   delimiters anyof  def
 /octal       (0)(7) range  def
 /digit       (0)(9) range  def
 /alpha       (a)(z) range  (A)(Z) range alt  def
 /regular     delimiters noneof  def
+/spaces      ( \t\n) anyof many  def
 
 /rad-digit   //digit //alpha alt  def
 /rad-integer //digit //digit maybe then  (#) char then  //rad-digit some then  def
@@ -41,31 +49,50 @@
                (()) noneof alt  put
 
 /hex-char    //digit  (a)(f) range  (A)(F) range alt  alt  def
-/non-hex-char //hex-char (>) char alt none def
 /hex-string  (<) char
-               //non-hex-char many //hex-char xthen many then //non-hex-char many thenx
+               //spaces //hex-char xthen many then //spaces thenx
              (>) char then  def
 
-/spaces      ( \t\n) anyof many  def
 /object      {-777 exec}  def
-/ps-token    //spaces //object executeonly xthen  def
+/ps-token    //spaces //object xthen  def
 
 //object 0   //rad-integer { fix to-string cvi } using
              //real  { fix to-string cvr } using  alt
              //integer { fix to-string cvi } using  alt
              //name  { fix to-string cvn cvx } using  alt
-             (/) char //name then  { fix to-string rest cvn cvlit } using  alt
+             (/) char //name maybe then  { fix to-string rest cvn cvlit } using  alt
              (/) char (/) char then //name then  { fix to-string rest rest cvn load } using  alt
-             //ps-string  { fix to-string 1 1 index length 2 sub getinterval } using  alt
-	     //hex-string  { fix 1 1 index length 2 sub getinterval } using  alt
-	     ({) char  //ps-token many then  //spaces (}) char xthen  then  alt
-             //delimiter  { fix to-string cvn cvx } using alt
+             //ps-string  { fix to-string middle } using  alt
+	     //hex-string  { fix middle interpret-hex } using  alt
+	     ({) char
+               //ps-token many executeonly xthen
+               //spaces %{(s)= ps}using
+                 (}) char %{(b)= ps}using
+               xthen
+             thenx  { first cvx } using  alt
+             //initials  { fix to-string cvn cvx } using alt
          put
 
 /mytoken {
   dup length 0 gt {
-    0 0 3 2 roll string-input //ps-token exec
+    0 0 3 2 roll string-input //ps-token exec +is-ok {
+	second aload pop
+	dup zero eq { pop () exch true }{
+	dup type /arraytype eq 1 index xcheck and { 2 get exch true }{
+	    exch true
+        } ifelse } ifelse
+    }{
+	pop false
+    } ifelse
   }{ pop false } ifelse
+} def
+
+/test-mytoken {
+    /s exch def
+    s token
+    1 index type
+    s mytoken
+    1 index type
 } def
 
 {
@@ -78,15 +105,18 @@
   0 0 (1.17) string-input //real exec pc
 } pop
 
-(8#117) mytoken pc
-(47) mytoken pc
-(string) mytoken pc
-([stuff) mytoken pc
-(/litname) mytoken pc
-(42.42) mytoken pc
-((a\\117 \\\\string\\n)) mytoken ps second first print clear
+(8#117) test-mytoken pc
+(47) test-mytoken pc
+(string) test-mytoken pc
+([stuff) test-mytoken pc
+(/litname) test-mytoken pc
+(42.42) test-mytoken pc
+((a\\117 \\\\string\\n)) test-mytoken ps pop pop print clear
 /thing 12 def
-(//thing) mytoken pc
-(<abc defg>) mytoken pc
+(//thing) test-mytoken pc
+(<abc def >) test-mytoken pc
+(name[delim) test-mytoken pc
+({a proc}) test-mytoken pc
+(/(str)) test-mytoken pc
 
 quit
