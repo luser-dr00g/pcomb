@@ -86,6 +86,7 @@
     flatten { [ exch { dup zero eq { pop exit } if x-xs } loop ] }
     open { dup type /arraytype eq 1 index xcheck not and { /open load forall } if }
     unwrap { [ exch /open load forall ] }
+    to-char { 1 string dup 0 4 3 roll put }
     to-string {
       dup length string 0 % a s i
       3 2 roll { % s i a[i]

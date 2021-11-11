@@ -1,12 +1,21 @@
+%TODO  ascii85
 %errordict/typecheck{pq}put
 (pc11a.ps)run <<
-/to-char         { 1 string dup 0 4 3 roll put }
-/middle   { 1 1 index length 2 sub getinterval }
-/interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
-/interpret-hex {
+  /middle   { 1 1 index length 2 sub getinterval }
+  /interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
+  /interpret-hex {
     { dup (9) le { first 48 sub }{ first 55 sub dup 15 gt { 32 sub } if } ifelse } map
     dup length 2 mod 1 eq { [ 0 ] compose } if
     [ exch 2 { aload pop exch 16 mul add to-char } fortuple ]
+    to-string }
+  /interpret-ascii85 {
+    { dup (z) eq { pop (!)(!)(!)(!)(!) }{ dup ( \t\n) within { pop } if } ifelse } map
+    [ 1 index length 5 mod { (u) } repeat ] compose
+    [ exch 5 {
+	  0 exch { first 33 sub exch 85 mul add } forall
+	  4 { dup 256 mod exch 256 idiv } repeat pop 4 aa reverse
+	  { to-char } forall
+    } fortuple ]
     to-string }
 >> begin
 
@@ -23,10 +32,13 @@
 /rad-integer //digit //digit maybe then  (#) char then  //rad-digit some then  def
 /number      //digit some  def
 /opt-number  //digit many  def
+/eE          (eE) anyof  (+-) anyof maybe then  //number then def
 /integer     (+-) anyof maybe //number then  def
 /real        (+-) anyof maybe
-               //number (.) char then  //opt-number then
-                        (.) char       //number     then  alt  then  def
+               //number  (.) char then  //opt-number then  //eE maybe then
+                         (.) char       //number     then  //eE maybe then  alt
+	       //number  //eE then  alt
+             then  def
 
 /name        //regular some  def
 
@@ -52,47 +64,63 @@
 /hex-string  (<) char
                //spaces //hex-char xthen many then //spaces thenx
              (>) char then  def
+	     
+/ascii85-char    ( )(z) range  (\t\n) anyof alt  def
+/ascii85-string  (<~) str 
+                   //spaces //ascii85-char xthen many xthen //spaces thenx
+                 (~>) str thenx  def
 
 /object      {-777 exec}  def
 /ps-token    //spaces //object xthen  def
 
 //object 0   //rad-integer { fix to-string cvi } using
              //real  { fix to-string cvr } using  alt
-             //integer { fix to-string cvi } using  alt
-             //name  { fix to-string cvn cvx } using  alt
-             (/) char //name maybe then  { fix to-string rest cvn cvlit } using  alt
+             //integer  { fix to-string cvi } using  alt
              (/) char (/) char then //name then  { fix to-string rest rest cvn load } using  alt
+             (/) char //name maybe then  { fix to-string rest cvn cvlit } using  alt
+             //name  { fix to-string cvn cvx } using  alt
              //ps-string  { fix to-string middle } using  alt
 	     //hex-string  { fix middle interpret-hex } using  alt
+	     //ascii85-string  { fix interpret-ascii85 } using  alt
 	     ({) char
                //ps-token many executeonly xthen
                //spaces %{(s)= ps}using
                  (}) char %{(b)= ps}using
                xthen
              thenx  { first cvx } using  alt
-             //initials  { fix to-string cvn cvx } using alt
+             //initials (<<) str alt (>>) str alt  { fix to-string cvn cvx } using  alt
          put
+
+/remainder-length {
+    dup zero eq { pop 0 }{
+    dup type /arraytype ne { what? }{
+	dup xcheck {
+	    2 get length
+        }{
+	    second remainder-length 1 add
+        } ifelse
+    } ifelse } ifelse
+} def
 
 /mytoken {
   dup length 0 gt {
-    0 0 3 2 roll string-input //ps-token exec +is-ok {
-	second aload pop
-	dup zero eq { pop () exch true }{
-	dup type /arraytype eq 1 index xcheck and { 2 get exch true }{
+    dup 0 0 3 2 roll string-input //ps-token exec +is-ok { % s result=ok
+	second aload pop % s res rem
+	%dup zero eq { 3 -1 roll pop pop () exch true }{
+	%dup type /arraytype eq 1 index xcheck and { 3 -1 roll pop 2 get exch true }{
+	    3 -1 roll exch remainder-length 1 index length 1 index sub exch getinterval
 	    exch true
-        } ifelse } ifelse
-    }{
-	pop false
+        %} ifelse } ifelse
+    }{ % s result=not-ok
+	pop pop false
     } ifelse
   }{ pop false } ifelse
 } def
 
 /test-mytoken {
     /s exch def
-    s token
-    1 index type
-    s mytoken
-    1 index type
+    s token   %1 index type =
+    s mytoken %1 index type =
 } def
 
 {
@@ -111,12 +139,14 @@
 ([stuff) test-mytoken pc
 (/litname) test-mytoken pc
 (42.42) test-mytoken pc
-((a\\117 \\\\string\\n)) test-mytoken ps pop pop print clear
+((a\\117 \\\\string\\n)) test-mytoken pc
 /thing 12 def
 (//thing) test-mytoken pc
 (<abc def >) test-mytoken pc
 (name[delim) test-mytoken pc
 ({a proc}) test-mytoken pc
 (/(str)) test-mytoken pc
+(2e5) test-mytoken pc
+(<~ 9jq o^~>) test-mytoken pc
 
 quit
