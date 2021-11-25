@@ -1,6 +1,7 @@
 %errordict/rangecheck{pstack countexecstack array execstack == quit}put
 %errordict/typecheck{pstack countexecstack array execstack == quit}put
 (struct2.ps)run {
+
     lazy{ p }{
       ({dup zero ne 1 index xcheck and {
          { force //p exec } curry
@@ -11,6 +12,7 @@
                                 //remainder exec 3 aa cvx //recurse compose cons } ifelse
       }) cvx exec func } @func
 } pairs-begin {
+
     % row col str -> ( [s0 [r c]] {[s1 [r1 c1]] ... })
     string-input{r c s} { s {head} stopped {pop pop pop true}{false} ifelse }
       { s rest } { string-input } @lazy-input
@@ -20,10 +22,10 @@
     fail { { exch cons /Fail exch cons } curry }        % inp fail exec = [Fail msg]
     nofail{ p }{ { /p exec +not-ok { dup 0 /Error put } if } ll } @func
     report { dup first =
-             dup first /OK eq { second dup first flatten == (remainder:) =only second == }
+             dup first /OK eq { second dup first === (remainder:) =only second == }
                               { second == } ifelse }
     return{ v }{ { pop /v } ll using } @func
-    using{ p f }{ { /p exec +is-ok { second xs-x /f exec exch consok } if } ll } @func
+    using{ p f }{ { /p exec +is-ok { next xs-x /f exec exch consok } if } ll } @func
     probe{ p }{ { /p exec dup report } ll } @func
 
     satisfy{ pred }{
@@ -35,34 +37,46 @@
     range{ a b }{ { dup /a ge exch /b le and } ll satisfy } @func
 
     alt{ p q }{ { dup /p exec +not-ok { pop /q exec }{ exch pop } ifelse } ll lazy } @func
-    then{ p q }{
+    sequence{ p q u }{
       { /p exec +is-ok {
-          second x-xs force /q exec +is-ok {
-            second x-xs 3 1 roll cons %append %one cons %append
-            exch consok
+          next x-xs force /q exec +is-ok {
+            next x-xs 3 1 roll /u exec exch consok
           }{
-            x-xs force 3 2 roll (after) exch cons exch cons cons
+            x-xs 3 2 roll ( after ) exch cons exch cons cons
           } ifelse
         } if } ll } @func
-    xthen { then { second } using }
-    thenx { then { first one } using }
+    then { {append} sequence }
+    xthen { {exch pop} sequence }
+    thenx { {pop} sequence }
+
+    combine { dup type /arraytype eq 1 index xcheck not and {
+		  1 index type /arraytype eq 2 index xcheck not and {
+		      compose
+                  }{
+		      curry
+                  } ifelse
+              }{
+		  1 index type /arraytype eq 2 index xcheck not and {
+		      [ exch ] compose
+                  }{
+		      cons
+                  } ifelse
+              } ifelse }
 
     maybe{ p }{
-      { dup /p exec +is-ok { exch pop }{ pop zero one exch consok } ifelse } ll } @func
+      { dup /p exec +is-ok { exch pop }{ pop zero exch consok } ifelse } ll } @func
     many{ p }{
-      { dup /p exec +is-ok { % input result
-          exch pop second x-xs { % result input'
+      { dup /p exec +is-ok {  % input result
+          exch pop next x-xs {  % result input'
             dup force /p exec +is-ok { % result input' result'
-              exch pop  % result result'
-              second x-xs force % result result' input"
-              3 1 roll cons %append %one cons %append
-              exch  % [result [result']] input"
-            }{ % result input' result'
+              exch pop next x-xs       % result result' input"
+              3 1 roll combine exch    % [result result'] input"
+            }{  % result input' result'
               pop exit
             } ifelse
           } loop
-        }{ % input result
-          pop zero one exch
+        }{  % input result
+          pop zero exch
         } ifelse
         consok
       } ll } @func
@@ -74,16 +88,16 @@
     noneof { {within not} curry satisfy }
     item { {pop true} satisfy }
     into{ p v q }{ ({ //p exec +is-ok {
-                        second xs-x <<exch //v exch>>begin force //q exec end 
+                        next xs-x <<exch //v exch>>begin force //q exec end 
                       } if }) cvx exec } @func
     within { exch search { pop pop pop true }{ pop false } ifelse }
     none{ p }{
       { dup /p exec +is-ok { pop [ /p ( succeeded) ] fail }{ pop item } ifelse exec } ll
     } @func
 
-    fix { unwrap clean }
     clean { { dup zero eq { pop } if } map }
-    flatten { [ exch { dup zero eq { pop exit } if x-xs } loop ] }
+    flatten { [ exch { dup zero eq { pop exit } if
+                       dup type /arraytype eq { x-xs }{ exit } ifelse } loop ] }
     open { dup type /arraytype eq 1 index xcheck not and { /open load forall } if }
     unwrap { [ exch /open load forall ] }
     to-char { 1 string dup 0 4 3 roll put }
@@ -94,6 +108,7 @@
       } forall pop
     }
     list { [[]] compose { cons } rreduce }
+
     force { dup zero ne 1 index xcheck and { exec force } if }
     forcex { force dup zero ne { dup first xcheck { dup 0 {force} update } if } if }
     forcexs { force dup zero ne { dup second xcheck { dup 1 {force} update } if } if }
@@ -103,16 +118,24 @@
                  } ifelse } @func
     next { forcexs second }  % force and update cdr
     update { 3 copy pop get exch exec put }  % a i p    a[i]=p(a[i])
+
     x-xs* { dup first exch second }
     x-xs  1 @index @lazy
     xs-x* { dup second exch first }
     xs-x  1 @index @lazy
-    append { 1 index second zero eq { exch first exch cons }
-                                    { exch x-xs 3 2 roll append cons } ifelse }
+
+    append { 1 index zero eq { exch pop }{
+		 dup zero eq { pop }{
+             1 index type /arraytype eq {
+		 dup type /arraytype eq { compose }{ one compose } ifelse
+               %1 index second zero eq { exch first exch cons }
+               %                       { exch x-xs 3 2 roll append cons } ifelse
+             }{ dup type /arraytype eq { curry }{ cons } ifelse } ifelse } ifelse } ifelse }
     consok { cons /OK exch cons }
     +is-ok { dup first /OK eq }
     +not-ok { dup first /OK ne }
     head { 0 1 getinterval }
+    middle { 1 1 index length 2 sub getinterval }
     cons { 2 aa }
     aa { array astore }
     second { 1 get }
@@ -128,7 +151,7 @@
 } pairs-begin
 
 %quit
-currentfile flushfile
+/debug-pc where {pop}{currentfile flushfile} ifelse
 
 {
 0 0 (abcd\ne) string-input
@@ -164,9 +187,9 @@ exec pc
 0 0 (abcd\ne) string-input
 (a) literal
 (c) literal then exec  pc
-} exec %pop
+} pop
 
-
+{
 0 0 (abcd\ne) string-input
 (abc) str exec
 report
@@ -184,3 +207,13 @@ pc
 exec
 report
 pq
+} pop
+
+0 0 ("abc") string-input (") char 
+exec report pc
+
+0 0 ("abc") string-input (") char (a)(z)range many then (") char then
+exec report pc
+
+0 0 ("abc") string-input (") char (a)(z)range some xthen (") char thenx
+exec report pq

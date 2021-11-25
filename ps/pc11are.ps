@@ -2,8 +2,11 @@
 %errordict/stackunderflow{pe quit}put
 %errordict/stackunderflow{pq}put
 %errordict/undefined{pq}put
+/rc errordict/rangecheck get def
+errordict/rangecheck{ dup /get load eq { ps pe quit }//rc ifelse } put
 %(../../debug.ps/db5.ps) run
 (pc11a.ps)run {
+    fix { unwrap } 
     ? { {maybe} compose }
     + { {some} compose }
     * { {many} compose }
@@ -18,7 +21,7 @@
             //Character  alt  def
 /Factor     //Atom /A
             //Meta 	{/A load first exch first load exec one } using
-	        maybe 	{dup first zero eq {pop /A load} if } using
+	        maybe 	{dup zero eq {pop /A load} if } using
             into  def
 /Term       //Factor  //Factor many then
                 { fix { {then} compose compose } reduce one } using  def
@@ -30,6 +33,8 @@
          }{
 	     /regex cvx /syntaxerror signalerror
          } ifelse } def
+
+/debug-re where { pop }{ currentfile flushfile } ifelse
 
 {
   0 0 (abc) string-input pc
@@ -45,13 +50,11 @@
   0 0 (a*) string-input Factor pc
   0 0 (ab) string-input Term pc
   0 0 (ab|c) string-input Expression pc
-} pop
+} exec
 {
   (ab) regex pc
   (ab|c) regex pc
   (.*a(bc)) regex pc
   (*x) regex pc
 } exec
-{
-} pop
 quit

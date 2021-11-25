@@ -1,0 +1,103 @@
+(struct2.ps) run {
+lazy{p}{({dup zero ne 1 index xcheck and{{force//p exec}curry}//p ifelse})cvx exec}@func
+lazy-input{read rest more}{
+  ({//read exec{zero}{[exch[r c]] dup first(\n)eq{r c add 0}{r c 1 add}ifelse
+                      //rest exec 3 aa cvx//more compose cons}ifelse})cvx exec func}@func
+} pairs-begin {
+string-input{r c s}
+  {s {head}stopped{pop pop pop true}{false}ifelse} {s tail} {string-input} @lazy-input
+file-input{r c f} {f read not} {f} {file-input} @lazy-input
+
+success{exch consok}
+succeeds{/success load curry}
+fail{exch cons /Fail exch cons}
+fails{/fail load curry}
+err{dup 0 /Error put}
+nofail{ p }{ {/p exec +not-ok {err} if} ll} @func
+report{dup first = dup first /OK eq { second dup first === (remainder:) =only second == }
+                                    { second == } ifelse}
+
+return{ v }{ {pop /v} ll using }@func
+using{ p f }{ {/p exec +is-ok {next xs-x /f exec success} if } ll } @func
+probe{ p }{ {/p exec dup report} ll } @func
+
+satisfy{ pred }{{dup zero eq {(empty input) fail}{
+                 dup forcex first first /pred exec {xs-x first one success      }
+                                                   {[/pred (not satisfied)] fail} ifelse
+               } ifelse } ll} @func
+literal{ {eq} curry satisfy }
+range{ a b }{ { dup /a ge exch /b le and } ll satisfy } @func
+
+alt{ p q }{ {dup /p exec +not-ok {pop /q exec}{exec pop} ifelse} ll lazy } @func
+sequence{ p q u }{
+  {/p exec +is-ok { next forcexs x-xs/q exec +is-ok {next x-xs 3 1 roll/u exec success}
+                      {x-xs 3 2 roll( after )exch cons exch cons cons}ifelse}if} ll }@func
+then{ {append} sequence }
+xthen{ {exch pop} sequence }
+thenx{ {pop} sequence }
+
+maybe{ p }{ {dup /p exec +is-ok {exch pop}{pop zero success}ifelse} ll } @func
+many{ p }{ { dup /p exec +is-ok {
+               exch pop next forcexs x-xs {
+                 dup /p exec +is-ok {exch pop next forcexs x-xs 3 1 roll append exch}
+                                    {pop consok exit} ifelse
+               } loop
+             }{ pop zero success} ifelse } ll } @func
+some{ dup many then }
+char{ literal }
+str{ dup length 0 eq { pop zero succeeds }{ dup head char exch tail str then } ifelse }
+
+anyof{ {within} curry satisfy }
+noneof{ {within not} curry satisfy }
+item{ {pop true} satisfy }
+into{ p v q }{{/p exec +is-ok{next forcex xs-x<<exch/v exch>>begin/q exec end}if} ll} @func
+none{ p }{{dup /p exec +is-ok {pop [ /p( succeeded) ] fail}{pop item} ifelse exec} ll} @func
+
+consok{cons /OK exch cons}
++is-ok{dup first /OK eq}
++not-ok{dup first /OK ne}
+
+next{forcexs second}
+forcex{force dup zero ne { dup first xcheck { dup 0 {force} update } if } if}
+forcexs{force dup zero ne { dup second xcheck { dup 1 {force} update } if } if}
+force{dup zero ne over xcheck and {exec force} if}
+update{3 copy pop get exch exec put}%a i p . -  (( a[i]=p(a[i]) ))
+
+x-xs*{dup first exch second}
+x-xs 1 @index @lazy
+xs-x*{dup second exch first}
+xs-x 1 @index @lazy
+
+one{1 aa}
+append{dup zero eq {pop}{
+       over zero eq {exch pop}{
+       over is-lit-array over is-lit-array {{compose    }{curry} ifelse}
+                                           {{one compose}{cons } ifelse} ifelse
+       }ifelse}ifelse}
+zero{[]}
+cons{2 aa}
+second{1 get}
+over{1 index}
+head{0 1 getinterval}
+tail{rest}
+aa{array astore}
+is-lit-array{ dup type /arraytype eq exch xcheck not and }
+ll{{load-if-literal-name}deep-map}
+deep-map{1 index type /arraytype ne {exec}{1 index xcheck 3 1 roll
+  [ 3 1 roll /deep-map cvx 2 aa cvx forall ] exch {cvx} if} ifelse}
+within{ exch search { pop pop pop true }{ pop false } ifelse }
+
+ps{(stack:)= pstack flush}
+pe{(estack:)= countexecstack array execstack {==} forall flush}
+pc{ps clear}
+pq{ps quit}
+} pairs-begin
+
+0 0 ("abc") string-input (") char exec report pc
+
+0 0 ("abc") string-input (") char (a)(z)range many then (") char then exec report pc
+
+0 0 ("abc") string-input (") char (a)(z)range some xthen (") char thenx exec report pc
+
+0 0 ("abc") string-input (") char (abc) str xthen (") char thenx exec report pc
+quit

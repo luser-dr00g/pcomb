@@ -1,7 +1,7 @@
 %TODO  ascii85
 %errordict/typecheck{pq}put
 (pc11a.ps)run <<
-  /middle   { 1 1 index length 2 sub getinterval }
+  /fix { unwrap clean }
   /interpret-octal { 0 exch { first 48 sub exch 8 mul add } forall }
   /interpret-hex {
     { dup (9) le { first 48 sub }{ first 55 sub dup 15 gt { 32 sub } if } ifelse } map
@@ -84,10 +84,7 @@
 	     //ascii85-string  { fix interpret-ascii85 } using  alt
 	     ({) char
                //ps-token many executeonly xthen
-               //spaces %{(s)= ps}using
-                 (}) char %{(b)= ps}using
-               xthen
-             thenx  { first cvx } using  alt
+               //spaces (}) char then thenx  { cvx } using  alt
              //initials (<<) str alt (>>) str alt  { fix to-string cvn cvx } using  alt
          put
 
@@ -106,11 +103,8 @@
   dup length 0 gt {
     dup 0 0 3 2 roll string-input //ps-token exec +is-ok { % s result=ok
 	second aload pop % s res rem
-	%dup zero eq { 3 -1 roll pop pop () exch true }{
-	%dup type /arraytype eq 1 index xcheck and { 3 -1 roll pop 2 get exch true }{
-	    3 -1 roll exch remainder-length 1 index length 1 index sub exch getinterval
-	    exch true
-        %} ifelse } ifelse
+	3 -1 roll exch remainder-length 1 index length 1 index sub exch getinterval
+	exch true
     }{ % s result=not-ok
 	pop pop false
     } ifelse
@@ -119,8 +113,8 @@
 
 /test-mytoken {
     /s exch def
-    s token   %1 index type =
-    s mytoken %1 index type =
+    [ s token   ] %1 index type =
+    [ s mytoken ] %1 index type =
 } def
 
 {
@@ -144,7 +138,7 @@
 (//thing) test-mytoken pc
 (<abc def >) test-mytoken pc
 (name[delim) test-mytoken pc
-({a proc}) test-mytoken pc
+({a proc of names to call}) test-mytoken pc
 (/(str)) test-mytoken pc
 (2e5) test-mytoken pc
 (<~ 9jq o^~>) test-mytoken pc
