@@ -1,0 +1,96 @@
+/rc errordict/rangecheck get def
+errordict/rangecheck{ dup /get load eq { ps pe quit } //rc ifelse }put
+(pc11a.ps)run <<
+  /fix { unwrap clean }
+  /filter-zeros {
+    dup type /arraytype eq 1 index xcheck not and {
+      [ exch { filter-zeros } forall ]
+    } if
+    dup zero eq { pop } if
+  }
+  /peel {
+    dup type /arraytype eq 1 index xcheck not and 1 index length 1 eq and {
+      /peel load forall
+    } if
+  }
+  /to-pairs {
+    [ exch { peel x-xs } forall >>
+  }
+>> begin
+
+/ws              ( \t\n\r) anyof many  def
+/begin-array     //ws ([) char xthen //ws thenx  def
+/begin-object    //ws ({) char xthen //ws thenx  def
+/end-array       //ws (]) char xthen //ws thenx  def
+/end-object      //ws (}) char xthen //ws thenx  def
+/name-separator  //ws (:) char xthen //ws thenx  def
+/value-separator //ws (,) char xthen //ws thenx  def
+/value           {-777 exec} def
+
+/decimal-point   (.) char def
+/digit1-9        (1)(9) range def
+/digit           (0)(9) range def
+/Jzero           (0) char def
+/e               (eE) anyof def
+/Jplus           (+) char def
+/minus           (-) char def
+/frac            //decimal-point  //digit some then  def
+/expn            //e  //minus //Jplus alt maybe then  //digit some then  def
+/int             //Jzero  //digit1-9 //digit many then  alt  def
+/number          //minus maybe  //int then  //frac maybe then  //expn maybe then
+                 { fix to-string dup (.) search { pop pop pop cvr }{
+		   pop dup (e) search { pop pop pop cvr }{
+		   pop dup (E) search { pop pop pop cvr }{
+                   pop cvi } ifelse } ifelse } ifelse } using  def
+
+/quotation-mark (") char def
+/unescaped      <20><21> range  <23><5B> range alt  <5D><FF> range alt  def
+/escape         (\\) char def
+/4hexdig        (u) char  //digit (A)(F)range alt dup then dup then then  def
+/escape-sequence //escape  ("\\/bfnrt) anyof //4hexdig alt then  def
+/Jchar          //unescaped //escape-sequence alt  def
+/Jstring        //quotation-mark //Jchar many then //quotation-mark then
+                { fix to-string middle } using  def
+
+/member        //Jstring //name-separator thenx //value executeonly then
+               { one } using
+               def
+/Jobject       //begin-object
+                 //member xthen
+                 //value-separator //member xthen many then maybe
+               //end-object thenx
+               { filter-zeros to-pairs } using  def
+/Jarray        //begin-array
+                 //value executeonly { one } using xthen
+                 //value-separator //value executeonly xthen many then
+                   maybe
+               //end-array thenx
+               { filter-zeros } using  def
+
+//value 0      (false) str { pop false } using
+               (null)  str { pop null } using  alt
+	       (true)  str { pop true } using  alt
+               //Jobject   alt
+               //Jarray    alt
+               //number    alt
+               //Jstring   alt  put
+/JSON-text     //ws //value xthen //ws thenx
+               def
+
+/JSON-parse { 0 0 3 2 roll string-input JSON-text } def
+
+( true ) JSON-parse report
+(4) JSON-parse report
+( 4) JSON-parse report
+(4 ) JSON-parse report
+( 4 ) JSON-parse report
+( 4.0 ) JSON-parse report
+( 4e3 ) JSON-parse report
+( "4" ) JSON-parse report
+( [ 4 ] ) JSON-parse report
+( [ 4, 5 ] ) JSON-parse report
+( [ 3, [ 4, [ 5 ] ] ] ) JSON-parse report
+( {"a":4,"b":5} ) JSON-parse report
+( { "a" : 4 , "b" : [5,6] } ) JSON-parse report
+( [ {"a":4,"b":5}, 6, {"c":"7"}] ) dup JSON-parse report
+quit

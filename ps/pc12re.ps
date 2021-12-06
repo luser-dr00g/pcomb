@@ -1,0 +1,46 @@
+%errordict/typecheck{pe quit}put
+(pc12.ps)run {
+  ? { {maybe} compose }
+  + { {some} compose }
+  * { {many} compose }
+} pairs-begin
+
+/Dot         (.) char  { pop {item} } using  def
+/Meta        (*+?) anyof  def
+/Character   (*+?.|()) noneof  { {char} curry } using  def
+/Expression  {-777 exec}  def
+/Atom        //Dot
+             (\() char //Expression executeonly xthen (\)) char thenx  alt
+             //Character  alt  def
+/Factor      //Atom /A
+             //Meta  { /A load exch load exec } using
+               maybe  { dup zero eq { pop /A load } if } using
+             into  def
+/Term        //Factor some
+                { dup is-lit-array { {compose{then}compose} reduce } if } using
+             def
+//Expression 0  //Term  (|) char //Term xthen  many  then 
+                { dup is-lit-array { {compose{alt}compose} reduce } if } using
+             put
+
+/regex { 0 0 3 2 roll string-input //Expression exec +is-ok {
+	     second first
+         }{
+	     /regex cvx /syntaxerror signalerror
+         } ifelse } def
+
+/debug-re where {pop}{currentfile flushfile} ifelse
+
+0 0 (.) string-input //Dot exec pc
+0 0 (+) string-input //Meta exec pc
+0 0 (x) string-input //Character exec pc
+0 0 (y) string-input //Atom exec pc
+0 0 (.) string-input //Atom exec pc
+0 0 (z) string-input //Factor exec pc
+0 0 (.) string-input //Factor exec pc
+0 0 (z?yx) string-input //Term exec pc
+0 0 (z?y|x) string-input //Expression exec report
+(a?b+c*|d) regex pc
+
+quit
+

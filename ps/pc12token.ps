@@ -1,0 +1,141 @@
+%/edrc errordict/rangecheck get def
+%errordict/rangecheck{dup /get load eq {ps pe quit}//edrc ifelse }put
+%errordict/typecheck{ps pe quit}put
+(pc12.ps)run <<
+  /fix { dup type /arraytype ne { one } if }
+  /interpret-octal { fix { first 48 sub } map { exch 8 mul add } reduce to-char }
+  /interpret-hex { fix 
+                   { dup (9) le {first 48 sub}{first 55 sub dup 15 gt {32 sub}if }ifelse } map
+                   dup length 2 mod 1 eq { [0] compose } if
+                   [ exch 2 { aload pop exch 16 mul add to-char } fortuple ]
+                   to-string }
+  /interpret-ascii85 {
+      fix
+      { dup (z) eq { pop (!)(!)(!)(!)(!) }{ dup ( \t\n) within { pop } if } ifelse } map
+      [ 1 index length 5 mod { (u) } repeat ] compose
+      [ exch 5 {
+	    0 exch { first 33 sub exch 85 mul add } forall
+	    4 { dup 256 mod exch 256 idiv } repeat pop
+            to-char exch to-char 4 2 roll to-char exch to-char
+      } fortuple ] to-string }
+  /to-string { dup type /stringtype ne {
+               dup length string exch 0 exch {3 copy putinterval length add} forall pop } if }
+  /to-char { 1 string dup 0 4 3 roll put }
+  /middle { 1 1 index length 2 sub getinterval }
+>> begin
+
+
+/delimiters  ( \t\n()/%[]<>{}) def
+/initials    ([]) anyof  def
+/delimiter   delimiters anyof  def
+/octal       (0)(7) range  def
+/digit       (0)(9) range  def
+/alpha       (a)(z) range  (A)(Z) range alt  def
+/regular     delimiters noneof  def
+/spaces      ( \t\n) anyof many  def
+
+/rad-digit   //digit //alpha alt  def
+/rad-integer //digit //digit maybe then  (#) char then  //rad-digit some then  def
+/number      //digit some  def
+/opt-number  //digit many  def
+/eE          (eE) anyof (+-) anyof maybe then //number then def
+/integer     (+-) anyof maybe //number then  def
+/real        (+-) anyof maybe
+               //number  (.) char then  //opt-number then  //eE maybe then
+                         (.) char       //number     then  //eE maybe then  alt
+               //number  //eE then  alt
+             then  def
+
+/name        //regular some  def
+
+/ps-char     {-777 exec}  def
+/escape      (\\) char
+               (\\) char
+               (\() char  alt
+               (\)) char  alt
+	       (n) char  { pop (\n) } using  alt
+	       (r) char  { pop (\r) } using  alt
+	       (t) char  { pop (\t) } using  alt
+	       (b) char  { pop (\b) } using  alt
+	       (f) char  { pop (\f) } using  alt
+	       //octal //octal maybe then //octal maybe then { interpret-octal } using  alt
+             xthen  def
+/ps-string   (\() char //ps-char executeonly many then (\)) char then def
+//ps-char 0  //escape
+               //ps-string alt
+               (()) noneof alt put
+
+/hex-char    //digit  (a)(f) range  (A)(F) range alt  alt  def
+/hex-string  (<) char
+               //spaces //hex-char xthen many xthen //spaces thenx
+             (>) char thenx  def
+
+/ascii85-char   ( )(z) range  (\t\n) anyof alt  def
+/ascii85-string (<~) str
+                  //spaces //ascii85-char xthen many xthen //spaces thenx
+                (~>) str thenx  def
+
+/object      {-777 exec}  def
+/ps-token    //spaces //object xthen  def
+
+//object 0   //rad-integer  {to-string cvi}using
+             //real         {to-string cvr}using  alt
+	     //integer      {to-string cvi}using  alt
+             (/) char (/) char then //name xthen  {to-string load}using       alt
+             (/) char //name maybe xthen          {to-string cvn cvlit}using  alt
+	     //name                               {to-string cvn cvx}using    alt
+             //ps-string       {middle to-string}using   alt
+	     //hex-string      {interpret-hex}using      alt
+             //ascii85-string  {interpret-ascii85}using  alt
+	     ({) char  //ps-token many executeonly xthen
+               //spaces (}) char then thenx        {fix cvx}using            alt
+             //initials (<<) str alt (>>) str alt  {to-string cvn cvx}using  alt
+         put
+
+/remainder-length {
+    dup zero eq { pop 0 }{
+    dup type /arraytype ne { what? }{
+	dup xcheck {
+	    2 get length
+        }{
+	    second remainder-length 1 add
+        } ifelse
+    } ifelse } ifelse
+} def
+
+/mytoken {
+    dup length 0 gt {
+	dup 0 0 3 2 roll string-input //ps-token exec +is-ok {
+	    second aload pop
+            3 -1 roll exch remainder-length 1 index length 1 index sub exch getinterval
+            exch true
+        }{
+        } ifelse
+    }{ pop false } ifelse
+} def
+
+/debug-token where {pop}{currentfile flushfile} ifelse
+
+/test-mytoken {
+    /s exch def
+    [ s token ]
+    [ s mytoken ]
+} def
+
+(8#117) test-mytoken pc
+(47) test-mytoken pc
+(string) test-mytoken pc
+([stuff) test-mytoken pc
+(/litname) test-mytoken pc
+(42.42) test-mytoken pc
+((a\\117 \\\\string\\n)) test-mytoken pc
+/thing 12 def
+(//thing) test-mytoken pc
+(<abc def >) test-mytoken pc
+(name[delim) test-mytoken pc
+({a proc of names to call}) test-mytoken pc
+(/(str)) test-mytoken pc
+(2e5) test-mytoken pc
+(<~ 9jq o^~>) test-mytoken pc
+
+quit
