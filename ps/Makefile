@@ -1,4 +1,5 @@
-SRC=struct2.ps pc11a.ps pc11are.ps pc11atoken.ps
+#SRC=struct2.ps pc11a.ps pc11are.ps pc11atoken.ps
+SRC=Makefile struct2.ps pc12.ps pc12re.ps pc12token.ps pc12json.ps
 GS=gsnd -q -dNOSAFER
 
 list :
