@@ -1,0 +1,81 @@
+%errordict/typecheck{ps pe quit}put
+(pc12.ps)run {
+  tokendef{ 1 index cvlit { exch cons one } curry using  def }
+  cvsstr{ dup length string cvs }
+  strcat{ 2 copy length exch length add string % a b s
+	  3 2 roll 2 copy 0 exch putinterval   % b s a
+          length 3 2 roll 3 copy putinterval pop pop }
+  prefix{ exch strcat cvn }
+} pairs-begin
+
+/keywords {
+  int      char
+  float    double   struct
+  auto     extern
+  register static
+  goto     return   sizeof
+  break    continue
+  if       else
+  for      do       while
+  switch   case     default
+} cvlit  def
+keywords { cvsstr dup (k_) prefix exch str tokendef } forall
+/keyword-names  keywords { cvsstr (k_) prefix } map  def
+
+/symbols {
+  star   (*)     plusplus   (++)    plus    (+)     dot    (.)
+  arrow  (->)    minusminus (--)    minus   (-)
+  bangeq (!=)    bang       (!)     tilde   (~)
+  ampamp (&&)    amp        (&)     eqeq    (==)    equal  (=)
+  caret  (^)     pipepipe   (||)    pipe    (|)
+  slant  (/)     percent    (%)
+  ltlt   (<<)    lteq       (<=)    less    (<)
+  gtgt   (>>)    gteq       (>=)    greater (>)
+  lparen (\()    rparen     (\))
+  comma  (,)     semi       (;)     colon     (:)   quest  (?)
+  lbrace ({)     rbrace     (})     lbrack    ([)   rbrack (])  
+} cvlit  def
+symbols 2 { aload pop str tokendef } fortuple
+/symbol-names  [ symbols 2 { first } fortuple ]  def
+
+/assignops {
+  pluseq (+=)    minuseq    (-=)
+  stareq (*=)    slanteq    (/=)    percenteq (%=)
+  gtgteq (>>=)   ltlteq     (<<=)
+  ampeq  (&=)    careteq    (^=)    pipeeq    (|=)
+} cvlit  def
+assignops 2 { aload pop str tokendef } fortuple
+
+/comment    (/*) str  (*) noneof many (*) char then some then  (/) then  def
+/space      ( \t\n) anyof  //comment  alt  many  def
+
+/alpha_     (a)(z)range (A)(Z)range alt (_)char alt  def
+/digit      (0)(9)range  def
+/identifier //alpha_  //alpha_ //digit alt many then  tokendef
+
+/integer    //digit some  tokendef
+/floating   //digit some (.) char then //digit many then
+            (.) char //digit some then  alt
+	    (eE) anyof (+-) anyof maybe then //digit some then maybe then  tokendef
+
+/escape     (\\) char
+              //digit //digit maybe then //digit maybe then
+	      ('"bnrt\\) anyof  alt  then  def
+/char_      //escape ('\n) noneof alt  def
+/schar_     //escape ("\n) noneof alt  def
+/character  (') char //char_ then (') char then  tokendef
+/astring    (") char //schar_ many then (") char then  tokendef
+
+/constant   //floating //integer alt //character alt //astring alt  tokendef
+
+/symbolic   [ keyword-names {load} forall
+              symbol-names {load} forall
+              assignops 2{first load} fortuple
+            counttomark 1 sub {alt} repeat exch pop  def
+
+/ctoken //space  //constant //symbolic alt //identifier alt  xthen  def
+
+0 0 ( aname another) string-input //ctoken exec report
+0 0 ( ++ / * ) string-input //ctoken exec report
+0 0 ( 37,x,y ) string-input //ctoken exec report
+quit
