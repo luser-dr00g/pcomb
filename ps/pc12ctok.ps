@@ -74,8 +74,21 @@ assignops 2 { aload pop str tokendef } fortuple
             counttomark 1 sub {alt} repeat exch pop  def
 
 /ctoken //space  //constant //symbolic alt //identifier alt  xthen  def
+/token-input{r c in}
+  { in dup //ctoken exec +not-ok { true }{ exch pop second xs-x false } ifelse }
+  { 4 3 roll } % xs [x[r c]] r' c' -> [x[r c]] r' c' xs
+  { token-input } lazy-input def
 
 0 0 ( aname another) string-input //ctoken exec report
 0 0 ( ++ / * ) string-input //ctoken exec report
 0 0 ( 37,x,y ) string-input //ctoken exec report
+0 0 0 0 ( 37,x,y{12+q;} ) string-input token-input
+ dup first ==
+ next dup first ==
+ next dup first ==
+ next dup first ==
+ next dup first ==
+ next dup first ==
+ pc
+
 quit
