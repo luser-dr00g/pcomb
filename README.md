@@ -33,7 +33,8 @@ ridiculous when parsing anything longer than 5 or 6 lines.
 
 So, pc9 finally implements lazy evaluation in the parsers, particularly the `plus`
 combinator which handles alternates. It tries the first one and returns a Suspension
-for the remainder.
+for the remainder. It has been posted to 
+https://codereview.stackexchange.com/questions/220214/lazy-functional-parser-combinators .
 
 With ps/pc11, the program was rewritten following Hutton's earlier paper *Higher Order
 Functions for Parsing*. This reconstructs the parsers in a different manner, and 
@@ -46,3 +47,6 @@ parsers to check each character individually.
 
 The paper also describes modifying the parsers to yield error messages upon failure
 instead of just an empty list of results.
+
+ps/pc12 is a cleanup rewrite of pc11. It has basically the same functionality but with
+simplifications where I could manage them. It's the best yet.
