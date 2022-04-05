@@ -28,7 +28,7 @@ static list parse_using( object v, list o );
 list
 parse( parser p, list input ){
   return  valid( p ) && p->t == PARSER && valid( input ) ?
-            p->Parser.f( p->Parser.v, input )
+            p->Parser.f( p->Parser.env, input )
           : NIL_;
 }
 
@@ -90,7 +90,7 @@ parse_bind( object v, list input ){
   list r = parse( p, input );
   return  valid( r )  ?
             join( map(
-	      Operator( valid( f->Operator.v )  ? append( copy( f->Operator.v ), v )  : v,
+	      Operator( valid( f->Operator.env )  ? append( copy( f->Operator.env ), v )  : v,
 	        f->Operator.f ),
              r ) )
 	  : NIL_;
@@ -281,7 +281,7 @@ static list
 oper_into( object v, list o ){
   object id = assoc_symbol( INTO_ID, v );
   parser q = assoc_symbol( INTO_Q, v );
-  return  parse( Parser( env(q->Parser.v,1,id,x_(o)), q->Parser.f ), xs_( o ) );
+  return  parse( Parser( env(q->Parser.env,1,id,x_(o)), q->Parser.f ), xs_( o ) );
 }
 
 

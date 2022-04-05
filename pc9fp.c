@@ -80,7 +80,7 @@ force_apply( object v ){
   oper f = assoc_symbol( APPLY_F, v );
   object o = assoc_symbol( APPLY_X, v );
   *o = *force_( o );
-  return  valid( o )  ? f->Operator.f( f->Operator.v, o )  : NIL_;
+  return  valid( o )  ? f->Operator.f( f->Operator.env, o )  : NIL_;
 }
 object
 apply( oper f, object o ){
@@ -89,8 +89,8 @@ apply( oper f, object o ){
               o->t == SUSPENSION  ?
                 Suspension( env( 0, 2, Symbol(APPLY_F), f, Symbol(APPLY_X), o ),
                             force_apply )
-              : f->Operator.f( f->Operator.v, o )
-            : f->Operator.f( f->Operator.v, o ) //for using(maybe(),...)
+              : f->Operator.f( f->Operator.env, o )
+            : f->Operator.f( f->Operator.env, o ) //for using(maybe(),...)
           : NIL_;
   //return  f->t == OPERATOR  ? f->Operator.f( f->Operator.v, o )  : NIL_;
 }
@@ -232,7 +232,7 @@ match_symbol( list v, list pat, list a ){
 
 list
 match_operator( list v, list pat, list a ){
-  return  pat->Operator.f( pat->Operator.v, v );
+  return  pat->Operator.f( pat->Operator.env, v );
 }
 
 // (t_id x) => print x
