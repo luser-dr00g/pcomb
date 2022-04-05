@@ -15,12 +15,10 @@
       [ 1 index length 5 mod { (u) } repeat ] compose
       [ exch 5 {
 	    0 exch { first 33 sub exch 85 mul add } forall
-	    4 { dup 256 mod exch 256 idiv } repeat pop
-            to-char exch to-char 4 2 roll to-char exch to-char
+	    4 { dup 256 mod to-char exch 256 idiv } repeat pop exch 4 2 roll exch
       } fortuple ] to-string }
   /to-string { dup type /stringtype ne {
                dup length string exch 0 exch {3 copy putinterval length add} forall pop } if }
-  /to-char { 1 string dup 0 4 3 roll put }
   /middle { 1 1 index length 2 sub getinterval }
 >> begin
 

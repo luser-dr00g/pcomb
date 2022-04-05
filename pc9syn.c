@@ -413,11 +413,12 @@ int test_syntax(){
 
   object results;
   PRINT( results = tree_from_tokens( tokens ) );
+  add_global_root( results );
 
   object cst;
   PRINT( cst = x_( x_( take( 1, results ) ) ) );
   PRINT_DATA( cst );
-  PRINT( Int( garbage_collect( cst ) ) );
+  //PRINT( Int( garbage_collect( cst ) ) );
 
   object ast;
   PRINT_TREE( ast = suppress_strings( cst ) );
@@ -429,7 +430,7 @@ int test_syntax(){
   PRINT_DOT( tree );
   PRINT_ALL( extract_ids( tree ) );
   PRINT_ALL( extract_constants( tree ) );
-  PRINT( Int( garbage_collect( tree ) ) );
+  //PRINT( Int( garbage_collect( tree ) ) );
   return  0;
 }
 

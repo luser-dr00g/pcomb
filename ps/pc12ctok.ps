@@ -23,17 +23,17 @@ keywords { cvsstr dup (k_) prefix exch str tokendef } forall
 /keyword-names  keywords { cvsstr (k_) prefix } map  def
 
 /symbols {
-  star   (*)     plusplus   (++)    plus    (+)     dot    (.)
+  star   (*)     plusplus   (++)    plus    (+)    dot    (.)
   arrow  (->)    minusminus (--)    minus   (-)
   bangeq (!=)    bang       (!)     tilde   (~)
-  ampamp (&&)    amp        (&)     eqeq    (==)    equal  (=)
+  ampamp (&&)    amp        (&)     eqeq    (==)   equal  (=)
   caret  (^)     pipepipe   (||)    pipe    (|)
   slant  (/)     percent    (%)
   ltlt   (<<)    lteq       (<=)    less    (<)
   gtgt   (>>)    gteq       (>=)    greater (>)
   lparen (\()    rparen     (\))
-  comma  (,)     semi       (;)     colon     (:)   quest  (?)
-  lbrace ({)     rbrace     (})     lbrack    ([)   rbrack (])  
+  comma  (,)     semi       (;)     colon   (:)    quest  (?)
+  lbrace ({)     rbrace     (})     lbrack  ([)    rbrack (])  
 } cvlit  def
 symbols 2 { aload pop str tokendef } fortuple
 /symbol-names  [ symbols 2 { first } fortuple ]  def
@@ -45,6 +45,7 @@ symbols 2 { aload pop str tokendef } fortuple
   ampeq  (&=)    careteq    (^=)    pipeeq    (|=)
 } cvlit  def
 assignops 2 { aload pop str tokendef } fortuple
+/assignop-names  [ assignops 2 { first } fortuple ]  def
 
 /comment    (/*) str  (*) noneof many (*) char then some then  (/) then  def
 /space      ( \t\n) anyof  //comment  alt  many  def
@@ -68,21 +69,24 @@ assignops 2 { aload pop str tokendef } fortuple
 
 /constant   //floating //integer alt //character alt //astring alt  tokendef
 
-/symbolic   [ keyword-names {load} forall
-              symbol-names {load} forall
-              assignops 2{first load} fortuple
+/symbolic   [ keyword-names  {load} forall
+              symbol-names   {load} forall
+              assignop-names {load} forall
             counttomark 1 sub {alt} repeat exch pop  def
 
-/ctoken //space  //constant //symbolic alt //identifier alt  xthen  def
+/ctoken     //space  //constant //symbolic alt //identifier alt
+                     xthen  def
 /token-input{r c in}
-  { in dup //ctoken exec +not-ok { true }{ exch pop second xs-x false } ifelse }
+  { in dup //ctoken exec +not-ok { pop pop true }{ exch pop second xs-x false } ifelse }
   { 4 3 roll } % xs [x[r c]] r' c' -> [x[r c]] r' c' xs
   { token-input } lazy-input def
+
+/debug-ctok where {pop}{currentfile flushfile} ifelse
 
 0 0 ( aname another) string-input //ctoken exec report
 0 0 ( ++ / * ) string-input //ctoken exec report
 0 0 ( 37,x,y ) string-input //ctoken exec report
-0 0 0 0 ( 37,x,y{12+q;} ) string-input token-input
+0 0  0 0 ( 37,x,y{12+q;} ) string-input  token-input
  dup first ==
  next dup first ==
  next dup first ==

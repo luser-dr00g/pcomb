@@ -25,17 +25,28 @@ enum object_symbols {
   INPUT, POS,
   SYM1
 };
-boolean T_, NIL_;
+extern boolean T_, NIL_;
 
 static int valid( object a );  // not NULL and not NIL_ 
+
+static int
+valid( object a ){
+  switch( a  ? *(tag*)a  : 0 ){
+  default:  // null, NIL_ or unknown
+    return 0;
+  case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:
+  case SYMBOL: case STRING: case VOID:
+    return 1;
+  }
+}
 
 // Constructors
 object  Int( int i );
 list    one( object a ); // make a one element list
 list    cons( object a, object b ); // list node
-object  Suspension( object v, fSuspension *f );
-parser  Parser( object v, fParser *f );
-oper    Operator( object v, fOperator *f );
+object  Suspension( object env, fSuspension *f );
+parser  Parser( object env, fParser *f );
+oper    Operator( object env, fOperator *f );
 object  String( char *s, int disposable );
 object  Symbol_( int sym, char *pname, object data );
 #define Symbol(n) Symbol_( n, #n, 0 )
@@ -74,17 +85,7 @@ void print_tree( list a );
 #define PRINT_FLAT(__) PRINT_WRAPPER( print_flat, __, "flat= " )
 #define PRINT_DATA(__) PRINT_WRAPPER( print_data, __, "data=\n" )
 #define PRINT_TREE(__) PRINT_WRAPPER( print_tree, __, "tree=\n" )
-#define PRINT_WRAPPER(_, __, ___) \
-  printf( "%s: %s %s", __func__, #__, ___ ), _( __ ), puts("")
+#define PRINT_WRAPPER(F, EXP, SPEC) \
+  printf( "%s: %s %s", __func__, #EXP, SPEC ), F( EXP ), puts("")
 
 
-static int
-valid( object a ){
-  switch( a  ? a->t  : 0 ){
-  default:  // null, NIL_ or unknown
-    return 0;
-  case INTEGER: case LIST: case SUSPENSION: case PARSER: case OPERATOR:
-  case SYMBOL: case STRING: case VOID:
-    return 1;
-  }
-}

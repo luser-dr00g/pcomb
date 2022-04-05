@@ -1,0 +1,163 @@
+(pc12.ps)run <<
+/to-string{ dup type /stringtype ne {
+            dup length string exch 0 exch {3 copy putinterval length add} forall pop } if }
+/compress {
+    [ 3 1 roll  % [ a b
+    0 1 2 index length 1 sub {  % [ ... a b i
+	2 copy get {            % [ ... a b i  |b[i]==true
+	    3 copy exch pop get % [ ... a b i a[i]
+	    4 1 roll            % [ ... a[i] a b i
+	} if  % [ ... a b i
+	pop
+    } for
+    pop pop ]
+}
+/filter { 1 index exch map compress }
+>> begin
+
+/Digit  (0)(9) range
+        def
+/Hex    (A)(F) range
+        (a)(f) range  alt
+        //Digit       alt
+	def
+/Number (+-) anyof  maybe
+          //Digit   some  then
+	  (.) char  maybe  then
+	  //Digit  many  then
+	  { to-string cvr } using
+	def
+/Date  //Digit dup maybe then
+       (/) char  then
+       //Digit dup maybe then  then
+       (/) char  then
+       //Digit dup maybe dup dup then then then  then
+         { to-string } using
+       def
+/Escape (\\) char
+          (,"\\/bfnrt) anyof
+	  (u) char
+	    //Hex dup maybe dup dup then then then then  alt 
+	  then
+        def
+/Char   //Escape
+        (,"\r\n) noneof alt
+        def
+/String %(") char
+          //Char some %many xthen
+	%(") char thenx
+	  { to-string } using
+	def
+/Value
+       //Date
+       //Number alt
+       //String alt  maybe
+         { one } using
+       def
+/CSV-row  //Value  (,) char //Value xthen  many  then
+            { one } using
+          def
+/CSV   //CSV-row  (\r) char maybe (\n) char xthen //CSV-row xthen  many  then
+       def
+
+/CSV-parse { 0 0 3 2 roll string-input CSV
+	     dup first /OK eq { second first } if } def
+/CSV-file { 0 0 3 2 roll (r) file file-input CSV
+            dup first /OK eq { second first } if
+	  } def
+
+/dump {
+  {{zero eq}map{and}reduce not} filter
+  { == } forall
+} def
+
+/unformat {
+  {first (Location) ne} filter
+  dup { 0 2 getinterval } map
+  exch { 2 2 getinterval } map
+  append
+  {second zero ne} filter
+} def
+
+/dump2 {
+  unformat
+  { == } forall
+} def
+
+/debug-csv where {pop}{currentfile flushfile}ifelse
+
+(loc,name,12,53.5
+FOH,strawman,0,10.0
+BOH,dilla killa,0,60.0
+MAN,child,5,6)
+CSV-parse dump ps
+
+(Location,Name,Location,Name
+,,,
+Mezzanine,,Cop Out,
+Mezzanine FOH,A,Cop,D
+Mezzanine FOH,B,Cop,E
+Mezzanine FOH,C,Cop,F
+,,,
+,,,
+Mezzanine BOH,G,Overflow Cafe,
+Mezzanine BOH,H,Flow,Regina
+Mezzanine BOH,I,Flow,Quinn
+,,,
+BeatNik Bob's,,Distribution,
+Beat FOH,,Distro,T
+Beat FOH,,Distro,J
+,,,
+Beat BOH,,,
+Beat BOH,,Lead,
+,,Lead,M
+Rooftop Cafe,,Lead,M
+Roof FOH,Lindsey,,
+Roof FOH,,,
+,,Cowboy,
+Roof BOH,,Cowboy,
+Roof BOH,,,
+,,,
+Cabin Inn,,,
+Bartender,Brenda,,
+,,,
+,,,
+Sams PM Relief,U,,
+Sams PM Relief,V,,
+,,,
+,,,
+Roof PM Relief,S,,
+,,,)
+CSV-parse == ps
+
+(City Museum 2022,,,
+Date:,3/17/2022,,
+Location,Name,Location,Name
+,,,
+Mezzanine,,Cop Out,
+Mezzanine FOH,Mya,Cop,Quinn
+Mezzanine FOH,,Cop,Regina
+Mezzanine FOH,Talib,Cop,
+,,,
+Mezzanine BOH,Calvin,Overflow CafÃ©,
+Mezzanine BOH,DJ,Flow,
+Mezzanine BOH,,,
+Mezzanine BOH,,,
+,,,
+BeatNik Bob's,,Distribution,
+Beat FOH,,Distro,Tre
+Beat FOH,,,
+,,,
+Beat BOH,,,
+Beat BOH,,,
+,,,
+Rooftop CafÃ©,,,
+Roof FOH,Lindsey,,
+Roof FOH,,,
+,,,
+Roof BOH,,,
+Roof BOH,,,
+,,,
+Cabin Inn,,,
+Bartender,Doneva,,) CSV-parse dump2 ps
+quit

@@ -11,7 +11,7 @@ string-input{r c s}
   {s tail}
   {string-input} @lazy-input
 file-input{r c f}
-  {f read not}
+  {f read {to-char true}{false}ifelse not}
   {f}
   {file-input} @lazy-input
 
@@ -109,8 +109,9 @@ aa{array astore}
 is-lit-array{ dup type /arraytype eq exch xcheck not and }
 ll{{load-if-literal-name}deep-map}
 deep-map{1 index type /arraytype ne {exec}{1 index xcheck 3 1 roll
-  [ 3 1 roll /deep-map cvx 2 aa cvx forall ] exch {cvx} if} ifelse}
+         [ 3 1 roll /deep-map cvx 2 aa cvx forall ] exch {cvx} if} ifelse}
 within{ exch search { pop pop pop true }{ pop false } ifelse }
+to-char{ 1 string dup 0 4 3 roll put}
 
 ps{(stack:)= pstack flush}
 pe{(estack:)= countexecstack array execstack {==} forall flush}

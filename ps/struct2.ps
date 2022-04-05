@@ -1,13 +1,14 @@
 %!
 % struct2.ps   An enhanced PostScript syntax for defining functions with named,
 % type-checked arguments. Using @func within a block or other construct that uses
-% 'pairs' accomplishes a sort of compile-time macro expansion of the shorthand function description.
+% 'pairs' accomplishes a sort of compile-time macro expansion of the shorthand
+% function description.
 <<  /pairs-begin { pairs begin        }
     /pairs-def   { pairs {def} forall } pop { pairs currentdict copy pop }
     /pairs       { << exch explode >> }
     /explode     { { @exec } forall   }
     /@exec       { dup type /nametype eq 1 index xcheck and { exec-if-@ } if }
-    /exec-if-@   { dup dup length string cvs dup first (@) first eq { exec@ }{ pop } ifelse }
+    /exec-if-@   { dup dup length string cvs dup first (@) first eq {exec@}{pop}ifelse }
     /first       { 0 get }            /exec@ {  exch pop rest cvn cvx exec  }
     /rest        { 1 1 index length 1 sub getinterval }
 >> begin {
@@ -18,13 +19,17 @@
 		  exch simple-func   compose }
     func-begin  { exch reverse /args-begin load curry exch compose }
     args-begin  { dup length dict begin { exch def } forall }
-    args-and-types { /was_x false def [ exch { each-specifier } fortokens fix-last ] dup args exch types  }
-    each-specifier { dup xcheck /is_x exch def  is_x was_x and { null exch } if  /was_x is_x def }
+    args-and-types { /was_x false def
+		     [ exch { each-specifier } fortokens fix-last ] dup args exch types  }
+    each-specifier { dup xcheck /is_x exch def
+                     is_x was_x and { null exch } if
+                     /was_x is_x def }
     fix-last       { counttomark 2 mod 1 eq { null } if }
-    check-stack    { {pop} 4 index cvlit { cvx /stackunderflow signalerror } curry compose
-		     /if cvx 2 array astore cvx {check-count} exch compose curry
-		     3 index cvlit { cvx /typecheck signalerror } curry
-		     /if cvx 2 array astore cvx {check-types} exch compose compose }
+    check-stack  { {_types _args _body _name} args-begin
+	/_name load /_name 1 index cvlit def  /_body load /_args load
+	({ //_types check-count { pop //_name cvx /stackunderflow signalerror } if
+	            check-types { //_name cvx /typecheck signalerror } if }) cvx exec
+    end }
     check-count { dup length count 2 sub gt }
     check-types { dup length 1 add copy true exch { check-type and } forall exch pop not }
     check-type  { dup null eq { 3 -1 roll pop pop true }{ 3 -1 roll type eq } ifelse }
@@ -43,14 +48,22 @@
 	        dup 4 -1 roll length 4 -1 roll putinterval
 	      exch {cvx} if }  { 2 array astore cvx { {} forall } map } @pop
     reverse { aload 0 1 2 index length 1 sub { 3 2 roll 3 copy put pop pop } for }
-            { dup xcheck exch  [ exch dup length 1 sub -1 0 { 2 copy get 3 1 roll pop } for pop ]
+            { dup xcheck exch
+              [ exch dup length 1 sub -1 0 { 2 copy get 3 1 roll pop } for pop ]
               exch {cvx} if } @pop
 } pairs-def {
-    fortokens {src proc}{ { src token {exch /src exch store}{exit}ifelse  proc } loop } @func
+    fortokens {src proc}{ { src token {exch /src exch store}{exit}ifelse  proc }
+                          loop } @func
     fortuple {a n p}{ 0 n /a load length 1 sub
 	{ /a exch /n getinterval /p exec } {load-if-literal-name} map end for
     } @func-begin
-    load-if-literal-name { dup type /nametype eq 1 index xcheck not and { { load } stopped pop } if }
+    load-if-literal-name { dup type /nametype eq 1 index xcheck not and
+			   { { load } stopped pop } if }
+    deep-map { 1 index type /arraytype ne {exec}{1 index xcheck 3 1 roll
+               [ 3 1 roll /deep-map cvx 2 array astore cvx forall ] exch {cvx} if} ifelse }
+    each-line {src proc}{ src type /stringtype eq { /src src (r) file store } if
+			  { src 512 string readline {proc}{pop exit} ifelse } loop } @func
+    contains { search { pop pop pop true }{ pop false } ifelse }
 } pairs-def
 
 /debugstruct2 where{pop}{currentfile flushfile}ifelse
@@ -65,14 +78,18 @@
 	/ =
 	3 4 5.0 g =
 	3 4 5.0 g' =
-	{ 3 4 5 g = } stopped { $error /errorname get =only ( in ) print $error /command get = } if
+	{ 3 4 5 g = } stopped
+          { $error /errorname get =only ( in ) print $error /command get = } if
 	/ =
 	clear
-	{ 3 4 h  = } stopped { $error /errorname get =only ( in ) print $error /command get = } if
+	{ 3 4 h  = } stopped
+          { $error /errorname get =only ( in ) print $error /command get = } if
 	clear
 	3 4 5 h =
-	{ 3.0 4.0 5.0 h = } stopped { $error /errorname get =only ( in ) print $error /command get = } if
-	{ 3.0 4.0 5.0 h' = } stopped { $error /errorname get =only ( in ) print $error /command get = } if
+	{ 3.0 4.0 5.0 h = }
+          stopped { $error /errorname get =only ( in ) print $error /command get = } if
+	{ 3.0 4.0 5.0 h' = }
+          stopped { $error /errorname get =only ( in ) print $error /command get = } if
     }
 
     - sub + add * mul    %:= {exch def}    += {dup load 3 -1 roll + store}

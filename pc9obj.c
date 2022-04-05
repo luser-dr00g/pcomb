@@ -44,18 +44,18 @@ cons( object a, object b ){
 }
 
 object
-Suspension( object v, fSuspension *f ){
-  return  OBJECT( .Suspension = { SUSPENSION, v, f } );
+Suspension( object env, fSuspension *f ){
+  return  OBJECT( .Suspension = { SUSPENSION, env, f } );
 }
 
 parser
-Parser( object v, fParser *f ){
-  return  OBJECT( .Parser = { PARSER, v, f } );
+Parser( object env, fParser *f ){
+  return  OBJECT( .Parser = { PARSER, env, f } );
 }
 
 oper
-Operator( object v, fOperator *f ){
-  return  OBJECT( .Operator = { OPERATOR, v, f } );
+Operator( object env, fOperator *f ){
+  return  OBJECT( .Operator = { OPERATOR, env, f } );
 }
 
 object
@@ -115,10 +115,10 @@ mark_objects( list a ){
   switch(  a->t  ){
   case LIST:       mark_objects( a->List.a ); 
                    mark_objects( a->List.b );       break;
-  case PARSER:     mark_objects( a->Parser.v );     break;
-  case OPERATOR:   mark_objects( a->Operator.v );   break;
+  case PARSER:     mark_objects( a->Parser.env );     break;
+  case OPERATOR:   mark_objects( a->Operator.env );   break;
   case SYMBOL:     mark_objects( a->Symbol.data );  break;
-  case SUSPENSION: mark_objects( a->Suspension.v ); break;
+  case SUSPENSION: mark_objects( a->Suspension.env ); break;
   }
 }
 
@@ -151,7 +151,7 @@ sweep_objects( list *po ){
 object
 force_( object a ){
   return  !valid( a ) || a->t != SUSPENSION  ?  a
-          : force_( a->Suspension.f( a->Suspension.v ) );
+          : force_( a->Suspension.f( a->Suspension.env ) );
 }
 
 
