@@ -1,0 +1,39 @@
+%!
+<<
+    /args-begin { dup length dict begin { exch def } forall }
+    /each-line { {proc src} args-begin
+        src type /stringtype eq { /src src (r) file def } if
+        %({ //src 1024 string readline //proc{pop exit} ifelse }) cvx exec
+	{ /src 1024 string readline /proc {pop exit} ifelse } ll
+        end loop }
+    /contains { search { pop pop pop true }{ pop false } ifelse }
+    /map { 1 index xcheck 3 1 roll [ 3 1 roll forall ] exch {cvx} if }
+    /reduce { exch dup first exch rest 3 -1 roll forall }
+    /rreduce { exch aload length 1 sub dup 3 add -1 roll repeat }
+    /curry { dup xcheck 3 1 roll
+               dup length 1 add array dup 0 5 -1 roll put dup 1 4 -1 roll putinterval
+             exch {cvx} if }
+    /compose { 1 index xcheck 3 1 roll
+                 1 index length 1 index length add array  dup 0 4 index putinterval
+                 dup 4 -1 roll length 4 -1 roll putinterval
+               exch {cvx} if }
+    /deep-map { 1 index type /arraytype ne {exec}{1 index xcheck 3 1 roll
+                [ 3 1 roll /deep-map cvx 2 aa cvx forall ] exch {cvx} if} ifelse }
+    /load-if-literal-name { dup type /nametype eq 1 index xcheck not and
+			    { { load } stopped pop } if }
+    /ll { {load-if-literal-name} deep-map }
+    /aa { array astore }
+    /first { 0 get }
+    /rest { 1 1 index length 1 sub getinterval }
+    /cvsstr { << /nametype {dup length} /default {12} >>
+      1 index type 2 copy known not {pop /default} if get exec  string cvs }
+    /to-string { dup type /stringtype ne {
+                 dup 0 exch {length add} forall string exch
+		 0 exch {3 copy putinterval length add} forall pop } if }
+    /to-char { 1 string dup 0 4 3 roll put }
+    /ps { (stack:)= pstack }
+    /pe { (estack:)= countexecstack array execstack
+          dup length 1 sub -1 0 { % a i
+	    2 copy get == pop
+          } for }
+>> begin

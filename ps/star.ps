@@ -1,0 +1,97 @@
+%!
+<<
+/ps { (stack:)= pstack }
+/poly { % m
+  [ 
+    0 360 4 -1 roll div 360.0 {
+      1 0 3 2 roll matrix rotate transform 2 array astore
+    } for
+  ] 0 1 index length 1 sub getinterval
+}
+/cycle { % m n
+  [ 3 1 roll
+    0 { % [ ... m n i
+      dup 4 1 roll % [ ... i m n i
+      1 index add 2 index mod % [ ... i m n i+n
+      dup 0 eq { pop pop pop exit } if
+    } loop
+  ]
+}
+/first { 0 get }
+/rest { 1 1 index length 1 sub getinterval }
+/map { 1 index xcheck 3 1 roll [ 3 1 roll forall ] exch {cvx} if }
+/curry { dup xcheck 3 1 roll
+           dup length 1 add array dup 0 5 -1 roll put dup 1 4 -1 roll putinterval
+         exch {cvx} if }
+/bite-chew { % a bite chew
+  3 1 roll exch dup first % chew bite a a0
+  3 -1 roll [ 3 1 roll exec ] % chew a [a0 bite]
+  3 1 roll rest exch map % [a0 bite] [a1 chew .. aN chew]
+}
+/select { % array indices
+  exch { % i a
+      exch get
+  } curry
+  map
+}
+/unroll-star { % m n
+  1 index poly 3 1 roll % poly m n
+  0 exch dup 1 exch % poly m 0 n 1 n
+  1 exch sub 4 index add 4 index mod % poly m 0 n 1 (m-n)%m
+  4 array astore exch 3 1 roll select % m [a c b d]
+  intersect % m x y
+  [0 0] distance
+  %ps
+  1 exch star2
+}
+/star2 { 1 dict begin {r2 r1 m}{exch def}forall
+    /alfa 360 m div def
+    /alfa2 alfa 2 div def
+    [
+      0 alfa 360.0 {
+	dup r1 0 3 2 roll matrix rotate transform 2 array astore exch
+	r2 0 3 2 roll alfa2 add matrix rotate transform 2 array astore
+      } for
+    ] 0 1 index length 2 sub getinterval
+end }
+% intersect adapted from https://www.ntg.nl/maps/18/23.pdf by Kees van der Laan
+/intersect { 1 dict begin aload pop {d c b a}{exch def}forall
+  1 1
+    1 1 [a _x  b _x  a _y  b _y  0  0] itransform % 1 1 A B
+    1 1 [c _x  d _x  c _y  d _y  0  0] itransform % 1 1 A B C D
+    0  0  6 array astore                          % 1 1 [A B C D 0 0]
+    itransform 2 array astore                     % [I_x I_y]
+end }
+/_x { 0 get }
+/_y { 1 get }
+/distance { % [x1 y1] [x2 y2]
+  exch aload pop 3 2 roll aload pop
+  exch 4 1 roll exch sub dup mul % x2 x1 (y2-y1)^2
+  3 1 roll sub dup mul add sqrt
+}
+/star { % m n
+  1 index poly 3 1 roll cycle select
+}
+/draw {
+  {aload pop moveto} {aload pop lineto} bite-chew pop pop
+  closepath
+}
+>> begin
+
+2 poly ==
+3 poly ==
+5 poly ==
+3 1 star ==
+7 3 star ==
+5 2 star ==
+5 2 unroll-star ==
+
+300 400 translate
+currentlinewidth
+  3 72 mul  dup dup scale
+  div setlinewidth
+5 2 star draw fill
+1.125 dup scale
+5 2 unroll-star draw stroke
+showpage
+quit

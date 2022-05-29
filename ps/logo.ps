@@ -1,0 +1,152 @@
+%!
+%errordict/undefined{pstack / = countexecstack array execstack == quit}put
+%errordict/typecheck{pstack / = countexecstack array execstack == quit}put
+<<
+
+    /logo{
+	{   % a
+	    dup length 0 eq { pop exit } if
+	    logo-step
+	} loop
+    }
+
+    /logo-step{
+	dup butfirst exch first
+	dup isfunc {
+	    dofunc
+	}{
+	    exch
+	} ifelse
+    }
+
+    /isfunc{
+	dup type /nametype eq {
+	    {
+		load dup xcheck exch type /arraytype eq and
+	    } stopped { pop false } if
+	}{
+	    pop false
+	} ifelse
+    }
+
+    /dofunc{
+	dup arity [ 4 3 roll % x n [ xs
+	{ % x n [ ... xs
+	    counttomark % x n [ ... xs cnt
+	    dup 2 add index exch 1 sub % x n [ ... xs n #...
+	    le { exit } if
+	    logo-step % x n [ ... ? xs
+        } loop % x n [ ... xs
+	counttomark 1 sub dup 3 add index sub % x n [ ... xs #...-n
+	{ curry } repeat
+	counttomark 1 add 1 roll % x n xs [ ...
+	counttomark 4 add -2 roll pop % xs [ ... x
+	load dup butfirst exch first
+        /inputs cvx 3 -1 roll /proc cvx
+	%pstack / =
+        4 array astore cvx % xs [ ... {xa inputs xp proc}
+        exec % xs [ results*
+	%] exch
+	counttomark 2 add -2 roll pop % results* xs
+    }
+
+    /print{{it} PS {it == / =}}
+    /id{{x} {x}}
+    /sum{{x y} PS { x y add }}
+    /difference{{x y} PS { x y sub }}
+    /product{{x y} PS { x y mul }}
+    /quotient{{x y} PS { x y div }}
+
+    /to{{} PS { % xs [ . xs [
+	    %pstack / =
+	exch dup butfirst exch first /name exch def
+	{ % [ ... xs
+	    dup first dup type /nametype eq {
+		dup dup length string cvs first (:) first eq {
+		    exch butfirst
+		}{ pop exit } ifelse
+	    }{ pop exit } ifelse
+	} loop counttomark 1 add 1 roll ] cvx % xs {inputs}
+	exch [ exch { % {inputs} [ ... xs
+	    dup first dup type /nametype eq {
+		dup /end eq { pop butfirst exit }{ exch butfirst } ifelse
+	    }{ exch butfirst } ifelse
+	} loop counttomark 1 add 1 roll ] cvx exch % {inputs} {proc} xs
+	3 1 roll 2 array astore cvx /name load exch /logo where pop 3 1 roll put
+	[
+    }}
+
+    /proc{
+	{
+	    {
+		dup length 0 eq { pop exit } if
+		dup butfirst exch first
+		dup /PS eq { pop stop } if
+		[ exch logo % xs [ results*
+		%] exch
+		counttomark 2 add -2 roll pop
+	    } loop
+	} stopped {
+	    first exec
+	} if
+	end
+    }
+
+    /inputs{
+	dup length dict begin
+	dup length 1 sub -1 0 { % ... a i
+	    2 copy get          % ... a i a_i
+	    4 -1 roll def pop   % ... a
+	} for pop  % ...
+    }
+
+    /arity{
+	load first length
+    }
+
+    /curry{
+	dup xcheck 3 1 roll
+          dup length 1 add array dup 0 5 -1 roll put dup 1 4 -1 roll putinterval
+        exch {cvx} if
+    }
+
+    /compose{
+	1 index xcheck 3 1 roll
+          1 index length 1 index length add array dup 0 4 index putinterval
+          dup 4 -1 roll length 4 -1 roll putinterval
+        exch {cvx} if
+    }
+
+    /shift{ % a n  .  a[n..$] a[0..n-1]
+	2 copy % a n a n
+	0 exch getinterval 3 1 roll % a[0..n-1] a n
+	1 index length 1 index sub getinterval % a[0..n-1] a[n..$]
+	exch % a[n..$] a[0..n-1]
+    }
+
+    /first{ 0 get }
+    /butfirst{ 1 1 index length 1 sub getinterval }
+    /last{ dup length 1 sub get }
+    /butlast{ 0 1 index length 1 sub getinterval }
+
+>>begin
+
+{
+    print 12
+    print 100
+    print sum 3 product 4 2
+    5 6 7
+
+    to fd :dist
+      print :dist
+    end
+    fd 47
+    to tup :arg
+      4 6
+    end
+    print print tup 12
+    error (help I'm trapped in a Logo context)
+    print 5
+}logo
+(stack:) = pstack
+quit
