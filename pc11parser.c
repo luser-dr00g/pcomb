@@ -140,12 +140,12 @@ noneof( char *s ){
 
 
 static object
-parse_either( object env, object it ){
+parse_either( object env, list input ){
   parser p = assoc_symbol( EITHER_P, env );
-  object result = parse( p, it );
+  object result = parse( p, input );
   if(  valid( result )  ) return  result;
   parser q = assoc_symbol( EITHER_Q, env );
-  return  parse( q, it );
+  return  parse( q, input );
 }
 
 parser
@@ -157,9 +157,9 @@ either( parser p, parser q ){
 }
 
 static object
-parse_sequence( object env, object it ){
+parse_sequence( object env, list input ){
   parser p = assoc_symbol( SEQUENCE_P, env );
-  object p_result = parse( p, it );
+  object p_result = parse( p, input );
   if(  valid( not_ok( p_result ) )  ) return  p_result;
 
   parser q = assoc_symbol( SEQUENCE_Q, env );
@@ -235,10 +235,10 @@ some( parser p ){
 
 
 static object
-parse_bind( object env, object it ){
+parse_bind( object env, list input ){
   parser p = assoc_symbol( BIND_P, env );
   operator op = assoc_symbol( BIND_OP, env );
-  object result = parse( p, it );
+  object result = parse( p, input );
   if(  valid( not_ok( result ) )  ) return  result;
   object payload = rest( result ),
          value = first( payload ),
@@ -256,16 +256,15 @@ bind( parser p, operator op ){
 
 
 static object
-parse_into( object v, object it ){
+parse_into( object v, list input ){
   parser p = assoc_symbol( INTO_P, v );
-  object result = parse( p, it );
+  object result = parse( p, input );
   if(  valid( not_ok( result ) )  ) return  result;
   object id = assoc_symbol( INTO_ID, v );
   parser q = assoc_symbol( INTO_Q, v );
-  return  parse( Parser( env( q->Parser.env, 1,
-			      id, first( rest( result ) ) ),
-			 q->Parser.f ),
-		 rest( rest( result ) ) );
+  return  q->Parser.f( env( q->Parser.env, 1,
+                            id, first( rest( result ) ) ),
+		       rest( rest( result ) ) );
 }
 
 parser
