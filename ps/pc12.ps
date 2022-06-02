@@ -66,8 +66,8 @@ many{ {-777 exec} ll dup 3 1 roll then maybe  % {7e}{p{7e}then maybe}
       executeonly } % x* = (xx*)?
 some{ dup many then }
 char{ literal }
-%str{ dup length 0 eq { pop zero succeeds }{ dup head char exch tail str then } ifelse }
-str{ dup length 1 eq { char }{ dup head char exch tail str then } ifelse }
+str{ dup length 0 eq { pop zero succeeds }{ dup head char exch tail str then } ifelse }
+%str{ dup length 1 eq { char }{ dup head char exch tail str then } ifelse }
 
 anyof{ {within} curry satisfy }
 noneof{ {within not} curry satisfy }

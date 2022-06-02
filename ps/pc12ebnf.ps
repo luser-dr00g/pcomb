@@ -1,0 +1,93 @@
+(pc12.ps)run
+/to-string{ dup type /stringtype ne {
+            dup 0 exch {length add} forall string exch
+	    0 exch {3 copy putinterval length add} forall pop } if }
+          def
+
+/choice-symbol (|) char def
+/defining-symbol (=) str def
+/terminating-symbol (;) char def
+
+/space  ( \n) anyof def
+/space? //space many def
+/digit (0)(9) range def
+/alpha (a)(z) range (A)(Z) range alt def
+/identifier (-) char //alpha alt some
+            {to-string cvn} using
+            def
+
+/terminal (") char  (") noneof many   xthen (") char thenx
+          (') char  (') noneof many   xthen (') char thenx alt
+		    {to-string {str} curry} using
+		    def
+/non-terminal //identifier
+              {{load executeonly} curry} using
+              def
+/Symbol //identifier def
+/Factor //terminal //non-terminal alt  //space? thenx some
+        %{dup ==}using
+        {dup xcheck not { {compose {then} compose} reduce } if} using
+        def
+/Expression //Factor
+              //choice-symbol  //space? thenx
+              //Factor xthen many then
+            %{one} using
+	    %{dup ==} using
+	    {dup xcheck not { {compose {alt} compose} reduce } if} using
+	    def
+/BNF-definition //space?  //Symbol              xthen //space? thenx
+                          //defining-symbol thenx     //space? thenx
+	                  //Expression then           //space? thenx
+	                  //terminating-symbol thenx  //space? thenx
+                          def
+/EBNF //BNF-definition some def
+
+/EBNF-parse {
+    0 0 3 2 roll string-input EBNF
+    dup first /OK eq { second first } if
+} def
+
+/roman-numeral true succeeds def
+/EOL (\n) literal def
+/upper (A)(Z) range def
+
+(
+  postal-address = name-part street-address zip-part ;
+  name-part = personal-part last-name opt-suffix-part EOL
+                | personal-part name-part ;
+  personal-part = initial "." | first-name ;
+  street-address = house-num street-name opt-apt-num EOL ;
+  zip-part = town-name "," state-code zip-code EOL ;
+  opt-suffix-part = "Sr." | "Jr." | roman-numeral | "" ;
+  opt-apt-num = apt-num | "" ;
+  apt-num = digit ;
+  town-name = identifier ;
+  state-code = upper upper ;
+  zip-code = digit digit digit digit digit ;
+  initial = "Mr" | "Mrs" | "Ms" | "M" ;
+  first-name = identifier ;
+  last-name = identifier ;
+  house-num = digit ;
+  street-name = identifier ;
+) EBNF-parse
+ps
+1 dict begin
+  aload length 2 idiv {def} repeat
+currentdict end
+dup ===
+1 dict begin
+  dup
+  {pop {-777 exec} ll def} forall
+  {exch load exch 0 exch exec put} forall
+currentdict end
+dup length =
+dup {pop =} forall
+%dup ===
+ps
+begin
+  0 0
+  (Mr. luser droog\nThe Gryphon's Aerie\nAnytown, ST 00000\n)
+  string-input postal-address
+  ps
+
+quit

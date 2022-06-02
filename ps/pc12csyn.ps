@@ -1,0 +1,53 @@
+errordict/typecheck{ps pe quit}put
+(pc12ctok.ps)run {
+  tokenmatcher{ cvlit { exch first first eq } curry satisfy }
+  symbolic-predicate-def{ dup symbolic-predicate-name exch tokenmatcher def }
+  symbolic-predicate-name{ cvsstr (is_) prefix }
+  compound{ [ exch {tokenmatcher} forall counttomark 1 sub {alt} repeat exch pop }
+} pairs-begin
+
+[
+  keyword-names 
+  symbol-names 
+  assignop-names
+  {identifier constant}
+]{ { symbolic-predicate-def } forall } forall
+
+/asgnop  assignop-names compound  def
+/binop   { star slant percent
+	   plus minus
+           gtgt ltlt
+           less greater lteq gteq
+           eqeq bangeq
+           amp caret pipe
+           ampamp pipepipe } compound  def
+
+/expression  {-777 exec}  def
+/expression-list  //expression //is_comma //expression then many then  def
+
+/primary-expression  //is_identifier
+                     //is_constant  alt
+                     //is_lparen //expression then //is_rparen then  alt
+		     def
+/postfix-expression  //primary-expression
+                       //is_lbrack //expression then //is_rbrack then  maybe then
+		       //is_lparen //is_rparen then  maybe then
+		       //is_lparen //expression-list then //is_rparen then  maybe then
+                       //is_dot //is_identifier then  maybe then
+                       //is_arrow //is_identifier then maybe then
+                       //is_plusplus maybe then
+                       //is_minusminus maybe then
+		       def
+
+/function-definition  //postfix-expression  def
+
+/external-declaration  //function-definition
+                       %//declaration  alt
+		       def
+/translation-unit  //external-declaration many  def
+
+%0 0 0 0 ( myvar ) string-input token-input //lvalue exec report
+0 0 0 0 ( 37 ) string-input token-input //primary-expression exec report
+%0 0 0 0 ( *37*-x ) string-input token-input //expression exec report
+
+quit
