@@ -12,7 +12,8 @@
 /space? //space many def
 /digit (0)(9) range def
 /alpha (a)(z) range (A)(Z) range alt def
-/identifier (-) char //alpha alt some
+/name (-_) anyof //alpha alt some def
+/identifier //name
             {to-string cvn} using
             def
 
@@ -23,18 +24,23 @@
 /non-terminal //identifier
               {{load executeonly} curry} using
               def
+/Expression {-777 exec} def
 /Symbol //identifier def
-/Factor //terminal //non-terminal alt  //space? thenx some
-        %{dup ==}using
+/Factor //terminal
+        //non-terminal alt
+	([) char //space? thenx //Expression xthen //space? thenx (]) char thenx
+	  {{maybe} compose} using alt
+	({) char //space? thenx //Expression xthen //space? thenx (}) char thenx
+	  {{many} compose} using alt
+	def
+/Term //Factor //space? thenx some
         {dup xcheck not { {compose {then} compose} reduce } if} using
         def
-/Expression //Factor
-              //choice-symbol  //space? thenx
-              //Factor xthen many then
-            %{one} using
-	    %{dup ==} using
-	    {dup xcheck not { {compose {alt} compose} reduce } if} using
-	    def
+//Expression 0 //Term
+                 //choice-symbol  //space? thenx
+                 //Term xthen many then
+	      {dup xcheck not { {compose {alt} compose} reduce } if} using
+	      put
 /BNF-definition //space?  //Symbol              xthen //space? thenx
                           //defining-symbol thenx     //space? thenx
 	                  //Expression then           //space? thenx
@@ -44,49 +50,60 @@
 
 /EBNF-parse {
     0 0 3 2 roll string-input EBNF
-    dup first /OK eq { second first } if
+    dup first /OK eq { second first } if % fixme what if it's not OK?
+
+    1 dict begin
+	aload length 2 idiv {def} repeat
+    currentdict end
+dup ===
+
+    1 dict begin
+	dup
+	{pop {-777 exec} ll def} forall
+	{exch load exch 0 exch exec put} forall
+    currentdict end
 } def
 
-/roman-numeral true succeeds def
-/EOL (\n) literal def
+/EOL (\n) char def
 /upper (A)(Z) range def
+/_ ( ) char maybe def
 
 (
   postal-address = name-part street-address zip-part ;
-  name-part = personal-part last-name opt-suffix-part EOL
-                | personal-part name-part ;
+  name-part = personal-part _ last-name _ opt-suffix-part EOL
+                | personal-part _ name-part ;
   personal-part = initial "." | first-name ;
-  street-address = house-num street-name opt-apt-num EOL ;
-  zip-part = town-name "," state-code zip-code EOL ;
+  street-address = house-num _ street-name opt-apt-num EOL ;
+  zip-part = town-name "," _ state-code _ zip-code EOL ;
   opt-suffix-part = "Sr." | "Jr." | roman-numeral | "" ;
-  opt-apt-num = apt-num | "" ;
-  apt-num = digit ;
-  town-name = identifier ;
+  opt-apt-num = [ apt-num ] ;
+  apt-num = digit { digit } ;
+  town-name = name ;
   state-code = upper upper ;
   zip-code = digit digit digit digit digit ;
   initial = "Mr" | "Mrs" | "Ms" | "M" ;
-  first-name = identifier ;
-  last-name = identifier ;
-  house-num = digit ;
-  street-name = identifier ;
+  roman-numeral = "I" [ "V" ] { "I" } ;
+  first-name = name ;
+  last-name = name ;
+  house-num = digit { digit } ;
+  street-name = name ;
 ) EBNF-parse
+
 ps
-1 dict begin
-  aload length 2 idiv {def} repeat
-currentdict end
-dup ===
-1 dict begin
-  dup
-  {pop {-777 exec} ll def} forall
-  {exch load exch 0 exch exec put} forall
-currentdict end
 dup length =
 dup {pop =} forall
-%dup ===
-ps
+dup /postal-address get ==
+
 begin
+  <<
+    /street-name {to-string one one}
+    /first-name {to-string}
+    /last-name {to-string}
+  >>
+  {{using}curry exch load exch 0 exch update}forall
+
   0 0
-  (Mr. luser droog\nThe Gryphon's Aerie\nAnytown, ST 00000\n)
+  (Mr. luser droog I\n2357 Streetname\nAnytown, ST 00000\n)
   string-input postal-address
   ps
 

@@ -3,7 +3,7 @@ lazy{p}{({dup zero ne 1 index xcheck and {{force//p exec}curry}
                                          //p  ifelse})cvx exec}@func
 lazy-input{read rest more}{
   ({//read exec{zero}{[exch[r c]]
-                      dup first(\n)eq{r c add 0}{r c 1 add}ifelse
+                      dup first(\n)eq{r 1 add 0}{r c 1 add}ifelse
                       //rest exec 3 aa cvx//more compose cons}ifelse})cvx exec func}@func
 } pairs-begin {
 string-input{r c s}
