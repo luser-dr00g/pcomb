@@ -48,5 +48,17 @@ parsers to check each character individually.
 The paper also describes modifying the parsers to yield error messages upon failure
 instead of just an empty list of results.
 
-ps/pc12 is a cleanup rewrite of pc11. It has basically the same functionality but with
+ps/pc12.ps is a cleanup rewrite of pc11.ps. It has basically the same functionality but with
 simplifications where I could manage them. It's the best yet.
+
+pc10*.c was an attempt to merge ps/pc12.ps with pc9*.c but with a different construction
+of the objects. It all seemed to work up until the point of instantiating a suspension.
+It turns out I truly needed the basic object type to be a pointer, because that's the
+only way I can think of to implement suspensions. If all "objects" are pointers to a 
+union in memory, then I can instantiate a suspension by modifying the representation
+in memory and the change will be automatically reflected in all copies of the object.
+I can't do that if the object is a struct with a local payload.
+
+Which brings us to pc11*.c, attempt #2 to merge ps/pc12.ps with pc9*.c with as much
+simplifying as I could bring to bear upon it. I've only just now gotten a few simple
+regexes to work.
