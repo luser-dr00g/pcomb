@@ -49,19 +49,21 @@
 /EBNF //BNF-definition some def
 
 /EBNF-parse {
-    0 0 3 2 roll string-input EBNF
-    dup first /OK eq { second first } if % fixme what if it's not OK?
+  0 0 3 2 roll string-input EBNF
+  dup first /OK eq {
+    second first
 
     1 dict begin
-	aload length 2 idiv {def} repeat
-    currentdict end
+      aload length 2 idiv {def} repeat
+      currentdict end
 dup ===
 
     1 dict begin
-	dup
-	{pop {-777 exec} ll def} forall
-	{exch load exch 0 exch exec put} forall
+      dup
+      {pop {-777 exec} ll def} forall
+      {exch load exch 0 exch exec put} forall
     currentdict end
+  } if
 } def
 
 /EOL (\n) char def
@@ -71,7 +73,7 @@ dup ===
 (
   postal-address = name-part street-address zip-part ;
   name-part = personal-part _ last-name _ opt-suffix-part EOL
-                | personal-part _ name-part ;
+            | personal-part _ name-part ;
   personal-part = initial "." | first-name ;
   street-address = house-num _ street-name opt-apt-num EOL ;
   zip-part = town-name "," _ state-code _ zip-code EOL ;

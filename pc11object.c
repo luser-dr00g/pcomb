@@ -31,18 +31,18 @@ cons( object first, object rest ){
 }
 
 suspension
-Suspension( object env, fSuspension *f ){
-  return  OBJECT( .Suspension = { SUSPENSION, env, f } );
+Suspension_( object env, fSuspension *f, char *printname ){
+  return  OBJECT( .Suspension = { SUSPENSION, env, f, printname } );
 }
 
 parser
-Parser( object env, fParser *f ){
-  return  OBJECT( .Parser = { PARSER, env, f } );
+Parser_( object env, fParser *f, char *printname ){
+  return  OBJECT( .Parser = { PARSER, env, f, printname } );
 }
 
 operator
-Operator( object env, fOperator *f ){
-  return  OBJECT( .Operator = { OPERATOR, env, f } );
+Operator_( object env, fOperator *f, char *printname ){
+  return  OBJECT( .Operator = { OPERATOR, env, f, printname } );
 }
 
 string
@@ -60,6 +60,42 @@ Void( void *ptr ){
   return  OBJECT( .Void = { VOID, ptr } );
 }
 
+
+void
+print( object a ){
+  switch(  a  ? a->t  : 0  ){
+  default: printf( "() " ); break;
+  case INT: printf( "'%c' ", a->Int.i ); break;
+  //case INT: printf( "%d ", a->Int.i ); break;
+  case LIST: printf( "(" ), print( a->List.first ), printf( "." ),
+                            print( a->List.rest ), printf( ")" ); break;
+  case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
+  case PARSER: printf( "Parser(%s) ", a->Parser.printname ); break;
+  case OPERATOR: printf( "Oper(%s) ", a->Operator.printname ); break;
+  case STRING: printf( "\"%s\" ", a->String.str ); break;
+  case SYMBOL: printf( "%s ", a->Symbol.printname ); break;
+  case VOID: printf( "VOID " ); break;
+  }
+}
+
+static void
+print_listn( object a ){
+  if(  ! valid( a )  ) return;
+  switch(  a->t  ){
+  default: print( a ); break;
+  case LIST: print_list( first( a ) ),
+             print_listn( rest( a ) ); break;
+  }
+}
+
+void
+print_list( object a ){
+  switch(  a  ? a->t  : 0  ){
+  default: print( a ); break;
+  case LIST: printf( "(" ), print_list( first( a ) ),
+                            print_listn( rest( a ) ), printf( ") " ); break;
+  }
+}
 
 object
 force_( object it ){
@@ -115,7 +151,7 @@ force_apply( list env ){
 object
 apply( operator op, object it ){
   if(  it->t == SUSPENSION  ) return  Suspension( cons( op, it ), force_apply );
-  return  op->Operator.f( NIL_, it );
+  return  op->Operator.f( op->Operator.env, it );
 }
 
 
@@ -242,8 +278,12 @@ utf8_from_ucs4( list input ){
 
 object
 collapse( fBinOperator *f, list it ){
+  //puts( "in collapse" );
+  //print_list( it ), puts("");
   if(  !valid( it )  ) return  it;
-  return  f( first( it ), collapse( f, rest( it ) ) );
+  object right = collapse( f, rest( it ) );
+  if(  !valid( right )  ) return  first( it );
+  return  f( first( it ), right );
 }
 
 object
@@ -268,6 +308,11 @@ eq_symbol( int code, object b ){
   return  eq( (union object[]){ {.Symbol = {SYMBOL, code, "", 0} } }, b );
 }
 
+list
+append( list start, list end ){
+  if(  ! valid( start )  ) return  end;
+  return  cons( first( start ), append( rest( start ), end ) );
+}
 
 list
 env( list tail, int n, ... ){

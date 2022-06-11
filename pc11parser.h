@@ -7,6 +7,7 @@ enum parser_symbol_codes {
   VALUE = END_OBJECT_SYMBOLS,
   OK,
   FAIL,
+  SATISFY_PRED,
   EITHER_P,
   EITHER_Q,
   SEQUENCE_P,
@@ -45,6 +46,7 @@ parser forward( void );
 parser maybe( parser p );
 parser many( parser p );
 parser some( parser p );
+parser item( void );
 
 parser bind( parser p, operator op );
 parser into( parser p, object id, parser q );

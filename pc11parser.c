@@ -16,8 +16,9 @@ success( object v, list input ){
 
 static object
 fail( object v, list input ){
-  return  cons( Symbol( FAIL ), input );
+  return  cons( Symbol( FAIL ), cons( v, input ) );
 }
+
 
 boolean
 is_ok( object result ){
@@ -33,6 +34,7 @@ not_ok( object result ){
 parser
 succeeds( void ){
   return  Parser( NIL_, success );
+  return  Parser( env( NIL_, 1, Symbol(VALUE), NIL_ ), success );
 }
 
 parser
@@ -42,20 +44,24 @@ fails( void ){
 
 parser
 result_is( object x ){
-  return  Parser( x, success );
+  return  Parser( env( NIL_, 1, Symbol(VALUE), x ), success );
 }
 
 
 static list
-parse_satisfy( object pred, list input ){
-  return  valid( apply( pred, first( input ) ) )
-            ? success( first( input ), rest( input ) )
-            : fail( NIL_, input );
+parse_satisfy( object env, list input ){
+  predicate pred = assoc_symbol( SATISFY_PRED, env );
+  drop( 1, input );
+  object item = first( input );
+  if(  ! valid( item )  ) return  fail( String( "empty input", 0 ), input );
+  return  valid( apply( pred, item ) )
+            ? success( item, rest( input ) )
+            : fail( LIST( String( "predicate not satisfied", 0 ), pred ), input );
 }
 
 parser
 satisfy( predicate pred ){
-  return  Parser( pred, parse_satisfy );
+  return  Parser( env( NIL_, 1, Symbol(SATISFY_PRED), pred ), parse_satisfy );
 }
 
 
@@ -143,7 +149,7 @@ static object
 parse_either( object env, list input ){
   parser p = assoc_symbol( EITHER_P, env );
   object result = parse( p, input );
-  if(  valid( result )  ) return  result;
+  if(  valid( is_ok( result ) )  ) return  result;
   parser q = assoc_symbol( EITHER_Q, env );
   return  parse( q, input );
 }
@@ -165,7 +171,11 @@ parse_sequence( object env, list input ){
   parser q = assoc_symbol( SEQUENCE_Q, env );
   list remainder = rest( rest( p_result ) );
   object q_result = parse( q, remainder );
-  if(  valid( not_ok( q_result ) )  ) return  q_result;
+  if(  valid( not_ok( q_result ) )  ){
+    object q_error = first( rest( q_result ) );
+    object q_remainder = rest( rest( q_result ) );
+    return  fail( LIST( q_error, String( "after", 0), p_result ), q_remainder );
+  }
 
   operator op = assoc_symbol( SEQUENCE_OP, env );
   return  success( op->Operator.f( first( rest( p_result ) ),
@@ -182,10 +192,25 @@ sequence( parser p, parser q, fBinOperator *op ){
                   parse_sequence );
 }
 
+static object
+concat( object l, object r ){
+  //puts( "in concat" );
+  //print_list( l );
+  //print_list( r ), puts("");
+  if(  r->t == LIST
+    && valid( eq_symbol( VALUE, first( first( r ) ) ) )
+    && ! valid( rest( r ) )
+    && ! valid( rest( first( r ) ) )  )
+    return  l;
+  switch(  l->t  ){
+  case LIST: return  cons( first( l ), concat( rest( l ), r ) );
+  default: return  cons( l, r );
+  }
+}
 
 parser
 then( parser p, parser q ){
-  return  sequence( p, q, cons );
+  return  sequence( p, q, concat );
 }
 
 static object
@@ -243,7 +268,9 @@ parse_bind( object env, list input ){
   object payload = rest( result ),
          value = first( payload ),
          remainder = rest( payload );
-  return  success( apply( op, value ), remainder );
+  return  success( apply( (union object[]){{.Operator={
+    OPERATOR, append(op->Operator.env, env), op->Operator.f, op->Operator.printname
+  }}}, value ), remainder );
 }
 
 parser
@@ -257,14 +284,22 @@ bind( parser p, operator op ){
 
 static object
 parse_into( object v, list input ){
+  //puts("in into");
   parser p = assoc_symbol( INTO_P, v );
-  object result = parse( p, input );
-  if(  valid( not_ok( result ) )  ) return  result;
+  object p_result = parse( p, input );
+  //print_list( p_result ), puts("");
+  if(  valid( not_ok( p_result ) )  ) return  p_result;
   object id = assoc_symbol( INTO_ID, v );
   parser q = assoc_symbol( INTO_Q, v );
-  return  q->Parser.f( env( q->Parser.env, 1,
-                            id, first( rest( result ) ) ),
-		       rest( rest( result ) ) );
+  object q_result = q->Parser.f( env( q->Parser.env, 1,
+                                      id, first( rest( p_result ) ) ),
+		                 rest( rest( p_result ) ) );
+  if(  valid( not_ok( q_result ) )  ){
+    object q_error = first( rest( q_result ) );
+    object q_remainder = rest( rest( q_result ) );
+    return  fail( LIST( q_error, String( "after", 0), p_result ), q_remainder );
+  }
+  return  q_result;
 }
 
 parser
@@ -298,11 +333,34 @@ apply_meta( parser a, object it ){
 static parser on_dot( object v, object it ){ return  item(); }
 static parser on_chr( object v, object it ){ return  literal( it ); }
 static parser on_meta( object v, object it ){
+  //puts("in on_meta");
+  //print_list( v ), puts("");
+  //print_list( it ), puts("");
   parser atom = assoc_symbol( ATOM, v );
-  return  valid( it )  ? apply_meta( atom, it )  : atom;
+  if(  it->t == LIST 
+    && valid( eq_symbol( VALUE, first( first( it ) ) ) )
+    && ! valid( rest( it ) )
+    && ! valid( rest( rest( it ) ) )  )
+    return  atom;
+  return  apply_meta( atom, it );
 }
-static parser on_term( object v, object it ){ return  collapse( then, it ); }
-static parser on_expr( object v, object it ){ return  collapse( either, it ); }
+static parser on_term( object v, object it ){
+  //it = first( it );
+  //puts( "in on_term" );
+  //print_list( v ), puts("");
+  //print_list( it ), puts("");
+  if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it ); 
+  if(  it->t == PARSER  ) return  it;
+  return  collapse( then, it );
+}
+static parser on_expr( object v, object it ){
+  //puts( "in on_expr" );
+  //print_list( v ), puts("");
+  //print_list( it), puts("");
+  if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it );
+  if(  it->t == PARSER  ) return  it;
+  return  collapse( either, it );
+}
 
 #define META     "*+?"
 #define SPECIAL  META ".|()"
@@ -327,11 +385,14 @@ regex_grammar( void ){
   return  expr;
 }
 
+
 parser
 regex( char *re ){
   static parser p;
   if(  !p  ) p = regex_grammar();
+  //print_list( p ), puts("");
   object result = parse( p, chars_from_str( re ) );
-  if(  valid( not_ok( result ) )  ) return  NIL_;
+  //print_list( result ), puts("");
+  if(  valid( not_ok( result ) )  ) return  result;
   return  first( rest( result ) );
 }

@@ -30,9 +30,9 @@ typedef enum {
 union object { tag t;
       struct { tag t; int i;                                  } Int;
       struct { tag t; object first, rest;                     } List;
-      struct { tag t; object env; fSuspension *f;             } Suspension;
-      struct { tag t; object env; fParser *f;                 } Parser;
-      struct { tag t; object env; fOperator *f;               } Operator;
+      struct { tag t; object env; fSuspension *f; char *printname; } Suspension;
+      struct { tag t; object env; fParser *f; char *printname;     } Parser;
+      struct { tag t; object env; fOperator *f; char *printname;   } Operator;
       struct { tag t; int code; char *printname; object data; } Symbol;
       struct { tag t; char *str; int disposable;              } String;
       struct { tag t; object next;                            } Header;
@@ -53,13 +53,19 @@ object     Int( int i );
 boolean    Boolean( int b );
 list       one( object it );
 list       cons( object first, object rest );
-suspension Suspension( object env, fSuspension *f );
-parser     Parser( object env, fParser *f );
-operator   Operator( object env, fOperator *f );
+suspension Suspension_( object env, fSuspension *f, char *printname );
+#define    Suspension(env,f) Suspension_( env, f, #f )
+parser     Parser_( object env, fParser *f, char *printname );
+#define    Parser(env,f) Parser_( env, f, #f )
+operator   Operator_( object env, fOperator *f, char *printname );
+#define    Operator(env,f) Operator_( env, f, #f )
 string     String( char *str, int disposable );
 symbol     Symbol_( int code, char *printname, object data );
 #define    Symbol(n) Symbol_( n, #n, NIL_ )
 object     Void( void *ptr );
+
+void print( object a );
+void print_list( object a );
 
 object  first( list it );
 list    rest( list it );
@@ -80,6 +86,7 @@ object  reduce( fBinOperator *f, int n, object *po );
 boolean eq( object a, object b );
 boolean eq_symbol( int code, object b );
 
+list    append( list start, list end );
 list    env( list tail, int n, ... );
 object  assoc( object key, list env );
 object  assoc_symbol( int code, list env );
