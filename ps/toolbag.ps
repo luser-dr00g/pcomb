@@ -25,8 +25,8 @@
     /aa { array astore }
     /first { 0 get }
     /rest { 1 1 index length 1 sub getinterval }
-    /cvsstr { << /nametype {dup length} /default {12} >>
-      1 index type 2 copy known not {pop /default} if get exec  string cvs }
+    /cvsstr { DICT 1 index type 2 copy known not {pop /default} if get exec  string cvs }
+	dup 0 << /nametype {dup length} /default {12} >> put
     /to-string { dup type /stringtype ne {
                  dup 0 exch {length add} forall string exch
 		 0 exch {3 copy putinterval length add} forall pop } if }
