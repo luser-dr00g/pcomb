@@ -1,10 +1,11 @@
+#define _BSD_SOURCE
 #include "pc11object.h"
 #include <stdarg.h>
 #include <string.h>
 
 #define OBJECT(...) new_( (union object[]){{ __VA_ARGS__ }} )
 
-object T_ = (union object[]){ {.t=1},{.Symbol={SYMBOL, T, "T"}}} + 1,
+object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"}} } + 1,
        NIL_ = (union object[]){ {.t=INVALID} };
 
 object new_( object prototype );
@@ -31,17 +32,17 @@ cons( object first, object rest ){
 }
 
 suspension
-Suspension_( object env, fSuspension *f, char *printname ){
+Suspension_( object env, fSuspension *f, const char *printname ){
   return  OBJECT( .Suspension = { SUSPENSION, env, f, printname } );
 }
 
 parser
-Parser_( object env, fParser *f, char *printname ){
+Parser_( object env, fParser *f, const char *printname ){
   return  OBJECT( .Parser = { PARSER, env, f, printname } );
 }
 
 operator
-Operator_( object env, fOperator *f, char *printname ){
+Operator_( object env, fOperator *f, const char *printname ){
   return  OBJECT( .Operator = { OPERATOR, env, f, printname } );
 }
 
@@ -51,13 +52,36 @@ String( char *str, int disposable ){
 }
 
 symbol
-Symbol_( int code, char *printname, object data ){
+Symbol_( int code, const char *printname, object data ){
   return  OBJECT( .Symbol = { SYMBOL, code, printname, data } );
 }
 
 object
-Void( void *ptr ){
-  return  OBJECT( .Void = { VOID, ptr } );
+Void( void *pointer ){
+  return  OBJECT( .Void = { VOID, pointer } );
+}
+
+
+int
+length( list ls ){
+  return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
+}
+
+void
+fill_string( char **str, list ls ){
+  if(  valid( ls )  ){
+    *(*str)++ = first( ls )->Int.i;
+    fill_string( str, rest( ls ) );
+  }
+}
+
+
+string
+to_string( list ls ){
+  char *str = calloc( 1 + length( ls ), 1 );
+  string s = OBJECT( .String = { STRING, str, 1 } );
+  fill_string( &str, ls );
+  return  s;
 }
 
 
@@ -70,13 +94,19 @@ print( object a ){
   case LIST: printf( "(" ), print( a->List.first ), printf( "." ),
                             print( a->List.rest ), printf( ")" ); break;
   case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
-  case PARSER: printf( "Parser(%s) ", a->Parser.printname ); break;
-  case OPERATOR: printf( "Oper(%s) ", a->Operator.printname ); break;
+  case PARSER: printf( "Parser(%s", a->Parser.printname ),
+               printf( ", " ), print( a->Parser.env ),
+               printf( ") " ); break;
+  case OPERATOR: printf( "Oper(%s", a->Operator.printname ),
+                 printf( ", " ), print( a->Operator.env ),
+                 printf( ") " ); break;
   case STRING: printf( "\"%s\" ", a->String.str ); break;
   case SYMBOL: printf( "%s ", a->Symbol.printname ); break;
+  //case SYMBOL: printf( "%d:%s ", a->Symbol.code, a->Symbol.printname ); break;
   case VOID: printf( "VOID " ); break;
   }
 }
+
 
 static void
 print_listn( object a ){
@@ -96,6 +126,7 @@ print_list( object a ){
                             print_listn( rest( a ) ), printf( ") " ); break;
   }
 }
+
 
 object
 force_( object it ){
@@ -171,7 +202,7 @@ chars_from_str( char *str ){
 
 static list
 force_chars_from_file( object file ){
-  FILE *f = file->Void.v;
+  FILE *f = file->Void.pointer;
   int c = fgetc( f );
   if(  c == EOF  ) return  one( Symbol( EOF ) );
   return  cons( Int( c ), Suspension( file, force_chars_from_file ) );
@@ -210,16 +241,16 @@ force_ucs4_from_utf8( list input ){
   byte = first( input ), input = rest( input );
   if(  !valid(byte)  ) return  NIL_;
   if(  eq_symbol( EOF, byte )  ) return  input;
-  int lead = leading_ones( byte );
-  int bits = mask_off( byte, lead );
-  int n = lead;
+  int ones = leading_ones( byte );
+  int bits = mask_off( byte, ones );
+  int n = ones;
   while(  n-- > 1  ){
     *input = *force_( input );
     byte = first( input ), input = rest( input );
     if(  eq_symbol( EOF, byte )  ) return  input;
     bits = ( bits << 6 ) | ( byte->Int.i & 0x3f );
   }
-  if(  bits < ((int[]){0,0,0x80,0x800,0x10000,0x110000,0x4000000})[ lead ]  )
+  if(  bits < ((int[]){0,0,0x80,0x800,0x10000,0x110000,0x4000000})[ ones ]  )
     fprintf( stderr, "Overlength encoding in utf8 char.\n" );
   return  cons( Int( bits ), Suspension( input, force_ucs4_from_utf8 ) );
 }
@@ -356,4 +387,20 @@ new_( object prototype ){
     record[1] = *prototype;
   }
   return  record + 1;
+}
+
+static int next_symbol_code = -2;
+
+symbol
+symbol_from_string( string s ){
+  list ls = allocation_list;
+  while(  ls != NULL && valid( ls + 1 )  ){
+    //print( ls + 1 );
+    if(  ls[1].t == SYMBOL
+    &&  strcmp( ls[1].Symbol.printname, s->String.str ) == 0  ){
+      return  ls + 1;
+    }
+    ls = ls[0].Header.next;
+  }
+  return  Symbol_( next_symbol_code--, strdup( s->String.str ), NIL_ );
 }

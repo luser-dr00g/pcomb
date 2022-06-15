@@ -19,11 +19,15 @@ enum parser_symbol_codes {
   INTO_ID,
   INTO_Q,
   ATOM,
+  PROBE_P,
+  PROBE_MODE,
   END_PARSER_SYMBOLS
 };
 
 list parse( parser p, list input );
 
+int is_ok( object result );
+int not_ok( object result );
 parser succeeds( void );
 parser fails( void );
 parser result_is( object x );
@@ -37,11 +41,11 @@ parser anyof( char *s );
 parser noneof( char *s );
 parser either( parser p, parser q );
 #define ANY(...) reduce( either, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
-parser sequence( parser p, parser q, fBinOperator *op );
+parser sequence( parser p, parser q, operator op );
 parser xthen( parser p, parser q );
 parser  thenx( parser p, parser q );
 parser  then( parser p, parser q );
-#define SEQ(...) reduce( then, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } );
+#define SEQ(...) reduce( then, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 parser forward( void );
 parser maybe( parser p );
 parser many( parser p );
@@ -52,3 +56,4 @@ parser bind( parser p, operator op );
 parser into( parser p, object id, parser q );
 
 parser regex( char *re );
+list ebnf( char *productions );

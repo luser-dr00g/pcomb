@@ -20,14 +20,14 @@ fail( object v, list input ){
 }
 
 
-boolean
+int
 is_ok( object result ){
-  return  eq_symbol( OK, first( result ) );
+  return  valid( eq_symbol( OK, first( result ) ) );
 }
 
-boolean
+int
 not_ok( object result ){
-  return  Boolean( ! valid( is_ok( result ) ) );
+  return  ! is_ok( result );
 }
 
 
@@ -56,7 +56,7 @@ parse_satisfy( object env, list input ){
   if(  ! valid( item )  ) return  fail( String( "empty input", 0 ), input );
   return  valid( apply( pred, item ) )
             ? success( item, rest( input ) )
-            : fail( LIST( String( "predicate not satisfied", 0 ), pred ), input );
+            : fail( LIST( String( "predicate not satisfied", 0 ), pred, NIL_ ), input );
 }
 
 parser
@@ -149,7 +149,7 @@ static object
 parse_either( object env, list input ){
   parser p = assoc_symbol( EITHER_P, env );
   object result = parse( p, input );
-  if(  valid( is_ok( result ) )  ) return  result;
+  if(  is_ok( result )  ) return  result;
   parser q = assoc_symbol( EITHER_Q, env );
   return  parse( q, input );
 }
@@ -157,8 +157,8 @@ parse_either( object env, list input ){
 parser
 either( parser p, parser q ){
   return  Parser( env( NIL_, 2,
-                       Symbol(EITHER_P), p,
-		       Symbol(EITHER_Q), q ),
+		       Symbol(EITHER_Q), q,
+                       Symbol(EITHER_P), p ),
                   parse_either );
 }
 
@@ -166,15 +166,16 @@ static object
 parse_sequence( object env, list input ){
   parser p = assoc_symbol( SEQUENCE_P, env );
   object p_result = parse( p, input );
-  if(  valid( not_ok( p_result ) )  ) return  p_result;
+  if(  not_ok( p_result )  ) return  p_result;
 
   parser q = assoc_symbol( SEQUENCE_Q, env );
   list remainder = rest( rest( p_result ) );
   object q_result = parse( q, remainder );
-  if(  valid( not_ok( q_result ) )  ){
+  if(  not_ok( q_result )  ){
     object q_error = first( rest( q_result ) );
     object q_remainder = rest( rest( q_result ) );
-    return  fail( LIST( q_error, String( "after", 0), p_result ), q_remainder );
+    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
+		  q_remainder );
   }
 
   operator op = assoc_symbol( SEQUENCE_OP, env );
@@ -184,19 +185,17 @@ parse_sequence( object env, list input ){
 }
 
 parser
-sequence( parser p, parser q, fBinOperator *op ){
+sequence( parser p, parser q, operator op ){
   return  Parser( env( NIL_, 3,
-                       Symbol(SEQUENCE_P), p,
+                       Symbol(SEQUENCE_OP), op,
                        Symbol(SEQUENCE_Q), q,
-                       Symbol(SEQUENCE_OP), Operator( NIL_, op ) ),
+                       Symbol(SEQUENCE_P), p ),
                   parse_sequence );
 }
 
 static object
 concat( object l, object r ){
-  //puts( "in concat" );
-  //print_list( l );
-  //print_list( r ), puts("");
+  if(  ! valid( l )  ) return  r;
   if(  r->t == LIST
     && valid( eq_symbol( VALUE, first( first( r ) ) ) )
     && ! valid( rest( r ) )
@@ -210,7 +209,7 @@ concat( object l, object r ){
 
 parser
 then( parser p, parser q ){
-  return  sequence( p, q, concat );
+  return  sequence( p, q, Operator( NIL_, concat ) );
 }
 
 static object
@@ -225,12 +224,12 @@ right( object l, object r ){
 
 parser
 xthen( parser p, parser q ){
-  return  sequence( p, q, right );
+  return  sequence( p, q, Operator( NIL_, right ) );
 }
 
 parser
 thenx( parser p, parser q ){
-  return  sequence( p, q, left );
+  return  sequence( p, q, Operator( NIL_, left ) );
 }
 
 
@@ -248,9 +247,8 @@ maybe( parser p ){
 parser
 many( parser p ){
   parser q = forward();
-  parser r = maybe( then( p, q ) );
-  *q = *r;
-  return  r;
+  *q = *maybe( then( p, q ) );
+  return  q;
 }
 
 parser
@@ -264,7 +262,7 @@ parse_bind( object env, list input ){
   parser p = assoc_symbol( BIND_P, env );
   operator op = assoc_symbol( BIND_OP, env );
   object result = parse( p, input );
-  if(  valid( not_ok( result ) )  ) return  result;
+  if(  not_ok( result )  ) return  result;
   object payload = rest( result ),
          value = first( payload ),
          remainder = rest( payload );
@@ -284,20 +282,19 @@ bind( parser p, operator op ){
 
 static object
 parse_into( object v, list input ){
-  //puts("in into");
   parser p = assoc_symbol( INTO_P, v );
   object p_result = parse( p, input );
-  //print_list( p_result ), puts("");
-  if(  valid( not_ok( p_result ) )  ) return  p_result;
+  if(  not_ok( p_result )  ) return  p_result;
   object id = assoc_symbol( INTO_ID, v );
   parser q = assoc_symbol( INTO_Q, v );
   object q_result = q->Parser.f( env( q->Parser.env, 1,
                                       id, first( rest( p_result ) ) ),
 		                 rest( rest( p_result ) ) );
-  if(  valid( not_ok( q_result ) )  ){
+  if(  not_ok( q_result )  ){
     object q_error = first( rest( q_result ) );
     object q_remainder = rest( rest( q_result ) );
-    return  fail( LIST( q_error, String( "after", 0), p_result ), q_remainder );
+    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
+		  q_remainder );
   }
   return  q_result;
 }
@@ -311,6 +308,7 @@ into( parser p, object id, parser q ){
                   parse_into );
 }
 
+
 boolean
 always_true( object v, object it ){
   return  T_;
@@ -319,6 +317,7 @@ always_true( object v, object it ){
 parser item( void ){
   return  satisfy( Operator( NIL_, always_true ) );
 }
+
 
 static parser
 apply_meta( parser a, object it ){
@@ -333,9 +332,7 @@ apply_meta( parser a, object it ){
 static parser on_dot( object v, object it ){ return  item(); }
 static parser on_chr( object v, object it ){ return  literal( it ); }
 static parser on_meta( object v, object it ){
-  //puts("in on_meta");
-  //print_list( v ), puts("");
-  //print_list( it ), puts("");
+  //puts( __func__ ), print_list( it ), puts("");
   parser atom = assoc_symbol( ATOM, v );
   if(  it->t == LIST 
     && valid( eq_symbol( VALUE, first( first( it ) ) ) )
@@ -344,55 +341,135 @@ static parser on_meta( object v, object it ){
     return  atom;
   return  apply_meta( atom, it );
 }
+static parser on_class( object v, object it ){
+  if(  first( it )->Int.i == '^'  )
+    return  satisfy( Operator( to_string( rest( it ) ), is_noneof ) );
+  return  satisfy( Operator( to_string( it ), is_anyof ) );
+}
 static parser on_term( object v, object it ){
-  //it = first( it );
-  //puts( "in on_term" );
-  //print_list( v ), puts("");
-  //print_list( it ), puts("");
+  //puts( __func__ ), print_list( it ), puts("");
+  if(  ! valid( it )  ) return  NIL_;
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it ); 
   if(  it->t == PARSER  ) return  it;
   return  collapse( then, it );
 }
 static parser on_expr( object v, object it ){
-  //puts( "in on_expr" );
-  //print_list( v ), puts("");
-  //print_list( it), puts("");
+  //puts( __func__ ), print_list( it ), puts("");
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it );
   if(  it->t == PARSER  ) return  it;
   return  collapse( either, it );
 }
 
 #define META     "*+?"
-#define SPECIAL  META ".|()"
+#define SPECIAL  META ".|()[]/"
 static parser
 regex_grammar( void ){
-  parser dot = bind( chr('.'), Operator( NIL_, on_dot ) );
-  parser meta = anyof( META );
-  parser escape = xthen( chr('\\'), anyof( SPECIAL "\\" ) );
-  parser chr_ = bind( either( escape, noneof( SPECIAL ) ),
-                      Operator( NIL_, on_chr ) );
-  parser expr_ = forward();
-  parser atom = ANY( dot,
-                     xthen( chr('('), thenx( expr_, chr(')') ) ),
-                     chr_ );
-  parser factor = into( atom, Symbol(ATOM),
-                        bind( maybe( meta ), Operator( NIL_, on_meta ) ) );
-  parser term = bind( some( factor ),
-                      Operator( NIL_, on_term ) );
-  parser expr = bind( then( term, many( xthen( chr('|'), term ) ) ),
-                      Operator( NIL_, on_expr ) );
-  *expr_ = *expr;
+  parser dot       = bind( chr('.'), Operator( NIL_, on_dot ) );
+  parser meta      = anyof( META );
+  parser escape    = xthen( chr('\\'), anyof( SPECIAL "\\" ) );
+  parser class     = xthen( chr('['),
+			    thenx( SEQ( maybe( chr('^') ),
+			                maybe( chr(']') ),
+                                        many( noneof( "]" ) ) ),
+			           chr(']') ) );
+  parser character = ANY( bind( escape, Operator( NIL_, on_chr ) ),
+			  bind( class, Operator( NIL_, on_class ) ),
+			  bind( noneof( SPECIAL ), Operator( NIL_, on_chr ) ) );
+  parser expr      = forward();
+  {
+    parser atom    = ANY( dot,
+                          xthen( chr('('), thenx( expr, chr(')') ) ),
+                          character );
+    parser factor  = into( atom, Symbol(ATOM),
+                           bind( maybe( meta ),
+                                 Operator( NIL_, on_meta ) ) );
+    parser term    = bind( many( factor ),
+                           Operator( NIL_, on_term ) );
+    *expr  = *bind( then( term, many( xthen( chr('|'), term ) ) ),
+                    Operator( NIL_, on_expr ) );
+  }
   return  expr;
 }
 
 
+static parser regex_parser;
+
 parser
 regex( char *re ){
-  static parser p;
-  if(  !p  ) p = regex_grammar();
-  //print_list( p ), puts("");
-  object result = parse( p, chars_from_str( re ) );
-  //print_list( result ), puts("");
-  if(  valid( not_ok( result ) )  ) return  result;
+  if(  !regex_parser  ) regex_parser = regex_grammar();
+  object result = parse( regex_parser, chars_from_str( re ) );
+  if(  not_ok( result )  ) return  result;
+  return  first( rest( result ) );
+}
+
+object
+parse_probe( object env, object input ){
+  parser p = assoc_symbol( PROBE_P, env );
+  int mode = assoc_symbol( PROBE_MODE, env )->Int.i;
+  object result = parse( p, input );
+  if(  is_ok( result ) && mode&1  )
+    print( result ), puts("");
+  else if(  not_ok( result ) && mode&2  )
+    print_list( result ), puts("");
+  return  result;
+}
+
+parser
+probe( parser p, int mode ){
+  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
+		  parse_probe );
+}
+
+static object
+stringify( object env, object input ){
+  return  to_string( input );
+}
+
+static object
+symbolize( object env, object input ){
+  return  symbol_from_string( to_string( input ) );
+}
+
+static parser
+ebnf_grammar( void ){
+  if(  !regex_parser  ) regex_parser = regex_grammar();
+  parser spaces = many( anyof( " \t\n" ) );
+  parser defining_symbol = thenx( chr( '=' ), spaces );
+  parser choice_symbol = thenx( chr( '|' ), spaces );
+  parser terminating_symbol = thenx( chr( ';' ), spaces );
+  parser name = some( either( anyof( "-_" ), alpha() ) );
+  parser identifier = thenx( name, spaces );
+  parser terminal =
+    bind( 
+      thenx( either( thenx( xthen( chr( '"'), many( noneof("\"") ) ), chr( '"') ),
+                     thenx( xthen( chr('\''), many( noneof( "'") ) ), chr('\'') ) ),
+             spaces ),
+      Operator( NIL_, stringify ) );
+  parser symb = bind( identifier, Operator( NIL_, symbolize ) );
+  parser nonterminal = symb;
+  parser expr = forward();
+  {
+    parser factor = ANY( terminal,
+			 nonterminal,
+			 SEQ( chr( '[' ), spaces, expr, chr( ']' ), spaces ),
+                         SEQ( chr( '(' ), spaces, expr, chr( ')' ), spaces ) );
+    parser term = many( factor );
+    *expr = *then( term, many( then( choice_symbol, term ) ) );
+  };
+  parser definition = then( symb,
+			    then( defining_symbol,
+				   then( expr, terminating_symbol ) ) );
+  return  some( definition );
+}
+
+list
+ebnf( char *productions ){
+  static parser ebnf_parser;
+  if(  !ebnf_parser  ) ebnf_parser = ebnf_grammar();
+  //print_list( ebnf_parser ), puts("");
+  //return  ebnf_parser;
+  object result = parse( ebnf_parser, chars_from_str( productions ) );
+  return  result;
+  if(  not_ok( result )  ) return  result;
   return  first( rest( result ) );
 }
