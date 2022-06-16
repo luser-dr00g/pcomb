@@ -21,30 +21,24 @@ fail( object v, list input ){
 
 
 int
-is_ok( object result ){
+is_ok( list result ){
   return  valid( eq_symbol( OK, first( result ) ) );
 }
 
 int
-not_ok( object result ){
+not_ok( list result ){
   return  ! is_ok( result );
 }
 
 
 parser
-succeeds( void ){
-  return  Parser( NIL_, success );
-  return  Parser( env( NIL_, 1, Symbol(VALUE), NIL_ ), success );
+succeeds( list result ){
+  return  Parser( result, success );
 }
 
 parser
-fails( void ){
-  return  Parser( NIL_, fail );
-}
-
-parser
-result_is( object x ){
-  return  Parser( env( NIL_, 1, Symbol(VALUE), x ), success );
+fails( list errormsg ){
+  return  Parser( errormsg, fail );
 }
 
 
@@ -75,6 +69,25 @@ alpha( void ){
   return  satisfy( Operator( NIL_, is_alpha ) );
 }
 
+static boolean
+is_upper( object v, object it ){
+  return  Boolean( it->t == INT && isupper( it->Int.i ) );
+}
+
+parser
+upper( void ){
+  return  satisfy( Operator( NIL_, is_upper ) );
+}
+
+static boolean
+is_lower( object v, object it ){
+  return  Boolean( it->t == INT && islower( it->Int.i ) );
+}
+
+parser
+lower( void ){
+  return  satisfy( Operator( NIL_, is_lower ) );
+}
 
 static boolean
 is_digit( object v, object it ){
@@ -106,7 +119,9 @@ chr( int c ){
 
 parser
 str( char *s ){
-  return  !*s  ? succeeds()  : then( chr( *s ), str( s+1 ) );
+  return  !*s  ? succeeds( NIL_ )
+               : s[1]  ? then( chr( *s ), str( s+1 ) )
+                       : chr( *s );
 }
 
 
@@ -235,13 +250,15 @@ thenx( parser p, parser q ){
 
 parser
 forward( void ){
-  return  Parser( 0, 0 );
+  parser p = Parser( 0, 0 );
+  p[-1].Header.forward = 1;
+  return  p;
 }
 
 
 parser
 maybe( parser p ){
-  return  either( p, succeeds() );
+  return  either( p, succeeds( NIL_ ) );
 }
 
 parser
@@ -430,6 +447,41 @@ symbolize( object env, object input ){
   return  symbol_from_string( to_string( input ) );
 }
 
+static object
+encapsulate( object env, object input ){
+  return  one( input );
+}
+
+static object
+make_matcher( object env, object input ){
+  return  str( to_string( input )->String.str );
+}
+
+static object
+make_sequence( object env, object input ){
+  //puts( __func__ );
+  //print_list( input ), printf( "%d\n", length( input ) );
+  if(  length( input ) == 0  ) return  Symbol( EPSILON );
+  if(  length( input ) < 2  ) return  input;
+  return  one( cons( Symbol( SEQ ), input ) );
+}
+
+static object
+make_any( object env, object input ){
+  if(  length( input ) < 2  ) return  input;
+  return  one( cons( Symbol( ANY ), input ) );
+}
+
+static object
+make_maybe( object env, object input ){
+  return  one( cons( Symbol( MAYBE ), input ) );
+}
+
+static object
+make_many( object env, object input ){
+  return  one( cons( Symbol( MANY ), input ) );
+}
+
 static parser
 ebnf_grammar( void ){
   if(  !regex_parser  ) regex_parser = regex_grammar();
@@ -444,32 +496,129 @@ ebnf_grammar( void ){
       thenx( either( thenx( xthen( chr( '"'), many( noneof("\"") ) ), chr( '"') ),
                      thenx( xthen( chr('\''), many( noneof( "'") ) ), chr('\'') ) ),
              spaces ),
-      Operator( NIL_, stringify ) );
+      Operator( NIL_, make_matcher ) );
   parser symb = bind( identifier, Operator( NIL_, symbolize ) );
   parser nonterminal = symb;
   parser expr = forward();
   {
     parser factor = ANY( terminal,
 			 nonterminal,
-			 SEQ( chr( '[' ), spaces, expr, chr( ']' ), spaces ),
-                         SEQ( chr( '(' ), spaces, expr, chr( ')' ), spaces ) );
-    parser term = many( factor );
-    *expr = *then( term, many( then( choice_symbol, term ) ) );
+			 bind( xthen( then( chr( '[' ), spaces ),
+				      thenx( expr,
+					     then( chr( ']' ), spaces ) ) ),
+			       Operator( NIL_, make_maybe ) ),
+			 bind( xthen( then( chr( '{' ), spaces ),
+                                      thenx( expr,
+					     then( chr( '}' ), spaces ) ) ),
+                               Operator( NIL_, make_many ) ),
+                         bind( xthen( then( chr( '(' ), spaces ),
+				      thenx( expr,
+				             then( chr( ')' ), spaces ) ) ),
+                               Operator( NIL_, encapsulate ) ),
+                         bind( xthen( chr( '/' ),
+                                      thenx( regex_parser, chr( '/' ) ) ),
+                               Operator( NIL_, encapsulate ) ) );
+    parser term = bind( many( factor ), Operator( NIL_, make_sequence ) );
+    *expr = *bind( then( term, many( xthen( choice_symbol, term ) ) ),
+		   Operator( NIL_, make_any ) );
   };
-  parser definition = then( symb,
-			    then( defining_symbol,
-				   then( expr, terminating_symbol ) ) );
+  parser definition = bind( then( symb,
+			    xthen( defining_symbol,
+				   thenx( expr, terminating_symbol ) ) ),
+			    Operator( NIL_, encapsulate) );
   return  some( definition );
 }
 
+object
+define_forward( object env, object it ){
+  if(  rest( it )->t == PARSER  ) return  it;
+  return  cons( first( it ), forward() );
+}
+
+object
+compile_bnf( object env, object it ){
+  switch(  it->t  ){
+  default:
+    return  it;
+  case SYMBOL: {
+    object ob = assoc( it, env );
+    return  valid( ob )  ? ob  : it;
+  }
+  case LIST:   {
+    object f = first( it );
+    if(  valid( eq_symbol( SEQ, f ) )  )
+      return  collapse( then,
+          map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+	       rest( it ) ) );
+    if(  valid( eq_symbol( ANY, f ) )  )
+      return  collapse( either,
+	  map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+	       rest( it ) ) );
+    if(  valid( eq_symbol( MANY, f ) )  )
+      return  many( map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+                         rest( it ) ) );
+    if(  valid( eq_symbol( MAYBE, f ) )  )
+      return  maybe( map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+                           rest( it ) ) );
+    return  map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+		 it );
+  }
+  }
+}
+
+object
+compile_rhs( object env, object it ){
+  //print_list( it ),puts("");
+  if(  rest( it )->t == PARSER  ) return  it;
+  object result = cons( first( it ),
+      map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}}, rest( it ) ) );
+  //print_list( result ),puts("");
+  return  result;
+}
+
+object
+define_parser( object env, object it ){
+  object lhs = assoc( first( it ), env );
+  if(  valid( lhs ) && lhs->t == PARSER && lhs->Parser.f == NULL  ){
+    object rhs = rest( it );
+    if(  rhs->t == LIST  ) rhs = first( rhs );
+    *lhs = *rhs;
+  }
+  return  it;
+}
+
+object
+wrap_handler( object env, object it ){
+  //puts( __func__ );
+  object lhs = assoc( first( it ), env );
+  //print_list( lhs ), puts("");
+  if(  valid( lhs ) && lhs->t == PARSER  ){
+    object rhs = rest( it );
+    //print_list( rhs ), puts("");
+    parser copy = Parser( 0, 0 );
+    *copy = *lhs;
+    *lhs = *bind( copy, rhs );
+  }
+  return  it;
+}
+
 list
-ebnf( char *productions ){
+ebnf( char *productions, list supplements, list handlers ){
   static parser ebnf_parser;
   if(  !ebnf_parser  ) ebnf_parser = ebnf_grammar();
   //print_list( ebnf_parser ), puts("");
   //return  ebnf_parser;
   object result = parse( ebnf_parser, chars_from_str( productions ) );
-  return  result;
+  //return  result;
   if(  not_ok( result )  ) return  result;
-  return  first( rest( result ) );
+  object payload = first( rest( result ) );
+  list defs = append( payload, env( supplements, 1, Symbol(EPSILON), succeeds(NIL_) ) );
+  //print_list( defs ), puts("\n");
+  list forwards = map( Operator( NIL_, define_forward ), defs );
+  //print_list( forwards ),puts("\n");
+  list parsers = map( Operator( forwards, compile_rhs ), defs );
+  //print_list( parsers ),puts("\n");
+  list final = map( Operator( forwards, define_parser ), parsers );
+  map( Operator( forwards, wrap_handler ), handlers );
+  return  final;
 }

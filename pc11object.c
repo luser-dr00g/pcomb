@@ -67,23 +67,43 @@ length( list ls ){
   return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
 }
 
-void
-fill_string( char **str, list ls ){
-  if(  valid( ls )  ){
-    *(*str)++ = first( ls )->Int.i;
-    fill_string( str, rest( ls ) );
+int
+string_length( object it ){
+  switch(  it  ? it->t  : 0  ){
+  default: return  0;
+  case INT: return  1;
+  case STRING: return  strlen( it->String.str );
+  case LIST: return  string_length( first( it ) ) + string_length( rest( it ) );
   }
 }
 
+void
+fill_string( char **str, list it ){
+  switch(  it  ? it->t  : 0  ){
+  default: return;
+  case INT:
+    *(*str)++ = it->Int.i;
+    return;
+  case STRING:
+    strcpy( *str, it->String.str );
+    *str += strlen( it->String.str );
+    return;
+  case LIST:
+    fill_string( str, first( it ) );
+    fill_string( str, rest( it ) );
+    return;
+  }
+}
 
 string
 to_string( list ls ){
-  char *str = calloc( 1 + length( ls ), 1 );
+  char *str = calloc( 1 + string_length( ls ), 1 );
   string s = OBJECT( .String = { STRING, str, 1 } );
   fill_string( &str, ls );
   return  s;
 }
 
+static int print_innards = 1;
 
 void
 print( object a ){
@@ -95,7 +115,8 @@ print( object a ){
                             print( a->List.rest ), printf( ")" ); break;
   case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
   case PARSER: printf( "Parser(%s", a->Parser.printname ),
-               printf( ", " ), print( a->Parser.env ),
+               (print_innards & ! a[-1].Header.forward) &&
+                 (printf( ", " ), print( a->Parser.env ),0),
                printf( ") " ); break;
   case OPERATOR: printf( "Oper(%s", a->Operator.printname ),
                  printf( ", " ), print( a->Operator.env ),
@@ -403,4 +424,11 @@ symbol_from_string( string s ){
     ls = ls[0].Header.next;
   }
   return  Symbol_( next_symbol_code--, strdup( s->String.str ), NIL_ );
+}
+
+list
+map( operator op, list it ){
+  if(  ! valid( it )  ) return  it;
+  return  cons( op->Operator.f( op->Operator.env, first( it ) ),
+                map( op, rest( it ) ) );
 }

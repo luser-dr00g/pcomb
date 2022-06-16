@@ -2,9 +2,16 @@
 
 enum test_symbol_codes {
   TEST = END_PARSER_SYMBOLS,
+  DIGIT,
+  UPPER,
+  NAME,
+  NUMBER,
+  EOL,
+  SP,
   postal_address,
   name_part,
   street_address,
+  street_name,
   zip_part,
   END_TEST_SYMBOLS
 };
@@ -41,9 +48,9 @@ static int
 test_parsers(){
   puts( __func__ );
   list ch = chars_from_str( "a b c d 1 2 3 4" );
-  parser p = result_is( Int(42) );
+  parser p = succeeds( Int('*') );
     print_list( parse( p, ch ) ), puts("");
-  parser q = fails();
+  parser q = fails( NIL_ );
     print_list( parse( q, ch ) ), puts("");
   parser r = item();
     print_list( parse( r, ch ) ), puts("");
@@ -105,27 +112,59 @@ test_regex(){
   return  0;
 }
 
+static object
+stringify( object env, object it ){
+  return  to_string( it );
+}
+
 static int
 test_ebnf(){
   puts( __func__ );
   Symbol(postal_address);
   Symbol(name_part);
   Symbol(street_address);
+  Symbol(street_name);
   Symbol(zip_part);
-  list a = ebnf(
-"postal_address = name_part street_address zip_part ;\n"
-"name_part = personal_part sp last_name sp opt_suffix_part EOL\n"
-"          | personal_part sp name_part ;\n"
-"personal_part = initial '.' | first_name ;\n"
-"sp = ( ' ' | '\t' | '\n' |  ) sp | ;\n"
-  );
-  print_list( a ), puts("");
-  //print( a ), puts("");
-  object x = first( first( rest( a ) ) );
-  print_list( x );
-  print_list( Symbol(postal_address) );
-  print_list( eq( x, Symbol(postal_address) ) ), puts("");
-  puts("");
+
+  list parsers = ebnf(
+    "postal_address = name_part street_address zip_part ;\n"
+    "name_part = personal_part SP last_name SP opt_suffix_part EOL\n"
+    "          | personal_part SP name_part ;\n"
+    "personal_part = initial '.' | first_name ;\n"
+    "street_address = house_num SP street_name opt_apt_num EOL ;\n"
+    "zip_part = town_name ',' SP state_code SP zip_code EOL ;\n"
+    "opt_suffix_part = 'Sr.' | 'Jr.' | roman_numeral | ;\n"
+    "opt_apt_num = [ apt_num ] ;\n"
+    "apt_num = NUMBER ;\n"
+    "town_name = NAME ;\n"
+    "state_code = UPPER UPPER ;\n"
+    "zip_code = DIGIT DIGIT DIGIT DIGIT DIGIT ;\n"
+    "initial = 'Mrs' | 'Mr' | 'Ms' | 'M' ;\n"
+    "roman_numeral = 'I' [ 'V' | 'X' ] { 'I' } ;\n"
+    "first_name = NAME ;\n"
+    "last_name = NAME ;\n"
+    "house_num = NUMBER ;\n"
+    "street_name = NAME ;\n",
+    env( NIL_, 6,
+	 Symbol(EOL), chr('\n'),
+	 Symbol(DIGIT), digit(),
+	 Symbol(UPPER), upper(),
+	 Symbol(NUMBER), some( digit() ),
+         Symbol(NAME), some( alpha() ),
+	 Symbol(SP), many( anyof( " \t\n" ) )
+       ),
+    env( NIL_, 2,
+         Symbol(name_part), Operator( NIL_, stringify ),
+         Symbol(street_name), Operator( NIL_, stringify ) )
+    );
+  //print_list( parsers ), puts("\n");
+
+  parser start = first( assoc_symbol( postal_address, parsers ) );
+  print_list( start ), puts("\n");
+  
+  print_list( parse( start,
+    chars_from_str( "Mr. luser droog I\n2357 Streetname\nAnytown, ST 00700\n" ) ) ),
+    puts("");
 
   return  0;
 }

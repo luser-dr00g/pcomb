@@ -21,18 +21,24 @@ enum parser_symbol_codes {
   ATOM,
   PROBE_P,
   PROBE_MODE,
+  SEQ,
+  ANY,
+  EPSILON,
+  MAYBE,
+  MANY,
   END_PARSER_SYMBOLS
 };
 
 list parse( parser p, list input );
 
-int is_ok( object result );
-int not_ok( object result );
-parser succeeds( void );
-parser fails( void );
-parser result_is( object x );
+int is_ok( list result );
+int not_ok( list result );
+parser succeeds( list result );
+parser fails( list errormsg );
 parser satisfy( predicate pred );
 parser alpha( void );
+parser upper( void );
+parser lower( void );
 parser digit( void );
 parser literal( object example );
 parser chr( int c );
@@ -56,4 +62,5 @@ parser bind( parser p, operator op );
 parser into( parser p, object id, parser q );
 
 parser regex( char *re );
-list ebnf( char *productions );
+parser probe( parser p, int mode ); //print on ok iff mode&1, print not ok iff mode&2
+list ebnf( char *productions, list supplements, list handlers );

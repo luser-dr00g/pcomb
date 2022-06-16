@@ -29,14 +29,14 @@ typedef enum {
 } tag;
 
 union object { tag t;
-      struct { tag t; int i;                                  } Int;
-      struct { tag t; object first, rest;                     } List;
+      struct { tag t; int i;                                        } Int;
+      struct { tag t; object first, rest;                           } List;
       struct { tag t; object env; fSuspension *f; const char *printname; } Suspension;
       struct { tag t; object env; fParser *f; const char *printname;     } Parser;
       struct { tag t; object env; fOperator *f; const char *printname;   } Operator;
       struct { tag t; int code; const char *printname; object data; } Symbol;
-      struct { tag t; char *str; int disposable;              } String;
-      struct { tag t; object next;                            } Header;
+      struct { tag t; char *str; int disposable;                    } String;
+      struct { tag t; object next; int forward;                     } Header;
       struct { tag t; void *pointer;                                } Void;
 };
 
@@ -96,3 +96,5 @@ object  assoc( object key, list env );
 object  assoc_symbol( int code, list env );
 
 symbol symbol_from_string( string s );
+
+list  map( operator op, list it );

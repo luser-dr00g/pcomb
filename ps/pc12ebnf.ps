@@ -33,6 +33,7 @@
 	({) char //space? thenx //Expression xthen //space? thenx (}) char thenx
 	  {{many} compose} using alt
 	def
+	%TODO add ( subexpression )
 /Term //Factor //space? thenx some
         {dup xcheck not { {compose {then} compose} reduce } if} using
         def
