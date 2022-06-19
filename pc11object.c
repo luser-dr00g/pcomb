@@ -11,7 +11,7 @@ object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"}} } + 1,
 object new_( object prototype );
 
 
-object
+integer
 Int( int i ){
   return  OBJECT( .Int = { INT, i } );
 }
@@ -104,13 +104,14 @@ to_string( list ls ){
 }
 
 static int print_innards = 1;
+static int print_chars = 1;
+static int print_codes = 0;
 
 void
 print( object a ){
   switch(  a  ? a->t  : 0  ){
   default: printf( "() " ); break;
-  case INT: printf( "'%c' ", a->Int.i ); break;
-  //case INT: printf( "%d ", a->Int.i ); break;
+  case INT: printf( print_chars  ? "'%c' "  : "%d ", a->Int.i ); break;
   case LIST: printf( "(" ), print( a->List.first ), printf( "." ),
                             print( a->List.rest ), printf( ")" ); break;
   case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
@@ -122,8 +123,11 @@ print( object a ){
                  printf( ", " ), print( a->Operator.env ),
                  printf( ") " ); break;
   case STRING: printf( "\"%s\" ", a->String.str ); break;
-  case SYMBOL: printf( "%s ", a->Symbol.printname ); break;
-  //case SYMBOL: printf( "%d:%s ", a->Symbol.code, a->Symbol.printname ); break;
+  case SYMBOL: if(  print_codes  )
+                 printf( "%d:%s ", a->Symbol.code, a->Symbol.printname );
+               else
+		 printf( "%s ", a->Symbol.printname );
+               break;
   case VOID: printf( "VOID " ); break;
   }
 }
@@ -328,10 +332,15 @@ utf8_from_ucs4( list input ){
 }
 
 
+list
+map( operator op, list it ){
+  if(  ! valid( it )  ) return  it;
+  return  cons( apply( op, first( it ) ),
+		map( op, rest( it ) ) );
+}
+
 object
 collapse( fBinOperator *f, list it ){
-  //puts( "in collapse" );
-  //print_list( it ), puts("");
   if(  !valid( it )  ) return  it;
   object right = collapse( f, rest( it ) );
   if(  !valid( right )  ) return  first( it );
@@ -399,7 +408,7 @@ assoc_symbol( int code, list b ){
 
 static list allocation_list = NULL;
 
-object
+static object
 new_( object prototype ){
   object record = calloc( 2, sizeof *record );
   if(  record  ){
@@ -416,7 +425,6 @@ symbol
 symbol_from_string( string s ){
   list ls = allocation_list;
   while(  ls != NULL && valid( ls + 1 )  ){
-    //print( ls + 1 );
     if(  ls[1].t == SYMBOL
     &&  strcmp( ls[1].Symbol.printname, s->String.str ) == 0  ){
       return  ls + 1;
@@ -424,11 +432,4 @@ symbol_from_string( string s ){
     ls = ls[0].Header.next;
   }
   return  Symbol_( next_symbol_code--, strdup( s->String.str ), NIL_ );
-}
-
-list
-map( operator op, list it ){
-  if(  ! valid( it )  ) return  it;
-  return  cons( op->Operator.f( op->Operator.env, first( it ) ),
-                map( op, rest( it ) ) );
 }

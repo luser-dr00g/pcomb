@@ -32,9 +32,9 @@ static int
 test_basics(){
   puts( __func__ );
   list ch = chars_from_str( "abcdef" );
-    print( ch ), puts("");
-    print_list( ch ), puts("");
-  drop( 6, ch );
+    print( ch ), puts("");       // print with dot notation
+    print_list( ch ), puts("");  // print with list notation
+  drop( 6, ch );                 // force first 6 elements of stream
     print( ch ), puts("");
     print_list( ch ), puts("");
   drop( 7, ch );
@@ -151,19 +151,18 @@ test_ebnf(){
 	 Symbol(UPPER), upper(),
 	 Symbol(NUMBER), some( digit() ),
          Symbol(NAME), some( alpha() ),
-	 Symbol(SP), many( anyof( " \t\n" ) )
-       ),
+	 Symbol(SP), many( anyof( " \t\n" ) ) ),
     env( NIL_, 2,
          Symbol(name_part), Operator( NIL_, stringify ),
          Symbol(street_name), Operator( NIL_, stringify ) )
-    );
-  //print_list( parsers ), puts("\n");
+  );
+  //print_list( parsers ), puts("\n"); // long output when showing innards
 
   parser start = first( assoc_symbol( postal_address, parsers ) );
   print_list( start ), puts("\n");
   
   print_list( parse( start,
-    chars_from_str( "Mr. luser droog I\n2357 Streetname\nAnytown, ST 00700\n" ) ) ),
+      chars_from_str( "Mr. luser droog I\n2357 Streetname\nAnytown, ST 00700\n" ) ) ),
     puts("");
 
   return  0;

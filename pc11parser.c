@@ -4,7 +4,8 @@
 
 list
 parse( parser p, list input ){
-  if(  !valid( p ) || !valid( input ) || p->t != PARSER  ) return  NIL_;
+  if(  !valid( p ) || !valid( input ) || p->t != PARSER  )
+    return  LIST( Symbol( FAIL ), String("parse() validity check failed",0), input ); 
   return  p->Parser.f( p->Parser.env, input );
 }
 
@@ -59,6 +60,16 @@ satisfy( predicate pred ){
 }
 
 
+boolean
+always_true( object v, object it ){
+  return  T_;
+}
+
+parser item( void ){
+  return  satisfy( Operator( NIL_, always_true ) );
+}
+
+
 static boolean
 is_alpha( object v, object it ){
   return  Boolean( it->t == INT && isalpha( it->Int.i ) );
@@ -68,6 +79,7 @@ parser
 alpha( void ){
   return  satisfy( Operator( NIL_, is_alpha ) );
 }
+
 
 static boolean
 is_upper( object v, object it ){
@@ -79,6 +91,7 @@ upper( void ){
   return  satisfy( Operator( NIL_, is_upper ) );
 }
 
+
 static boolean
 is_lower( object v, object it ){
   return  Boolean( it->t == INT && islower( it->Int.i ) );
@@ -88,6 +101,7 @@ parser
 lower( void ){
   return  satisfy( Operator( NIL_, is_lower ) );
 }
+
 
 static boolean
 is_digit( object v, object it ){
@@ -101,8 +115,8 @@ digit( void ){
 
 
 static boolean
-is_literal( object ex, object it ){
-  return  eq( ex, it );
+is_literal( object example, object it ){
+  return  eq( example, it );
 }
 
 parser
@@ -177,6 +191,7 @@ either( parser p, parser q ){
                   parse_either );
 }
 
+
 static object
 parse_sequence( object env, list input ){
   parser p = assoc_symbol( SEQUENCE_P, env );
@@ -193,20 +208,21 @@ parse_sequence( object env, list input ){
 		  q_remainder );
   }
 
-  operator op = assoc_symbol( SEQUENCE_OP, env );
+  binoperator op = assoc_symbol( SEQUENCE_OP, env );
   return  success( op->Operator.f( first( rest( p_result ) ),
                                    first( rest( q_result ) ) ),
                    rest( rest( q_result ) ) );
 }
 
 parser
-sequence( parser p, parser q, operator op ){
+sequence( parser p, parser q, binoperator op ){
   return  Parser( env( NIL_, 3,
                        Symbol(SEQUENCE_OP), op,
                        Symbol(SEQUENCE_Q), q,
                        Symbol(SEQUENCE_P), p ),
                   parse_sequence );
 }
+
 
 static object
 concat( object l, object r ){
@@ -226,6 +242,7 @@ parser
 then( parser p, parser q ){
   return  sequence( p, q, Operator( NIL_, concat ) );
 }
+
 
 static object
 left( object l, object r ){
@@ -261,12 +278,14 @@ maybe( parser p ){
   return  either( p, succeeds( NIL_ ) );
 }
 
+
 parser
 many( parser p ){
   parser q = forward();
   *q = *maybe( then( p, q ) );
   return  q;
 }
+
 
 parser
 some( parser p ){
@@ -326,13 +345,22 @@ into( parser p, object id, parser q ){
 }
 
 
-boolean
-always_true( object v, object it ){
-  return  T_;
+object
+parse_probe( object env, object input ){
+  parser p = assoc_symbol( PROBE_P, env );
+  int mode = assoc_symbol( PROBE_MODE, env )->Int.i;
+  object result = parse( p, input );
+  if(  is_ok( result ) && mode&1  )
+    print( result ), puts("");
+  else if(  not_ok( result ) && mode&2  )
+    print_list( result ), puts("");
+  return  result;
 }
 
-parser item( void ){
-  return  satisfy( Operator( NIL_, always_true ) );
+parser
+probe( parser p, int mode ){
+  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
+		  parse_probe );
 }
 
 
@@ -346,10 +374,18 @@ apply_meta( parser a, object it ){
   }
 }
 
-static parser on_dot( object v, object it ){ return  item(); }
-static parser on_chr( object v, object it ){ return  literal( it ); }
-static parser on_meta( object v, object it ){
-  //puts( __func__ ), print_list( it ), puts("");
+static parser
+on_dot( object v, object it ){
+  return  item();
+}
+
+static parser
+on_chr( object v, object it ){
+  return  literal( it );
+}
+
+static parser
+on_meta( object v, object it ){
   parser atom = assoc_symbol( ATOM, v );
   if(  it->t == LIST 
     && valid( eq_symbol( VALUE, first( first( it ) ) ) )
@@ -358,20 +394,24 @@ static parser on_meta( object v, object it ){
     return  atom;
   return  apply_meta( atom, it );
 }
-static parser on_class( object v, object it ){
+
+static parser
+on_class( object v, object it ){
   if(  first( it )->Int.i == '^'  )
     return  satisfy( Operator( to_string( rest( it ) ), is_noneof ) );
   return  satisfy( Operator( to_string( it ), is_anyof ) );
 }
-static parser on_term( object v, object it ){
-  //puts( __func__ ), print_list( it ), puts("");
+
+static parser
+on_term( object v, object it ){
   if(  ! valid( it )  ) return  NIL_;
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it ); 
   if(  it->t == PARSER  ) return  it;
   return  collapse( then, it );
 }
-static parser on_expr( object v, object it ){
-  //puts( __func__ ), print_list( it ), puts("");
+
+static parser
+on_expr( object v, object it ){
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it );
   if(  it->t == PARSER  ) return  it;
   return  collapse( either, it );
@@ -379,6 +419,7 @@ static parser on_expr( object v, object it ){
 
 #define META     "*+?"
 #define SPECIAL  META ".|()[]/"
+
 static parser
 regex_grammar( void ){
   parser dot       = bind( chr('.'), Operator( NIL_, on_dot ) );
@@ -419,68 +460,51 @@ regex( char *re ){
   return  first( rest( result ) );
 }
 
-object
-parse_probe( object env, object input ){
-  parser p = assoc_symbol( PROBE_P, env );
-  int mode = assoc_symbol( PROBE_MODE, env )->Int.i;
-  object result = parse( p, input );
-  if(  is_ok( result ) && mode&1  )
-    print( result ), puts("");
-  else if(  not_ok( result ) && mode&2  )
-    print_list( result ), puts("");
-  return  result;
-}
 
-parser
-probe( parser p, int mode ){
-  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
-		  parse_probe );
-}
-
-static object
+static string
 stringify( object env, object input ){
   return  to_string( input );
 }
 
-static object
+static symbol
 symbolize( object env, object input ){
   return  symbol_from_string( to_string( input ) );
 }
 
-static object
+static list
 encapsulate( object env, object input ){
   return  one( input );
 }
 
-static object
+
+static parser
 make_matcher( object env, object input ){
   return  str( to_string( input )->String.str );
 }
 
-static object
+static list
 make_sequence( object env, object input ){
-  //puts( __func__ );
-  //print_list( input ), printf( "%d\n", length( input ) );
   if(  length( input ) == 0  ) return  Symbol( EPSILON );
   if(  length( input ) < 2  ) return  input;
   return  one( cons( Symbol( SEQ ), input ) );
 }
 
-static object
+static list
 make_any( object env, object input ){
   if(  length( input ) < 2  ) return  input;
   return  one( cons( Symbol( ANY ), input ) );
 }
 
-static object
+static list
 make_maybe( object env, object input ){
   return  one( cons( Symbol( MAYBE ), input ) );
 }
 
-static object
+static list
 make_many( object env, object input ){
   return  one( cons( Symbol( MANY ), input ) );
 }
+
 
 static parser
 ebnf_grammar( void ){
@@ -529,13 +553,14 @@ ebnf_grammar( void ){
   return  some( definition );
 }
 
-object
+
+static list
 define_forward( object env, object it ){
   if(  rest( it )->t == PARSER  ) return  it;
   return  cons( first( it ), forward() );
 }
 
-object
+static parser
 compile_bnf( object env, object it ){
   switch(  it->t  ){
   default:
@@ -566,17 +591,15 @@ compile_bnf( object env, object it ){
   }
 }
 
-object
+static list
 compile_rhs( object env, object it ){
-  //print_list( it ),puts("");
   if(  rest( it )->t == PARSER  ) return  it;
   object result = cons( first( it ),
       map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}}, rest( it ) ) );
-  //print_list( result ),puts("");
   return  result;
 }
 
-object
+static list
 define_parser( object env, object it ){
   object lhs = assoc( first( it ), env );
   if(  valid( lhs ) && lhs->t == PARSER && lhs->Parser.f == NULL  ){
@@ -587,14 +610,11 @@ define_parser( object env, object it ){
   return  it;
 }
 
-object
+static list
 wrap_handler( object env, object it ){
-  //puts( __func__ );
   object lhs = assoc( first( it ), env );
-  //print_list( lhs ), puts("");
   if(  valid( lhs ) && lhs->t == PARSER  ){
     object rhs = rest( it );
-    //print_list( rhs ), puts("");
     parser copy = Parser( 0, 0 );
     *copy = *lhs;
     *lhs = *bind( copy, rhs );
@@ -602,22 +622,17 @@ wrap_handler( object env, object it ){
   return  it;
 }
 
+
 list
 ebnf( char *productions, list supplements, list handlers ){
   static parser ebnf_parser;
   if(  !ebnf_parser  ) ebnf_parser = ebnf_grammar();
-  //print_list( ebnf_parser ), puts("");
-  //return  ebnf_parser;
   object result = parse( ebnf_parser, chars_from_str( productions ) );
-  //return  result;
   if(  not_ok( result )  ) return  result;
   object payload = first( rest( result ) );
   list defs = append( payload, env( supplements, 1, Symbol(EPSILON), succeeds(NIL_) ) );
-  //print_list( defs ), puts("\n");
   list forwards = map( Operator( NIL_, define_forward ), defs );
-  //print_list( forwards ),puts("\n");
   list parsers = map( Operator( forwards, compile_rhs ), defs );
-  //print_list( parsers ),puts("\n");
   list final = map( Operator( forwards, define_parser ), parsers );
   map( Operator( forwards, wrap_handler ), handlers );
   return  final;
