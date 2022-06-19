@@ -50,7 +50,7 @@ test_parsers(){
   list ch = chars_from_str( "a b c d 1 2 3 4" );
   parser p = succeeds( Int('*') );
     print_list( parse( p, ch ) ), puts("");
-  parser q = fails( NIL_ );
+  parser q = fails( String("Do you want a cookie?",0) );
     print_list( parse( q, ch ) ), puts("");
   parser r = item();
     print_list( parse( r, ch ) ), puts("");

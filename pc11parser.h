@@ -62,5 +62,20 @@ parser probe( parser p, int mode ); //print on ok iff mode&1, print not ok iff m
 parser bind( parser p, operator op );
 parser into( parser p, object id, parser q );
 
+// E->T ('|' T)*
+// T->F*
+// F->A ('*' | '+' | '?')?
+// A->'.' | '('E')' | C
+// C->S|L|P
+// S->'\' ('.' | '|' | '(' | ')' | '[' | ']' | '/' )
+// L->'[' '^'? ']'? [^]]* ']'
+// P->Plain char
 parser regex( char *re );
+
+// D->N '=' E ';'
+// N->name
+// E->T ('|' T)*
+// T->F*
+// F->R | N | '[' E ']' | '{' E '}' | '(' E ')' | '/' regex '/'
+// R->'"' [^"]* '"' | "'" [^']* "'"
 list ebnf( char *productions, list supplements, list handlers );

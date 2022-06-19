@@ -8,7 +8,7 @@
 object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"}} } + 1,
        NIL_ = (union object[]){ {.t=INVALID} };
 
-object new_( object prototype );
+static object new_( object prototype );
 
 
 integer

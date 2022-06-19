@@ -4,22 +4,22 @@
 #include "ppnarg.h"
 
 #define IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  *
-typedef union object  IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  object;
-typedef object integer;
-typedef object list;
-typedef object suspension;
-typedef object parser;
-typedef object operator;
+typedef union    object  IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  object;
+typedef object   integer;
+typedef object   list;
+typedef object   suspension;
+typedef object   parser;
+typedef object   operator;
 typedef operator binoperator;
 typedef operator predicate;
-typedef object symbol;
-typedef object string;
-typedef object boolean;
-typedef object fSuspension( object env );
-typedef object fParser( object env, list input );
-typedef object fOperator( object env, object input );
-typedef boolean fPredicate( object env, object input );
-typedef object fBinOperator( object left, object right );
+typedef object   symbol;
+typedef object   string;
+typedef object   boolean;
+typedef object   fSuspension( object env );
+typedef object   fParser( object env, list input );
+typedef object   fOperator( object env, object input );
+typedef boolean  fPredicate( object env, object input );
+typedef object   fBinOperator( object left, object right );
 
 enum object_symbol_codes {
   T,
