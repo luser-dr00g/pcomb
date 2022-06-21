@@ -614,10 +614,10 @@ static list
 wrap_handler( object env, object it ){
   object lhs = assoc( first( it ), env );
   if(  valid( lhs ) && lhs->t == PARSER  ){
-    object rhs = rest( it );
+    object op = rest( it );
     parser copy = Parser( 0, 0 );
     *copy = *lhs;
-    *lhs = *bind( copy, rhs );
+    *lhs = *bind( copy, op );
   }
   return  it;
 }
