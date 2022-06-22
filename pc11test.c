@@ -156,7 +156,7 @@ test_ebnf(){
          Symbol(name_part), Operator( NIL_, stringify ),
          Symbol(street_name), Operator( NIL_, stringify ) )
   );
-  //print_list( parsers ), puts("\n"); // long output when showing innards
+  print_list( parsers ), puts("\n"); // long output when showing innards
 
   parser start = first( assoc_symbol( postal_address, parsers ) );
   print_list( start ), puts("\n");

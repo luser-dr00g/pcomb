@@ -98,5 +98,4 @@ list    env( list tail, int n, ... );
 object  assoc( object key, list env );
 object  assoc_symbol( int code, list env );
 
-symbol symbol_from_string( string s );
-
+symbol  symbol_from_string( string s );

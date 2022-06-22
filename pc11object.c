@@ -160,20 +160,22 @@ force_( object it ){
 }
 
 
-#define FORCE( function ) \
-static object force_ ## function ( object it ){ \
+static object force_first ( object it ){ \
   *it = *force_( it ); \
-  return  function( it ); \
+  return  first( it ); \
 } \
-object function( list it ){ \
-  if(  it->t == SUSPENSION  ) return  Suspension( it, force_ ## function );
-
-FORCE(first)
+object first( list it ){ \
+  if(  it->t == SUSPENSION  ) return  Suspension( it, force_first );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.first;
 }
 
-FORCE(rest)
+static object force_rest ( object it ){ \
+  *it = *force_( it ); \
+  return  rest( it ); \
+} \
+object rest( list it ){ \
+  if(  it->t == SUSPENSION  ) return  Suspension( it, force_rest );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.rest;
 }

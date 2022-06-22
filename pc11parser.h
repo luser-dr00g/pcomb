@@ -29,38 +29,38 @@ enum parser_symbol_codes {
   END_PARSER_SYMBOLS
 };
 
-list parse( parser p, list input );
+list    parse( parser p, list input );
 
-int is_ok( list result );
-int not_ok( list result );
-parser succeeds( list result );
-parser fails( list errormsg );
-parser satisfy( predicate pred );
-parser alpha( void );
-parser upper( void );
-parser lower( void );
-parser digit( void );
-parser literal( object example );
-parser chr( int c );
-parser str( char *s );
-parser anyof( char *s );
-parser noneof( char *s );
-parser either( parser p, parser q );
+int     is_ok( list result );
+int     not_ok( list result );
+parser  succeeds( list result );
+parser  fails( list errormsg );
+parser  satisfy( predicate pred );
+parser  alpha( void );
+parser  upper( void );
+parser  lower( void );
+parser  digit( void );
+parser  literal( object example );
+parser  chr( int c );
+parser  str( char *s );
+parser  anyof( char *s );
+parser  noneof( char *s );
+parser  either( parser p, parser q );
 #define ANY(...) reduce( either, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
-parser sequence( parser p, parser q, binoperator op );
-parser xthen( parser p, parser q );
-parser  thenx( parser p, parser q );
-parser  then( parser p, parser q );
+parser  sequence( parser p, parser q, binoperator op );
+parser  xthen( parser p, parser q );
+parser   thenx( parser p, parser q );
+parser   then( parser p, parser q );
 #define SEQ(...) reduce( then, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
-parser forward( void );
-parser maybe( parser p );
-parser many( parser p );
-parser some( parser p );
-parser item( void );
-parser probe( parser p, int mode ); //print on ok iff mode&1, print not ok iff mode&2
+parser  forward( void );
+parser  maybe( parser p );
+parser  many( parser p );
+parser  some( parser p );
+parser  item( void );
+parser  probe( parser p, int mode ); //print on ok iff mode&1, print not ok iff mode&2
 
-parser bind( parser p, operator op );
-parser into( parser p, object id, parser q );
+parser  bind( parser p, operator op );
+parser  into( parser p, object id, parser q );
 
 // E->T ('|' T)*
 // T->F*
@@ -70,7 +70,7 @@ parser into( parser p, object id, parser q );
 // S->'\' ('.' | '|' | '(' | ')' | '[' | ']' | '/' )
 // L->'[' '^'? ']'? [^]]* ']'
 // P->Plain char
-parser regex( char *re );
+parser  regex( char *re );
 
 // D->N '=' E ';'
 // N->name
@@ -78,4 +78,4 @@ parser regex( char *re );
 // T->F*
 // F->R | N | '[' E ']' | '{' E '}' | '(' E ')' | '/' regex '/'
 // R->'"' [^"]* '"' | "'" [^']* "'"
-list ebnf( char *productions, list supplements, list handlers );
+list    ebnf( char *productions, list supplements, list handlers );
