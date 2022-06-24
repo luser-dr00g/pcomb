@@ -68,6 +68,7 @@ symbol     Symbol_( int code, const char *printname, object data );
 object     Void( void *pointer );
 
 int     length( list ls );
+void    fill_string( char **str, list it );
 string  to_string( list ls );
 
 void    print( object a );

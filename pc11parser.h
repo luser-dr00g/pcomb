@@ -1,5 +1,5 @@
 #define PC11PARSER_H
-#if ! PC11OBJECT_H
+#if  ! PC11OBJECT_H
   #include "pc11object.h"
 #endif
 

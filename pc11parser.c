@@ -562,6 +562,7 @@ define_forward( object env, object it ){
 
 static parser
 compile_bnf( object env, object it ){
+  operator self = (union object[]){{.Operator={OPERATOR,env,compile_bnf}}};
   switch(  it->t  ){
   default:
     return  it;
@@ -573,20 +574,17 @@ compile_bnf( object env, object it ){
     object f = first( it );
     if(  valid( eq_symbol( SEQ, f ) )  )
       return  collapse( then,
-          map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
-	       rest( it ) ) );
+			map( self, rest( it ) ) );
     if(  valid( eq_symbol( ANY, f ) )  )
       return  collapse( either,
-	  map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
-	       rest( it ) ) );
+			map( self, rest( it ) ) );
     if(  valid( eq_symbol( MANY, f ) )  )
-      return  many( map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
-                         rest( it ) ) );
+      return  many( map( self, rest( it ) ) );
     if(  valid( eq_symbol( MAYBE, f ) )  )
-      return  maybe( map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
-                           rest( it ) ) );
-    return  map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
-		 it );
+      return  maybe( map( self, rest( it ) ) );
+    if(  length( it ) == 1  )
+      return  compile_bnf( env, f );
+    return  map( self, it );
   }
   }
 }
@@ -595,7 +593,8 @@ static list
 compile_rhs( object env, object it ){
   if(  rest( it )->t == PARSER  ) return  it;
   object result = cons( first( it ),
-      map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}}, rest( it ) ) );
+      map( (union object[]){{.Operator={OPERATOR,env,compile_bnf}}},
+	   rest( it ) ) );
   return  result;
 }
 

@@ -67,7 +67,7 @@ length( list ls ){
   return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
 }
 
-int
+static int
 string_length( object it ){
   switch(  it  ? it->t  : 0  ){
   default: return  0;
