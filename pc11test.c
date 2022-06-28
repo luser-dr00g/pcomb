@@ -21,6 +21,7 @@ static int test_basics();
 static int test_parsers();
 static int test_regex();
 static int test_ebnf();
+static int test_io();
 
 int main( void ){
   return  0
@@ -28,8 +29,11 @@ int main( void ){
       ||  test_parsers()
       ||  test_regex()
       ||  test_ebnf()
+      ||  test_io()
       ;
 }
+
+static fOperator to_upper;
 
 static integer
 to_upper( object env, integer it ){
@@ -124,8 +128,10 @@ test_regex(){
   return  0;
 }
 
-static object
-stringify( object env, object it ){
+static fOperator stringify;
+
+static string
+stringify( object env, list it ){
   return  to_string( it );
 }
 
@@ -179,5 +185,11 @@ test_ebnf(){
     puts("");
 
   printf( "%d objects\n", count_allocations() );
+  return  0;
+}
+
+static int
+test_io(){
+  pprintf( "%s:%c-%c\n", "does it work?", '*', '@' );
   return  0;
 }

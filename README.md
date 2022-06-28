@@ -89,10 +89,10 @@ all three use the same `.Operator` struct in the union object, and we rely upon
 "duck typing" to some degree to use the appropriate ones in appropriate places.
 
 A `list` can mean a couple of different things. In all cases it designates an object
-whose tag is `LIST` and contains pointers to `first` and `rest` objects. A *proper list*
-is a data format built out of list objects where the `first` pointer points to any
-type and is an element of the list, and `rest` pointer leads to the next `LIST` type 
-node or NIL.
+whose tag is `LIST` (unless it's NIL: valid() will tell you) and contains pointers
+to `first` and `rest` objects. A *proper list* is a data format built out of list
+objects where the `first` pointer points to any type and is an element of the list,
+and `rest` pointer leads to the next `LIST` type node or NIL.
 
 The same `list` data structure can also be used to build a binary tree by relaxing
 the requirement for the `rest` pointer to always be another `list` node. `first` and

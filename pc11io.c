@@ -2,6 +2,76 @@
 #include <string.h>
 #include "pc11io.h"
 
+static parser pprintf_grammar( list args );
+static parser pscanf_grammar( list args );
+static parser nonzero( void );
+
+static fBinOperator sum;
+static fOperator  print_literal;
+static fOperator  print_char;
+static fOperator  print_string;
+static fPredicate is_nonzero;
+static fOperator  summarize;
+static fOperator  always_zero;
+static fOperator  convert_char;
+static fOperator  convert_string;
+static fOperator  on_space;
+static fOperator  on_percent;
+static fOperator  on_char;
+static fOperator  on_string;
+static fOperator  on_literal;
+static fOperator  on_terms;
+
+int pprintf( char const *fmt, ... ){
+  if(  ! fmt  ) return  0;
+  static va_list v;
+  va_start( v, fmt );
+    static parser p;
+    if(  ! p  ) p = pprintf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
+    object r = parse( p, chars_from_str( (char*)fmt ) );
+  va_end( v );
+  if(  not_ok( r )  ) return  0;
+  return  first( rest( r ) )->Int.i;
+}
+
+int pscanf( char const *fmt, ... ){
+  if(  ! fmt  ) return  0;
+  static va_list v;
+  va_start( v, fmt );
+    static parser p;
+    if(  ! p  ) p = pscanf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
+    list fp = parse( p, chars_from_str( (char *)fmt ) );
+    parser f = first( rest( fp ) );
+    list r = parse( f, chars_from_file( stdin ) );
+  va_end( v );
+  return  valid( r )  ? first( rest( r ) )->Int.i
+                      : 0;
+}
+
+static parser
+pprintf_grammar( list args ){
+  parser directive = ANY( bind( chr('%'), Operator( NIL_, print_literal ) ),
+			  bind( chr('c'), Operator( args, print_char ) ),
+			  bind( chr('s'), Operator( args, print_string ) ) );
+  parser term = ANY( xthen( chr('%'), directive ),
+		     bind( nonzero(), Operator( NIL_, print_literal ) ) );
+  parser format = many( term );
+  return  bind( format, Operator( NIL_, summarize ) );
+}
+
+static parser
+pscanf_grammar( list args ){
+  parser space = bind( many( anyof( " \t\n" ) ), Operator( NIL_, on_space ) );
+  parser directive = ANY( bind( chr('%'), Operator( NIL_, on_percent ) ),
+			  bind( chr('c'), Operator( args, on_char ) ),
+			  bind( chr('s'), Operator( args, on_string ) ) );
+  parser term = ANY( xthen( chr('%'), directive ),
+                     bind( nonzero(), Operator( NIL_, on_literal ) ) );
+  parser format = bind( many( then( space, term ) ),
+			Operator( NIL_, on_terms ) );
+  return  format;
+}
+
 static integer
 sum( integer a, integer b ){
   return  Int( a->Int.i + b->Int.i );
@@ -41,29 +111,6 @@ nonzero( void ){
 static integer
 summarize( object v, object it ){
   return  collapse( sum, it );
-}
-
-static parser
-pprintf_grammar( list args ){
-  parser directive = ANY( bind( chr('%'), Operator( NIL_, print_literal ) ),
-			  bind( chr('c'), Operator( args, print_char ) ),
-			  bind( chr('s'), Operator( args, print_string ) ) );
-  parser term = ANY( xthen( chr('%'), directive ),
-		     bind( nonzero(), Operator( NIL_, print_literal ) ) );
-  parser format = many( term );
-  return  bind( format, Operator( NIL_, summarize ) );
-}
-
-int pprintf( char const *fmt, ... ){
-  if(  ! fmt  ) return  0;
-  static va_list v;
-  va_start( v, fmt );
-  static parser p;
-  if(  ! p  ) p = pprintf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
-  object r = parse( p, chars_from_str( (char*)fmt ) );
-  va_end( v );
-  if(  not_ok( r )  ) return  0;
-  return  first( rest( r ) )->Int.i;
 }
 
 
@@ -122,30 +169,4 @@ on_literal( object v, list it ){
 static parser
 on_terms( object v, list it ){
   return  bind( collapse( then, it ), Operator( NIL_, summarize ) );
-}
-
-static parser
-pscanf_grammar( list args ){
-  parser space = bind( many( anyof( " \t\n" ) ), Operator( NIL_, on_space ) );
-  parser directive = ANY( bind( chr('%'), Operator( NIL_, on_percent ) ),
-			  bind( chr('c'), Operator( args, on_char ) ),
-			  bind( chr('s'), Operator( args, on_string ) ) );
-  parser term = ANY( xthen( chr('%'), directive ),
-                     bind( nonzero(), Operator( NIL_, on_literal ) ) );
-  parser format = bind( many( then( space, term ) ),
-			Operator( NIL_, on_terms ) );
-  return  format;
-}
-
-int pscanf( char const *fmt, ... ){
-  if(  ! fmt  ) return  0;
-  static va_list v;
-  va_start( v, fmt );
-  static parser p;
-  if(  ! p  ) p = pscanf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
-  list fp = parse( p, chars_from_str( (char *)fmt ) );
-  parser f = first( rest( fp ) );
-  list r = parse( f, chars_from_file( stdin ) );
-  va_end( v );
-  return  valid( r )  ? first( rest( r ) )->Int.i  : 0;
 }
