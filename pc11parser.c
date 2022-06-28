@@ -2,22 +2,89 @@
 #include <ctype.h>
 #include <string.h>
 
+static fParser    success;
+static fParser    fail;
+
+static fParser    parse_satisfy;
+static fPredicate is_upper;
+static fPredicate is_alpha;
+static fPredicate is_lower;
+static fPredicate is_digit;
+static fPredicate is_literal;
+static fPredicate is_range;
+static fPredicate is_anyof;
+static fPredicate is_noneof;
+static fPredicate always_true;
+
+static fParser    parse_either;
+fBinOperator  either;
+
+static fParser    parse_sequence;
+
+static fBinOperator concat;
+fBinOperator  then;
+
+static fBinOperator left;
+static fBinOperator right;
+fBinOperator  xthen;
+fBinOperator  thenx;
+
+static fParser    parse_bind;
+
+static fParser    parse_into;
+
+static fParser    parse_probe;
+
+static fOperator  apply_meta;
+static fOperator  on_dot;
+static fOperator  on_chr;
+static fOperator  on_meta;
+static fOperator  on_class;
+static fOperator  on_term;
+static fOperator  on_expr;
+
+static fOperator  stringify;
+static fOperator  symbolize;
+static fOperator  encapsulate;
+
+static fOperator  make_matcher;
+static fOperator  make_sequence;
+static fOperator  make_any;
+static fOperator  make_maybe;
+static fOperator  make_many;
+
+static fOperator  define_forward;
+static fOperator  compile_bnf;
+static fOperator  compile_rhs;
+static fOperator  define_parser;
+static fOperator  wrap_handler;
+
+
+/* Execute a parser upon an input stream by invoking its function,
+   supplying its env. */
+
 list
 parse( parser p, list input ){
   if(  !valid( p ) || !valid( input ) || p->t != PARSER  )
-    return  LIST( Symbol( FAIL ), String("parse() validity check failed",0), input ); 
+    return  LIST( Symbol(FAIL), String("parse() validity check failed",0), input ); 
   return  p->Parser.f( p->Parser.env, input );
 }
 
+/*
+  The result structure from a parser is either
+    ( OK . ( <value> . <remaining input ) )
+  or
+    ( FAIL . ( <error message> . <remaining input> ) )
+*/
 
 static object
-success( object v, list input ){
-  return  cons( Symbol( OK ), cons( v, input ) );
+success( object result, list input ){
+  return  cons( Symbol(OK), cons( result, input ) );
 }
 
 static object
-fail( object v, list input ){
-  return  cons( Symbol( FAIL ), cons( v, input ) );
+fail( object errormsg, list input ){
+  return  cons( Symbol(FAIL), cons( errormsg, input ) );
 }
 
 
@@ -43,6 +110,20 @@ fails( list errormsg ){
 }
 
 
+/* For all of the parsers after this point, the associated parse_*() function
+   should be considered the "lambda" or "closure" function for the constructed
+   parser object.
+   C, of course, doesn't have lambdas. Hence these closely associated functions
+   are close by and have related names.
+   These parse_* functions receive an association list of (symbol.value) pairs
+   in their env parameter, and they extract their needed values using assoc_symbol().
+*/
+
+/* The satisfy(pred) parser is the basis for all "leaf" parsers.
+   Importantly, it forces the first element off of the (lazy?) input list.
+   Therefore, all other functions that operate upon this result of this parser,
+   need not fuss with suspensions at all. */
+
 static list
 parse_satisfy( object env, list input ){
   predicate pred = assoc_symbol( SATISFY_PRED, env );
@@ -59,7 +140,6 @@ satisfy( predicate pred ){
   return  Parser( env( NIL_, 1, Symbol(SATISFY_PRED), pred ), parse_satisfy );
 }
 
-
 boolean
 always_true( object v, object it ){
   return  T_;
@@ -68,7 +148,6 @@ always_true( object v, object it ){
 parser item( void ){
   return  satisfy( Operator( NIL_, always_true ) );
 }
-
 
 static boolean
 is_alpha( object v, object it ){
@@ -79,7 +158,6 @@ parser
 alpha( void ){
   return  satisfy( Operator( NIL_, is_alpha ) );
 }
-
 
 static boolean
 is_upper( object v, object it ){
@@ -139,6 +217,7 @@ str( char *s ){
 }
 
 
+
 static boolean
 is_range( object bounds, object it ){
   int lo = first( bounds )->Int.i,
@@ -174,6 +253,10 @@ noneof( char *s ){
 }
 
 
+/* The choice combinator. Result is success if either p or q succeed.
+   Short circuits q if p was successful. Not lazy. */
+
+
 static object
 parse_either( object env, list input ){
   parser p = assoc_symbol( EITHER_P, env );
@@ -190,6 +273,13 @@ either( parser p, parser q ){
                        Symbol(EITHER_P), p ),
                   parse_either );
 }
+
+
+/* Sequence 2 parsers and join the 2 results using a binary operator.
+   By parameterizing this "joining" operator, this parser supports
+   then(), thenx() and xthen() while being completely agnostic as to
+   how joining might or might not be done.
+ */
 
 
 static object
@@ -224,6 +314,10 @@ sequence( parser p, parser q, binoperator op ){
 }
 
 
+/* Some hacking and heuristics to massage 2 objects together into a list,
+   taking care if either is already a list */
+
+
 static object
 concat( object l, object r ){
   if(  ! valid( l )  ) return  r;
@@ -237,6 +331,7 @@ concat( object l, object r ){
   default: return  cons( l, r );
   }
 }
+
 
 parser
 then( parser p, parser q ){
@@ -254,6 +349,7 @@ right( object l, object r ){
   return  r;
 }
 
+
 parser
 xthen( parser p, parser q ){
   return  sequence( p, q, Operator( NIL_, right ) );
@@ -264,6 +360,15 @@ thenx( parser p, parser q ){
   return  sequence( p, q, Operator( NIL_, left ) );
 }
 
+
+/* Construct a forwarding parser to aid building of loops.
+   This parser can be composed with other parsers.
+   Later, the higher level composed parser can be copied over this object 
+   to create the point of recursion in the parser graph.
+   Remembers the fact that it was created as a forward
+   by storing a flag in the hidden allocation record for the parser.
+   This flag is not altered by overwriting the parser's normal union object.
+ */
 
 parser
 forward( void ){
@@ -279,6 +384,8 @@ maybe( parser p ){
 }
 
 
+/* Uses a forward() to build an infinite sequence of maybe(p). */
+
 parser
 many( parser p ){
   parser q = forward();
@@ -292,6 +399,11 @@ some( parser p ){
   return  then( p, many( p ) );
 }
 
+
+/* Bind transforms a succesful result from the child parser
+   through the operator. The operator's environment is supplemented
+   with the environment passed to bind itself.
+ */
 
 static object
 parse_bind( object env, list input ){
@@ -315,6 +427,10 @@ bind( parser p, operator op ){
                   parse_bind );
 }
 
+
+/* Sequence parsers p and q, but define the value portion of the result of p 
+   (if successful) as (id.value) in the env of q.
+ */
 
 static object
 parse_into( object v, list input ){
@@ -345,7 +461,7 @@ into( parser p, object id, parser q ){
 }
 
 
-object
+static object
 parse_probe( object env, object input ){
   parser p = assoc_symbol( PROBE_P, env );
   int mode = assoc_symbol( PROBE_MODE, env )->Int.i;
@@ -363,6 +479,54 @@ probe( parser p, int mode ){
 		  parse_probe );
 }
 
+
+/* Regex compiler */
+
+static parser regex_grammar( void );
+static parser regex_parser;
+
+parser
+regex( char *re ){
+  if(  !regex_parser  ) regex_parser = regex_grammar();
+  object result = parse( regex_parser, chars_from_str( re ) );
+  if(  not_ok( result )  ) return  result;
+  return  first( rest( result ) );
+}
+
+#define META     "*+?"
+#define SPECIAL  META ".|()[]/"
+
+static parser
+regex_grammar( void ){
+  parser dot       = bind( chr('.'), Operator( NIL_, on_dot ) );
+  parser meta      = anyof( META );
+  parser escape    = xthen( chr('\\'), anyof( SPECIAL "\\" ) );
+  parser class     = xthen( chr('['),
+			    thenx( SEQ( maybe( chr('^') ),
+			                maybe( chr(']') ),
+                                        many( noneof( "]" ) ) ),
+			           chr(']') ) );
+  parser character = ANY( bind( escape, Operator( NIL_, on_chr ) ),
+			  bind( class, Operator( NIL_, on_class ) ),
+			  bind( noneof( SPECIAL ), Operator( NIL_, on_chr ) ) );
+  parser expr      = forward();
+  {
+    parser atom    = ANY( dot,
+                          xthen( chr('('), thenx( expr, chr(')') ) ),
+                          character );
+    parser factor  = into( atom, Symbol(REGEX_ATOM),
+                           bind( maybe( meta ),
+                                 Operator( NIL_, on_meta ) ) );
+    parser term    = bind( many( factor ),
+                           Operator( NIL_, on_term ) );
+    *expr  = *bind( then( term, many( xthen( chr('|'), term ) ) ),
+                    Operator( NIL_, on_expr ) );
+  }
+  return  expr;
+}
+
+
+/* syntax directed compilation to parser */
 
 static parser
 apply_meta( parser a, object it ){
@@ -386,7 +550,7 @@ on_chr( object v, object it ){
 
 static parser
 on_meta( object v, object it ){
-  parser atom = assoc_symbol( ATOM, v );
+  parser atom = assoc_symbol( REGEX_ATOM, v );
   if(  it->t == LIST 
     && valid( eq_symbol( VALUE, first( first( it ) ) ) )
     && ! valid( rest( it ) )
@@ -417,94 +581,36 @@ on_expr( object v, object it ){
   return  collapse( either, it );
 }
 
-#define META     "*+?"
-#define SPECIAL  META ".|()[]/"
-
-static parser
-regex_grammar( void ){
-  parser dot       = bind( chr('.'), Operator( NIL_, on_dot ) );
-  parser meta      = anyof( META );
-  parser escape    = xthen( chr('\\'), anyof( SPECIAL "\\" ) );
-  parser class     = xthen( chr('['),
-			    thenx( SEQ( maybe( chr('^') ),
-			                maybe( chr(']') ),
-                                        many( noneof( "]" ) ) ),
-			           chr(']') ) );
-  parser character = ANY( bind( escape, Operator( NIL_, on_chr ) ),
-			  bind( class, Operator( NIL_, on_class ) ),
-			  bind( noneof( SPECIAL ), Operator( NIL_, on_chr ) ) );
-  parser expr      = forward();
-  {
-    parser atom    = ANY( dot,
-                          xthen( chr('('), thenx( expr, chr(')') ) ),
-                          character );
-    parser factor  = into( atom, Symbol(ATOM),
-                           bind( maybe( meta ),
-                                 Operator( NIL_, on_meta ) ) );
-    parser term    = bind( many( factor ),
-                           Operator( NIL_, on_term ) );
-    *expr  = *bind( then( term, many( xthen( chr('|'), term ) ) ),
-                    Operator( NIL_, on_expr ) );
-  }
-  return  expr;
-}
 
 
-static parser regex_parser;
+/* EBNF compiler */
 
-parser
-regex( char *re ){
-  if(  !regex_parser  ) regex_parser = regex_grammar();
-  object result = parse( regex_parser, chars_from_str( re ) );
+static parser ebnf_grammar( void );
+
+/* Compile a block of EBNF definitions into an association list
+   of (symbol.parser) pairs.
+   Accepts an association list of supplemental parsers for any syntactic
+   constructs that are easier to build outside of the EBNF syntax.
+   Accepts an association list of operators to bind the results of any
+   named parser from the EBNF block or the supplements.
+ */
+
+list
+ebnf( char *productions, list supplements, list handlers ){
+  static parser ebnf_parser;
+  if(  !ebnf_parser  ) ebnf_parser = ebnf_grammar();
+
+  object result = parse( ebnf_parser, chars_from_str( productions ) );
   if(  not_ok( result )  ) return  result;
-  return  first( rest( result ) );
+
+  object payload = first( rest( result ) );
+  list defs = append( payload, env( supplements, 1, Symbol(EBNF_EPSILON), succeeds(NIL_) ) );
+  list forwards = map( Operator( NIL_, define_forward ), defs );
+  list parsers = map( Operator( forwards, compile_rhs ), defs );
+  list final = map( Operator( forwards, define_parser ), parsers );
+  map( Operator( forwards, wrap_handler ), handlers );
+  return  final;
 }
-
-
-static string
-stringify( object env, object input ){
-  return  to_string( input );
-}
-
-static symbol
-symbolize( object env, object input ){
-  return  symbol_from_string( to_string( input ) );
-}
-
-static list
-encapsulate( object env, object input ){
-  return  one( input );
-}
-
-
-static parser
-make_matcher( object env, object input ){
-  return  str( to_string( input )->String.str );
-}
-
-static list
-make_sequence( object env, object input ){
-  if(  length( input ) == 0  ) return  Symbol( EPSILON );
-  if(  length( input ) < 2  ) return  input;
-  return  one( cons( Symbol( SEQ ), input ) );
-}
-
-static list
-make_any( object env, object input ){
-  if(  length( input ) < 2  ) return  input;
-  return  one( cons( Symbol( ANY ), input ) );
-}
-
-static list
-make_maybe( object env, object input ){
-  return  one( cons( Symbol( MAYBE ), input ) );
-}
-
-static list
-make_many( object env, object input ){
-  return  one( cons( Symbol( MANY ), input ) );
-}
-
 
 static parser
 ebnf_grammar( void ){
@@ -554,6 +660,57 @@ ebnf_grammar( void ){
 }
 
 
+/* helpers */
+
+static string
+stringify( object env, object input ){
+  return  to_string( input );
+}
+
+static symbol
+symbolize( object env, object input ){
+  return  symbol_from_string( to_string( input ) );
+}
+
+static list
+encapsulate( object env, object input ){
+  return  one( input );
+}
+
+
+/* syntax directed translation to list form */
+
+static parser
+make_matcher( object env, object input ){
+  return  str( to_string( input )->String.str );
+}
+
+static list
+make_sequence( object env, object input ){
+  if(  length( input ) == 0  ) return  Symbol(EBNF_EPSILON);
+  if(  length( input ) < 2  ) return  input;
+  return  one( cons( Symbol(EBNF_SEQ), input ) );
+}
+
+static list
+make_any( object env, object input ){
+  if(  length( input ) < 2  ) return  input;
+  return  one( cons( Symbol(EBNF_ANY), input ) );
+}
+
+static list
+make_maybe( object env, object input ){
+  return  one( cons( Symbol(EBNF_MAYBE), input ) );
+}
+
+static list
+make_many( object env, object input ){
+  return  one( cons( Symbol(EBNF_MANY), input ) );
+}
+
+
+/* stages of constructing the parsers from list form */
+
 static list
 define_forward( object env, object it ){
   if(  rest( it )->t == PARSER  ) return  it;
@@ -572,15 +729,15 @@ compile_bnf( object env, object it ){
   }
   case LIST:   {
     object f = first( it );
-    if(  valid( eq_symbol( SEQ, f ) )  )
+    if(  valid( eq_symbol( EBNF_SEQ, f ) )  )
       return  collapse( then,
 			map( self, rest( it ) ) );
-    if(  valid( eq_symbol( ANY, f ) )  )
+    if(  valid( eq_symbol( EBNF_ANY, f ) )  )
       return  collapse( either,
 			map( self, rest( it ) ) );
-    if(  valid( eq_symbol( MANY, f ) )  )
+    if(  valid( eq_symbol( EBNF_MANY, f ) )  )
       return  many( map( self, rest( it ) ) );
-    if(  valid( eq_symbol( MAYBE, f ) )  )
+    if(  valid( eq_symbol( EBNF_MAYBE, f ) )  )
       return  maybe( map( self, rest( it ) ) );
     if(  length( it ) == 1  )
       return  compile_bnf( env, f );
@@ -619,20 +776,4 @@ wrap_handler( object env, object it ){
     *lhs = *bind( copy, op );
   }
   return  it;
-}
-
-
-list
-ebnf( char *productions, list supplements, list handlers ){
-  static parser ebnf_parser;
-  if(  !ebnf_parser  ) ebnf_parser = ebnf_grammar();
-  object result = parse( ebnf_parser, chars_from_str( productions ) );
-  if(  not_ok( result )  ) return  result;
-  object payload = first( rest( result ) );
-  list defs = append( payload, env( supplements, 1, Symbol(EPSILON), succeeds(NIL_) ) );
-  list forwards = map( Operator( NIL_, define_forward ), defs );
-  list parsers = map( Operator( forwards, compile_rhs ), defs );
-  list final = map( Operator( forwards, define_parser ), parsers );
-  map( Operator( forwards, wrap_handler ), handlers );
-  return  final;
 }

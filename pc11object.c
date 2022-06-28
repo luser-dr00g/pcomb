@@ -3,12 +3,44 @@
 #include <stdarg.h>
 #include <string.h>
 
+static fSuspension  force_first;
+static fSuspension  force_rest;
+static fSuspension  force_apply;
+static fSuspension  force_chars_from_string;
+static fSuspension  force_chars_from_file;
+static fSuspension  force_ucs4_from_utf8;
+static fSuspension  force_utf8_from_ucs4;
+fBinOperator map;
+fBinOperator eq;
+fBinOperator append;
+fBinOperator assoc;
+
+
+/* Helper macro for constructor functions. */
+
 #define OBJECT(...) new_( (union object[]){{ __VA_ARGS__ }} )
 
-object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"}} } + 1,
-       NIL_ = (union object[]){ {.t=INVALID} };
+
+/* Flags controlling print(). */
+
+static int print_innards = 1;
+static int print_chars = 1;
+static int print_codes = 0;
+
+
+/* Define simple objects T_ and NIL_, the components of our boolean type. */
+
+union object nil_object = { .t=INVALID };
+object NIL_ = & nil_object;
+object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T", & nil_object}} } + 1;
+
+
+/* Allocated function is defined at the end of this file with
+   its file scoped data protected from the vast majority of
+   other functions here. */
 
 static object new_( object prototype );
+
 
 
 integer
@@ -21,6 +53,16 @@ Boolean( int b ){
   return  b  ? T_  : NIL_;
 }
 
+string
+String( char *str, int disposable ){
+  return  OBJECT( .String = { STRING, str, disposable } );
+}
+
+object
+Void( void *pointer ){
+  return  OBJECT( .Void = { VOID, pointer } );
+}
+
 list
 one( object it ){
   return  cons( it, NIL_ );
@@ -29,6 +71,11 @@ one( object it ){
 list
 cons( object first, object rest ){
   return  OBJECT( .List = { LIST, first, rest } );
+}
+
+symbol
+Symbol_( int code, const char *printname, object data ){
+  return  OBJECT( .Symbol = { SYMBOL, code, printname, data } );
 }
 
 suspension
@@ -46,66 +93,7 @@ Operator_( object env, fOperator *f, const char *printname ){
   return  OBJECT( .Operator = { OPERATOR, env, f, printname } );
 }
 
-string
-String( char *str, int disposable ){
-  return  OBJECT( .String = { STRING, str, disposable } );
-}
 
-symbol
-Symbol_( int code, const char *printname, object data ){
-  return  OBJECT( .Symbol = { SYMBOL, code, printname, data } );
-}
-
-object
-Void( void *pointer ){
-  return  OBJECT( .Void = { VOID, pointer } );
-}
-
-
-int
-length( list ls ){
-  return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
-}
-
-static int
-string_length( object it ){
-  switch(  it  ? it->t  : 0  ){
-  default: return  0;
-  case INT: return  1;
-  case STRING: return  strlen( it->String.str );
-  case LIST: return  string_length( first( it ) ) + string_length( rest( it ) );
-  }
-}
-
-void
-fill_string( char **str, list it ){
-  switch(  it  ? it->t  : 0  ){
-  default: return;
-  case INT:
-    *(*str)++ = it->Int.i;
-    return;
-  case STRING:
-    strcpy( *str, it->String.str );
-    *str += strlen( it->String.str );
-    return;
-  case LIST:
-    fill_string( str, first( it ) );
-    fill_string( str, rest( it ) );
-    return;
-  }
-}
-
-string
-to_string( list ls ){
-  char *str = calloc( 1 + string_length( ls ), 1 );
-  string s = OBJECT( .String = { STRING, str, 1 } );
-  fill_string( &str, ls );
-  return  s;
-}
-
-static int print_innards = 1;
-static int print_chars = 1;
-static int print_codes = 0;
 
 void
 print( object a ){
@@ -153,32 +141,59 @@ print_list( object a ){
 }
 
 
-object
+/* force_() executes a suspension function to instantiate and yield 
+   a value. It may unwrap many layers of suspended operations to shake
+   off any laziness at the front of a list or resolve a lazy calculation
+   down to its result.
+   
+   In order to simulate the feature of lazy evaluation that a lazy
+   list will manifest its elements "in place", the resulting object
+   from force_() must be overwritten over the representation of the 
+   suspension object to provide the illusion that the list magically
+   manifests for all handles to that part of the list.
+   
+   Consequently, force_() is declared static to this file and it is
+   exclusively used in the stereotyped form:
+
+     *it = *force_( it );
+ */
+
+static object
 force_( object it ){
   if(  it->t != SUSPENSION  ) return  it;
   return  force_( it->Suspension.f( it->Suspension.env ) );
 }
 
 
-static object force_first ( object it ){ \
-  *it = *force_( it ); \
-  return  first( it ); \
-} \
-object first( list it ){ \
+static object force_first ( object it ){
+  *it = *force_( it );
+  return  first( it );
+}
+
+object first( list it ){
   if(  it->t == SUSPENSION  ) return  Suspension( it, force_first );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.first;
 }
 
-static object force_rest ( object it ){ \
-  *it = *force_( it ); \
-  return  rest( it ); \
-} \
-object rest( list it ){ \
+
+static object force_rest ( object it ){
+  *it = *force_( it );
+  return  rest( it );
+}
+
+object rest( list it ){
   if(  it->t == SUSPENSION  ) return  Suspension( it, force_rest );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.rest;
 }
+
+
+int
+length( list ls ){
+  return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
+}
+
 
 
 list
@@ -189,12 +204,18 @@ take( int n, list it ){
   return  cons( first( it ), take( n-1, rest( it ) ) );
 }
 
+
 list
 drop( int n, list it ){
   if(  n == 0  ) return  it;
   *it = *force_( it );
   if(  ! valid( it )  ) return  NIL_;
   return  drop( n-1, rest( it ) );
+}
+
+
+object nth( int n, list it ){
+  return  first( take( 1, drop( n-1, it ) ) );
 }
 
 
@@ -240,6 +261,9 @@ chars_from_file( FILE *file ){
   if(  ! file  ) return  NIL_;
   return  Suspension( Void( file ), force_chars_from_file );
 }
+
+
+/* UCS4 <=> UTF8 */
 
 static int
 leading_ones( object byte ){
@@ -334,6 +358,7 @@ utf8_from_ucs4( list input ){
 }
 
 
+
 list
 map( operator op, list it ){
   if(  ! valid( it )  ) return  it;
@@ -370,6 +395,7 @@ boolean
 eq_symbol( int code, object b ){
   return  eq( (union object[]){ {.Symbol = {SYMBOL, code, "", 0} } }, b );
 }
+
 
 list
 append( list start, list end ){
@@ -408,6 +434,50 @@ assoc_symbol( int code, list b ){
 
 
 
+static int
+string_length( object it ){
+  switch(  it  ? it->t  : 0  ){
+  default: return  0;
+  case INT: return  1;
+  case STRING: return  strlen( it->String.str );
+  case LIST: return  string_length( first( it ) ) + string_length( rest( it ) );
+  }
+}
+
+void
+fill_string( char **str, list it ){
+  switch(  it  ? it->t  : 0  ){
+  default: return;
+  case INT:
+    *(*str)++ = it->Int.i;
+    return;
+  case STRING:
+    strcpy( *str, it->String.str );
+    *str += strlen( it->String.str );
+    return;
+  case LIST:
+    fill_string( str, first( it ) );
+    fill_string( str, rest( it ) );
+    return;
+  }
+}
+
+string
+to_string( list ls ){
+  char *str = calloc( 1 + string_length( ls ), 1 );
+  string s = OBJECT( .String = { STRING, str, 1 } );
+  fill_string( &str, ls );
+  return  s;
+}
+
+
+/* The following functions are isolated to the bottom of this file
+   so that their static variables are protected from all other
+   functions in this file. 
+ */
+
+/* Allocation of objects */
+
 static list allocation_list = NULL;
 
 static object
@@ -420,6 +490,20 @@ new_( object prototype ){
   }
   return  record + 1;
 }
+
+int
+count_allocations( void ){
+  list ls = allocation_list;
+  int n = 0;
+  while(  ls != NULL && valid( ls + 1 )  ){
+    ++n;
+    ls = ls->Header.next;
+  }
+  return  n;
+}
+
+
+/* Construction of dynamic symbols */
 
 static int next_symbol_code = -2;
 

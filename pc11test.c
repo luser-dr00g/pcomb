@@ -1,7 +1,8 @@
-#include "pc11parser.h"
+#include <ctype.h>
+#include "pc11io.h"
 
 enum test_symbol_codes {
-  TEST = END_PARSER_SYMBOLS,
+  TEST = END_IO_SYMBOLS,
   DIGIT,
   UPPER,
   NAME,
@@ -22,19 +23,30 @@ static int test_regex();
 static int test_ebnf();
 
 int main( void ){
-  return  test_basics()
+  return  0
+      ||  test_basics()
       ||  test_parsers()
       ||  test_regex()
-      ||  test_ebnf();
+      ||  test_ebnf()
+      ;
+}
+
+static integer
+to_upper( object env, integer it ){
+  return  Int( toupper( it->Int.i ) );
 }
 
 static int
 test_basics(){
   puts( __func__ );
   list ch = chars_from_str( "abcdef" );
-    print( ch ), puts("");       // print with dot notation
-    print_list( ch ), puts("");  // print with list notation
-  drop( 6, ch );                 // force first 6 elements of stream
+    print( ch ), puts("");
+    print_list( ch ), puts("");
+  integer a = apply( Operator( NIL_, to_upper ), first( ch ) );
+    print( a ), puts("");
+  drop( 1, a );
+    print( a ), puts("");
+  drop( 6, ch );
     print( ch ), puts("");
     print_list( ch ), puts("");
   drop( 7, ch );
@@ -156,14 +168,16 @@ test_ebnf(){
          Symbol(name_part), Operator( NIL_, stringify ),
          Symbol(street_name), Operator( NIL_, stringify ) )
   );
-  print_list( parsers ), puts("\n"); // long output when showing innards
 
-  parser start = first( assoc_symbol( postal_address, parsers ) );
+  parser start = assoc_symbol( postal_address, parsers );
+  if(  valid( start ) && start->t == LIST  )
+    start = first( start );
   print_list( start ), puts("\n");
   
   print_list( parse( start,
       chars_from_str( "Mr. luser droog I\n2357 Streetname\nAnytown, ST 00700\n" ) ) ),
     puts("");
 
+  printf( "%d objects\n", count_allocations() );
   return  0;
 }

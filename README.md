@@ -1,64 +1,283 @@
-# pcomb
-parser combinators in PostScript and C
+Parser Combinators in C, version 11.
 
-Some experiments in implementing parser combinators in C and Postscript.
+#Objects
 
-The PostScript versions all build upon the function syntax extension
-described at
-https://codereview.stackexchange.com/questions/193520/5912/an-enhanced-syntax-for-defining-functions-in-postscript
-and implemented in struct2.ps. An older version, struct.ps, is in the old directory.
+The first thing to remember when working with this code is the fact that many of
+the types are hidden pointers. `object`, `list`, `parser`, etc. are all pointers
+to a `union object` which has a specific `struct` inside depending on the specific
+subtype indicated by the `tag t`. The intent is to make C look simpler, like other
+dynamic languages with dynamically-typed variables. So, treat all of these types
+as "references", using "*reference semantics*". There is encapsulation, but no
+information hiding beyond the effort to supply convenient functions for common tasks.
 
-pc8.ps finally implements the idea of the parsers actually returning
-useful values.  pc8token.ps and pc8re.ps implement a (partial)
-PostScript `token` implementation and regular expression parser
-(producing a parser for the pattern).
+The second unique landmark to mention is the use of the "McIllroy convention" for
+include guards. In this style, the guards are placed around the `#include` directive.
+With dutiful adherence to this convention, the system achieves the same effect as
+`#pragma once` with the additional virtue that the preprocessor need not even look at
+the file a second time. The application layer code simply `#include`s the outermost
+header file for the suite of functions desired and the headers will include each
+other as necessary. Consequently, the outermost `#include` directive for a program
+doesn't need a guard. Avoid double inclusion at this layer by simply not doing that,
+please.
 
-pc9.ps implements much the same behavior, but building the parsers
-according to the Monad concept following Hutton and Meijer, "Monadic
-Parser Combinators".  This has made the code shorter and simpler, and
-the exercises pc9token.ps and pc9re2.ps demonstrate the usage. The
-tokenizer is about 100 characters shorter than the pc8 versions for
-the same functionality, but the regex code is about 500 characters
-shorter.
+The object module -- `pc11object.h` and `pc11object.c` -- defines and exports the
+smorgasbord of types of object and functions for constructing and
+manipulating objects.
 
-The first C version was posted to
-https://codereview.stackexchange.com/questions/166009/5912/parser-combinators-in-oo-c .
+There are two global objects for the values stereotypical Lisp true/false type.
+The `boolean` subtype is a "virtual" or *synthetic* type with 2 possible elements,
+one of which is the symbol T, and the other is an invalid object which is also 
+used as a sentinel to terminate lists.
 
-The next C version, which should be pc6.{c,h}, will attempt to implement
-the same behavior as pc9.ps in C following the example of the small exercise lazy.c.
+    extern object T_   /* = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"}} } + 1 */,
+                  NIL_ /* = (union object[]){ {.t=INVALID} } */;
 
-...Sigh, pc6 didn't work out. pc7 kinda worked, but I rewrote it as pc8 and that one
-worked but it did not scale well. Memory usage and execution speed very quickly got
-ridiculous when parsing anything longer than 5 or 6 lines.
+`valid()` is a helpful function for using the boolean type in C conditions or
+otherwise checking that the object is in fact a pointer to something interesting.
 
-So, pc9 finally implements lazy evaluation in the parsers, particularly the `plus`
-combinator which handles alternates. It tries the first one and returns a Suspension
-for the remainder. It has been posted to 
-https://codereview.stackexchange.com/questions/220214/lazy-functional-parser-combinators .
+    /* Determine if object is non-NULL and non-NIL.
+       Will also convert a boolean T_ or NIL_ to an integer 1 or 0.
+     */
+    static int
+    valid( object it ){
+      return  it
+	  &&  it->t <= VOID
+	  &&  it->t != INVALID;
+    }
 
-With ps/pc11, the program was rewritten following Hutton's earlier paper *Higher Order
-Functions for Parsing*. This reconstructs the parsers in a different manner, and 
-with only a passing reference to Monads. He also describes modifying the character
-stream to provide row and column information which is then discarded by the parsers.
-Discarding this information is easiest to accomplish by building everything
-from the `<pred> satisfy` parser. This also turns out to be more efficient for certain
-parsers like `anyof` and `noneof` which otherwise would need to make fans of `alt` 
-parsers to check each character individually.
 
-The paper also describes modifying the parsers to yield error messages upon failure
-instead of just an empty list of results.
+##Constructors
 
-ps/pc12.ps is a cleanup rewrite of pc11.ps. It has basically the same functionality but with
-simplifications where I could manage them. It's the best yet.
+Each of these constructors allocate and initialize a `union object` and yield
+the pointer to it.
 
-pc10*.c was an attempt to merge ps/pc12.ps with pc9*.c but with a different construction
-of the objects. It all seemed to work up until the point of instantiating a suspension.
-It turns out I truly needed the basic object type to be a pointer, because that's the
-only way I can think of to implement suspensions. If all "objects" are pointers to a 
-union in memory, then I can instantiate a suspension by modifying the representation
-in memory and the change will be automatically reflected in all copies of the object.
-I can't do that if the object is a struct with a local payload.
+    integer    Int( int i );
 
-Which brings us to pc11*.c, attempt #2 to merge ps/pc12.ps with pc9*.c with as much
-simplifying as I could bring to bear upon it. I've only just now gotten a few simple
-regexes to work.
+    boolean    Boolean( int b );
+
+    string     String( char *str, int disposable );
+
+    object     Void( void *pointer );
+
+    /* List of one element */
+    list       one( object it );
+
+    /* Join two elements togther. If rest is a list or NIL_, result is a list. */
+    list       cons( object first, object rest );
+
+    /* Join N elements together in a list */
+    #define LIST(...) \
+      reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+
+    /* Macros capture printnames automatically for these constructors */
+
+    symbol     Symbol_( int code, const char *printname, object data );
+    #define    Symbol(n) Symbol_( n, #n, NIL_ )
+
+    suspension Suspension_( object env, fSuspension *f, const char *printname );
+    #define    Suspension(env,f) Suspension_( env, f, __func__ )
+
+    parser     Parser_( object env, fParser *f, const char *printname );
+    #define    Parser(env,f) Parser_( env, f, __func__ )
+
+    operator   Operator_( object env, fOperator *f, const char *printname );
+    #define    Operator(env,f) Operator_( env, f, #f )
+
+There are three subtypes of `operator`, a "plain" operator, a predicate, or a binary
+operator. The three function types all have compatible prototypes, so for expediency
+all three use the same `.Operator` struct in the union object, and we rely upon 
+"duck typing" to some degree to use the appropriate ones in appropriate places.
+
+A `list` can mean a couple of different things. In all cases it designates an object
+whose tag is `LIST` and contains pointers to `first` and `rest` objects. A *proper list*
+is a data format built out of list objects where the `first` pointer points to any
+type and is an element of the list, and `rest` pointer leads to the next `LIST` type 
+node or NIL.
+
+The same `list` data structure can also be used to build a binary tree by relaxing
+the requirement for the `rest` pointer to always be another `list` node. `first` and
+`rest` are exactly the `car` and `cdr` functions from Lisp, but with more readable
+names.
+
+
+#Symbols
+
+Symbol objects are constructed by passing an enum name to a macro
+that expands both the value yielded by evaluating the enum name
+as well as the enum name's string representation.
+
+Symbol codes are allocated statically by defining each in an enum.
+The object module defines only one name and then the name `END_OBJECT_SYMBOLS`
+which the next module *layer* will use to start off its own range
+of enum codes.
+
+    enum object_symbol_codes {
+    T,
+    END_OBJECT_SYMBOLS
+    };
+    
+These are considered "compile time" symbols, although constructing a `symbol`
+object happens dynamically, at run-time. 
+
+Symbol codes are also allocated dynamically when calling the `symbol_from_string`
+function. This function searches through the allocation list for a Symbol object
+whose printname matches the string. If there is no such object found, then a new
+code is assigned in the space of negative integers below -1 (which == EOF).
+
+There is obvious room for improvement in the efficiency of the dynamic symbols.
+
+
+#Allocation of objects
+
+All objects are allocated as an array of 2 union objects. The left one is
+used as an allocation record and uses the `.Header` member of the union object.
+The right one is the payload for the object. The `object` passed around and
+used everywhere is a pointer to this *right hand side* object. By making the
+allocation record the same size as any object (they're defined in the same union),
+I can do this simple pointer shenanigan without worrying about alignment issues.
+
+The allocation records are linked together in a list with the head of the list 
+pointed to by the static file scoped `allocation_list`. This variable and all of 
+`next` pointers in the headers point to the left hand side.
+
+Presently, only the `new_()` and `symbol_from_string()` functions use this list.
+With a more efficient mechanism for dynamic names, this number will go down. With
+the introduction of a garbage collector, this number will go up.
+
+For the needs of the potential garbage collector, the T symbol needs a dummy
+allocation record so the potential `mark` function can twiddle its flag.
+
+
+#Parsers
+
+The parser module -- `pc11parser.h` and `pc11parser.c` defines the parser behavior
+and the combinators.
+
+The Parser Combinators have been designed according to the plan from Graham Hutton's
+paper, "Higher Order Functions For Parsing." The most basic parser, the "leaf" node 
+in any parser graph is `satisfy(predicate)`.
+
+    parser  satisfy( predicate pred );
+    
+When activated with a call to `parse()`, the `satisfy` parser forces one element
+off of the front of the (possibly lazy) input stream, then tests the element with
+the predicate closure, if true the parser succeeds, otherwise the parser fails.
+
+A parser that succeeds will return a little `cons` tree.
+
+    ( OK . ( <value> . <remainder of input> ) )
+
+For the `satisfy` parser, the value the input element itself. If the input stream
+was constructed with `chars_from_str` or `chars_from_file`, the element will be an
+`integer` object containing the character code in its payload.
+
+A parser that fails will return a slightly different little `cons` tree.
+
+    (FAIL . ( <error message> . <remainder of input ) )
+
+The default error message from a failing `satisfy` parser is to print the name of
+the predicate that failed and a string saying "predicate failed".
+
+The value portion of the result returned by any parser can be modified by
+`bind`ing the parser to an operator. The operator will be used to transform
+the value portion returned by a successful parse.
+
+Parsers can be combined into a choice with the `either` or `ANY` combinators.
+Parsers can be combined into a sequence with the `then` or `SEQ` combinators.
+Two variants of `then` will delete the result from the left hand parser (`xthen`)
+or delete the result from the right hand parser (`thenx`). The special combinator
+`into` will make the result from the left hand parser available to the right hand
+parser (and importantly to its `bind`ed operator, if it has one) by defining the
+value in the right hand parser's environment with a specified key.
+
+The `ANY` and `SEQ` combinators take advantage of the fact that a combinator
+whose signature is `parser function( parser, parser )` is naturally compatible
+with `object function( object, object )` and so it can be treated as a binary operator
+function for use with `collapse()` (fold over a list) or `reduce()` (fold over an array).
+The implementation for these mirrors the implementation of the `LIST()` macro which
+reduces over an array using `cons` as the binary operator (since `list` is also
+compatible with `object`).
+
+A few combinators provide optional repetitions. `maybe` succeeds if its child parser 
+matches 0 or 1 times. `many` succeeds if its child parser matches 0 or more times.
+`some` succeeds if its child parser matches 1 or more times.
+
+Two simple compilers can convert a `regex` to a parser or a block of `ebnf` definitions
+into an association list of `(symbol.parser)` pairs.
+
+#Parser symbols
+
+The parser module defines a number of internal symbol names and provides the name 
+`END_PARSER_SYMBOLS` for the next layer to create more unique symbol codes.
+
+
+#Test module
+
+The test module illustrates simple usage of the list objects and parsers.
+
+#Debugging
+
+A decorator function `parser probe( parser p, int mode )` can provide feedback
+on what a parser is doing when run. `mode == 1` will print out the (intermediate)
+result of a successful parse. `mode == 2` will print out the (intermediate)
+failure result of a failed parse. `mode == 3` will print both.
+
+Similarly, if an operator attached with `bind` is having trouble massaging the
+desired result, try just calling `print` on its input to see what kind of object
+or list structure it was given.
+
+`print()` will print out a representation for any object. It will print list
+structures with the Lisp "dot notation" showing all the list nodes and their
+`first` and `rest` parts separated by a `'.'`.
+
+`print_list()` will print out a representation for any object as with `print()`
+(it calls `print()` directly for anything not a list). It will print a list
+structure with the Lisp "list notation" where a chain of list nodes linked
+together along their `rest` pointers will be printed simply with one opening
+parenthesis and one closing parenthesis.
+
+Some additional behaviors of the print*() functions are controlled by file
+scoped static flags such as whether to print integers as a decimal number 
+or interpreted as an ascii character and presented in single quotes, or
+whether to print a symbol's code number as well as the symbol's name,
+or whether to dump the innards of a function object and print its environment
+in dot notation.
+
+
+#Building Concrete Syntax Trees (CST)
+
+Since the behavior of `then` is to merge the values from the left and right parsers
+into a list, the default behavior of any graph of parsers is to yield a flat list
+of all matched input elements (excluding those deleted by `xthen` or `thenx`).
+In order to introduce any substructure to this list, it is necessary to use
+`bind` to transform the values yielded by certain parsers.
+
+A simple operator function like
+
+    static list
+    encapsulate( object env, object input ){
+	return  one( input );
+    }
+
+will enclose the value by wrapping an additional list structure around it
+when `bind`ed to a parser. If this parser is combined as a child of `then`,
+the default merging of results will leave this substructure unmolested.
+So, by peppering a parser graph with calls to 
+
+    bind( <parser>, Operator( NIL_, encapsulate ) )
+    
+one can wrap any desired grammatical parts of the input in its own sub-list,
+building a tree with N-way branching.
+
+Or this task could be factored into a new decorator.
+
+    static parser
+    enclose( parser p ){
+        return  bind( p, Operator( NIL_, encapsulate ) );
+    }
+
+And then pepper the parser graph with calls to
+
+    enclose( <parser> )
+
+which is shorter if you're gonna do it a lot.
