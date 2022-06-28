@@ -7,14 +7,18 @@ static parser pscanf_grammar( list args );
 static parser nonzero( void );
 
 static fBinOperator sum;
+
 static fOperator  print_literal;
 static fOperator  print_char;
 static fOperator  print_string;
+
 static fPredicate is_nonzero;
+
 static fOperator  summarize;
 static fOperator  always_zero;
 static fOperator  convert_char;
 static fOperator  convert_string;
+
 static fOperator  on_space;
 static fOperator  on_percent;
 static fOperator  on_char;

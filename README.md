@@ -210,17 +210,28 @@ into an association list of `(symbol.parser)` pairs.
 The parser module defines a number of internal symbol names and provides the name 
 `END_PARSER_SYMBOLS` for the next layer to create more unique symbol codes.
 
+#IO module
+
+As an illustration of the power of the combinator approach, the task of 
+creating a string-based DSL for formatted input and output can be modelled
+as a parsing exercise. The IO module -- `pc11io.h` and `pc11io.c` -- contain
+an implementation of a subset of `printf()` and `scanf()`
+named `pprintf()` and `pscanf()`.
+
+And for now, this is the outermost layer of the library. 
 
 #Test module
 
-The test module illustrates simple usage of the list objects and parsers.
+The test module illustrates simple usage of the list objects and parsers,
+building parsers from `regex`es, and using the `ebnf` compiler.
 
 #Debugging
 
-A decorator function `parser probe( parser p, int mode )` can provide feedback
-on what a parser is doing when run. `mode == 1` will print out the (intermediate)
-result of a successful parse. `mode == 2` will print out the (intermediate)
-failure result of a failed parse. `mode == 3` will print both.
+A decorator function `parser z = probe( parser p, int mode )` can provide feedback
+on what parser `p` is doing when z is run.
+`mode == 1` will print out the (intermediate) result of a successful parse.
+`mode == 2` will print out the (intermediate) failure result of a failed parse.
+`mode == 3` will print both.
 
 Similarly, if an operator attached with `bind` is having trouble massaging the
 desired result, try just calling `print` on its input to see what kind of object
