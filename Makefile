@@ -7,10 +7,10 @@ test : pc11test
 pc11test : pc11object.o pc11parser.o pc11io.o pc11test.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-pc11object.o : pc11object.[ch]
-pc11parser.o : pc11parser.[ch] pc11object.h
-pc11io.o : pc11io.[ch] pc11parser.h pc11object.h
-pc11test.o : pc11test.c pc11io.h pc11parser.h pc11object.h
+pc11object.o :                                    pc11object.[ch]
+pc11parser.o :                       pc11object.h pc11parser.[ch]
+pc11io.o     :          pc11parser.h pc11object.h pc11io.[ch]
+pc11test.o   : pc11io.h pc11parser.h pc11object.h pc11test.[ch]
 
 
 clean :

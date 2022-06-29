@@ -8,8 +8,6 @@ enum io_symbol_codes {
   END_IO_SYMBOLS
 };
 
-int pprintf( char const *fmt,
-	     ... );
+int pprintf( char const *fmt, ... );
 
-int pscanf( char const *fmt,
-	    ... );
+int pscanf( char const *fmt, ... );

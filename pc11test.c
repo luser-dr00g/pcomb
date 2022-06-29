@@ -1,5 +1,5 @@
 #include <ctype.h>
-#include "pc11io.h"
+#include "pc11test.h"
 
 enum test_symbol_codes {
   TEST = END_IO_SYMBOLS,
