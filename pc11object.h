@@ -80,12 +80,9 @@ valid( object it ){
 
 integer    Int( int i );
 
-
 boolean    Boolean( int b );
 
-
 string     String( char *str, int disposable );
-
 
 object     Void( void *pointer );
 
@@ -108,21 +105,17 @@ list       cons( object first, object rest );
 
 /* Macros capture printnames automatically for these constructors */
 
-
 #define    Symbol( n ) \
            Symbol_( n, #n, NIL_ )
 symbol     Symbol_( int code, const char *printname, object data );
-
 
 #define    Suspension( env, f ) \
            Suspension_( env, f, __func__ )
 suspension Suspension_( object env, fSuspension *f, const char *printname );
 
-
 #define    Parser( env, f ) \
            Parser_( env, f, __func__ )
 parser     Parser_( object env, fParser *f, const char *printname );
-
 
 #define    Operator( env, f ) \
            Operator_( env, f, #f )

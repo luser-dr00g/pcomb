@@ -74,6 +74,7 @@ parser  anyof( char *s );
 parser  noneof( char *s );
 
 /* Accept any single element off the input list. */
+
 parser  item( void );
 
 
@@ -133,6 +134,7 @@ parser   then( parser p,
 
 
 /* Sequence 2 parsers, but pass result from first as a (id.value) pair in second's env. */
+
 parser  into( parser p,
 	      object id,
 	      parser q );
