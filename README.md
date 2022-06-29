@@ -71,17 +71,21 @@ the pointer to it.
 
     /* Macros capture printnames automatically for these constructors */
 
+    #define    Symbol( n ) \
+               Symbol_( n, #n, NIL_ )
     symbol     Symbol_( int code, const char *printname, object data );
-    #define    Symbol(n) Symbol_( n, #n, NIL_ )
 
+    #define    Suspension( env, f ) \
+               Suspension_( env, f, __func__ )
     suspension Suspension_( object env, fSuspension *f, const char *printname );
-    #define    Suspension(env,f) Suspension_( env, f, __func__ )
 
+    #define    Parser( env, f ) \
+               Parser_( env, f, __func__ )
     parser     Parser_( object env, fParser *f, const char *printname );
-    #define    Parser(env,f) Parser_( env, f, __func__ )
 
+    #define    Operator( env, f ) \
+               Operator_( env, f, #f )
     operator   Operator_( object env, fOperator *f, const char *printname );
-    #define    Operator(env,f) Operator_( env, f, #f )
 
 There are three subtypes of `operator`, a "plain" operator, a predicate, or a binary
 operator. The three function types all have compatible prototypes, so for expediency
@@ -167,13 +171,13 @@ A parser that succeeds will return a little `cons` tree.
 
     ( OK . ( <value> . <remainder of input> ) )
 
-For the `satisfy` parser, the value the input element itself. If the input stream
+For the `satisfy` parser, the value is the input element itself. If the input stream
 was constructed with `chars_from_str` or `chars_from_file`, the element will be an
 `integer` object containing the character code in its payload.
 
 A parser that fails will return a slightly different little `cons` tree.
 
-    (FAIL . ( <error message> . <remainder of input ) )
+    (FAIL . ( <error message> . <remainder of input> ) )
 
 The default error message from a failing `satisfy` parser is to print the name of
 the predicate that failed and a string saying "predicate failed".
@@ -214,11 +218,12 @@ The parser module defines a number of internal symbol names and provides the nam
 
 As an illustration of the power of the combinator approach, the task of 
 creating a string-based DSL for formatted input and output can be modelled
-as a parsing exercise. The IO module -- `pc11io.h` and `pc11io.c` -- contain
+as a parsing exercise. The IO module -- `pc11io.h` and `pc11io.c` -- contains
 an implementation of a subset of `printf()` and `scanf()`
 named `pprintf()` and `pscanf()`.
 
-And for now, this is the outermost layer of the library. 
+And for now, this is the outermost layer of the library. The IO module provides the
+name `END_IO_SYMBOLS` for the next layer to create more unique symbol codes.
 
 ## Test module
 
@@ -227,7 +232,7 @@ building parsers from `regex`es, and using the `ebnf` compiler.
 
 ## Debugging
 
-A decorator function `parser z = probe( parser p, int mode )` can provide feedback
+A decorator function `parser z = probe( parser p, int mode );` can provide feedback
 on what parser `p` is doing when z is run.
 `mode == 1` will print out the (intermediate) result of a successful parse.
 `mode == 2` will print out the (intermediate) failure result of a failed parse.
