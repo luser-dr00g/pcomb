@@ -24,6 +24,8 @@ The object module -- `pc11object.h` and `pc11object.c` -- defines and exports th
 smorgasbord of types of object and functions for constructing and
 manipulating objects.
 
+## Boolean objects
+
 There are two global objects for the values of the stereotypical Lisp true/false type.
 The `boolean` subtype is a "virtual" or *synthetic* type with 2 possible elements,
 one of which is the symbol T, and the other is an invalid object which is also 
@@ -131,6 +133,21 @@ code is assigned in the space of negative integers below -1 (which == EOF).
 There is obvious room for improvement in the efficiency of the dynamic symbols.
 
 
+## Function objects
+
+`parser`s, `operator`s, and `suspension`s contain a saved environment and
+a function pointer, as well as a printable string to hold the function's name.
+
+Function objects are executed by calling the function pointer and passing it
+the saved environment as its first argument and any other input as its
+second argument. A supension function receives only its environment, there 
+is no other input.
+
+In the special cases of `bind` and `into`, the right hand function will
+be called with a modified enviroment, supplemented to contain the definition
+(key.value) of the result of `into`'s left hand parser.
+
+
 ## Allocation of objects
 
 All objects are allocated as an array of 2 union objects. The left one is
@@ -209,10 +226,12 @@ matches 0 or 1 times. `many` succeeds if its child parser matches 0 or more time
 Two simple compilers can convert a `regex` to a parser or a block of `ebnf` definitions
 into an association list of `(symbol.parser)` pairs.
 
+
 ## Parser symbols
 
 The parser module defines a number of internal symbol names and provides the name 
 `END_PARSER_SYMBOLS` for the next layer to create more unique symbol codes.
+
 
 ## IO module
 
@@ -225,10 +244,12 @@ named `pprintf()` and `pscanf()`.
 And for now, this is the outermost layer of the library. The IO module provides the
 name `END_IO_SYMBOLS` for the next layer to create more unique symbol codes.
 
+
 ## Test module
 
 The test module illustrates simple usage of the list objects and parsers,
 building parsers from `regex`es, and using the `ebnf` compiler.
+
 
 ## Debugging
 
@@ -305,6 +326,17 @@ You can fashion a parser into a syntax directed compiler for
 the *tokens* of a language generating a list of symbols.
 By following the model of `chars_from_str()` this list could
 be supplied lazily by a function that yields one token at a time.
+
+A syntax directed compiler is made by constructing a parser
+graph by composing parsers with combinators, and have this
+graph peppered with calls to `bind()`. The attached operators
+must accept an integer or list of integers and yield the desired
+artifact. For the present case of a tokenizer, these artifacts
+will be `symbol` objects. After a symbol is constructed by a call
+to its constructor `Symbol()` or `Symbol_()`, it has an extra
+`object data` pointer inside of the `.Symbol` struct in the union object.
+You can stash any extra info you like in the symbol's `->data`.
+It will be invisible to the syntax analysis layer.
 
 Then the syntax analysis layer can be constructed to recognize
 `symbol`s as its input elements. You will need to write predicates
