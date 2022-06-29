@@ -297,3 +297,20 @@ And then pepper the parser graph with calls to
     enclose( <parser> )
 
 which is shorter if you're gonna do it a lot.
+
+
+## Separating The Lexer and Parser passes
+
+You can fashion a parser into a syntax directed compiler for
+the *tokens* of a language generating a list of symbols.
+By following the model of `chars_from_str()` this list could
+be supplied lazily by a function that yields one token at a time.
+
+Then the syntax analysis layer can be constructed to recognize
+`symbol`s as its input elements. You will need to write predicates
+which call `eq_symbol` to check symbol codes, and call `satisfy()`
+to produce parsers from the predicates, and populate an enum
+with all necessary symbol codes. The first enum name ought to be
+initialized to the `END_*_SYMBOLS` name from the outermost layer
+of the library that is used.
+
