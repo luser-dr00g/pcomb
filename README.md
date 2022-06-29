@@ -6,9 +6,21 @@ The first thing to remember when working with this code is the fact that many of
 the types are hidden pointers. `object`, `list`, `parser`, etc. are all pointers
 to a `union object` which has a specific `struct` inside depending on the specific
 subtype indicated by the `tag t`. The intent is to make C look simpler, like other
-dynamic languages with dynamically-typed variables. So, treat all of these types
-as "references", using "*reference semantics*". There is encapsulation, but no
-information hiding beyond the effort to supply convenient functions for common tasks.
+dynamic languages with dynamically-typed variables. Using the power of the `typedef`
+to suppress extraneous detail and "abstract" away from too much low level information.
+So, treat all of these types as "references", using "*reference semantics*".
+
+There is encapsulation, but no information hiding beyond the effort to supply
+convenient functions for common tasks. For the most part, the objects look and
+behave like local variables. You create them with a constructor, which you'll want
+to do because otherwise the boilerplate looks so heinous. And then just discard them.
+No deallocation or destructor to call. It's only in places where something tricky
+needs to happen that any of these objects will have the arrow `->` operator applied
+to them to peek at the values in the union object. So, treat them like handles. 
+It's a thing, with more stuff behind it. One important place where the "pointerness"
+of objects is significant is when creating loops in a parser graph using a `forward()`
+parser, discussed more below. Also in the treatment of suspensions which lazily 
+manifest new content for an object by overwriting the `union object` data.
 
 The second unique landmark to mention is the use of the "McIllroy convention" for
 include guards. In this style, the guards are placed around the `#include` directive.
@@ -17,7 +29,7 @@ With dutiful adherence to this convention, the system achieves the same effect a
 the file a second time. The application layer code simply `#include`s the outermost
 header file for the suite of functions desired and the headers will include each
 other as necessary. Consequently, the outermost `#include` directive for a program
-doesn't need a guard. Avoid double inclusion at this layer by simply not doing that,
+doesn't need a guard. Avoid double inclusion at the top layer by simply not doing that,
 please.
 
 The object module -- `pc11object.h` and `pc11object.c` -- defines and exports the
@@ -43,7 +55,7 @@ otherwise checking that the object is in fact a pointer to something interesting
     static int
     valid( object it ){
       return  it
-	  &&  it->t <= VOID
+	  &&  it->t <  END_TAGS
 	  &&  it->t != INVALID;
     }
 
@@ -71,6 +83,7 @@ the pointer to it.
     #define LIST(...) \
       reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
+
     /* Macros capture printnames automatically for these constructors */
 
     #define    Symbol( n ) \
@@ -93,6 +106,8 @@ There are three subtypes of `operator`, a "plain" operator, a predicate, or a bi
 operator. The three function types all have compatible prototypes, so for expediency
 all three use the same `.Operator` struct in the union object, and we rely upon 
 "duck typing" to some degree to use the appropriate ones in appropriate places.
+
+## Lists
 
 A `list` can mean a couple of different things. In all cases it designates an object
 whose tag is `LIST` (unless it's NIL: valid() will tell you) and contains pointers
@@ -143,7 +158,7 @@ the saved environment as its first argument and any other input as its
 second argument. A supension function receives only its environment, there 
 is no other input.
 
-In the special cases of `bind` and `into`, the right hand function will
+In the special cases of `bind` and `into` combinators, the right hand function will
 be called with a modified enviroment, supplemented to contain the definition
 (key.value) of the result of `into`'s left hand parser.
 
@@ -175,7 +190,8 @@ The parser module -- `pc11parser.h` and `pc11parser.c` defines the parser behavi
 and the combinators.
 
 The Parser Combinators have been designed according to the plan from Graham Hutton's
-paper, "Higher Order Functions For Parsing." The most basic parser, the "leaf" node 
+paper, "Higher Order Functions For Parsing" and influenced by the seminal work,
+"Recursive Programming Techniques" by Burge. The most basic parser, the "leaf" node 
 in any parser graph is `satisfy(predicate)`.
 
     parser  satisfy( predicate pred );
@@ -253,8 +269,8 @@ building parsers from `regex`es, and using the `ebnf` compiler.
 
 ## Debugging
 
-A decorator function `parser z = probe( parser p, int mode );` can provide feedback
-on what parser `p` is doing when z is run.
+A decorator function `parser z = probe( p, mode );` can provide feedback
+on what parser `p` is doing when `z` is run.
 `mode == 1` will print out the (intermediate) result of a successful parse.
 `mode == 2` will print out the (intermediate) failure result of a failed parse.
 `mode == 3` will print both.
