@@ -1,6 +1,6 @@
-Parser Combinators in C, version 11.
+# Parser Combinators in C, version 11.
 
-#Objects
+## Objects
 
 The first thing to remember when working with this code is the fact that many of
 the types are hidden pointers. `object`, `list`, `parser`, etc. are all pointers
@@ -46,7 +46,7 @@ otherwise checking that the object is in fact a pointer to something interesting
     }
 
 
-##Constructors
+## Constructors
 
 Each of these constructors allocate and initialize a `union object` and yield
 the pointer to it.
@@ -100,7 +100,7 @@ the requirement for the `rest` pointer to always be another `list` node. `first`
 names.
 
 
-#Symbols
+## Symbols
 
 Symbol objects are constructed by passing an enum name to a macro
 that expands both the value yielded by evaluating the enum name
@@ -127,7 +127,7 @@ code is assigned in the space of negative integers below -1 (which == EOF).
 There is obvious room for improvement in the efficiency of the dynamic symbols.
 
 
-#Allocation of objects
+## Allocation of objects
 
 All objects are allocated as an array of 2 union objects. The left one is
 used as an allocation record and uses the `.Header` member of the union object.
@@ -148,7 +148,7 @@ For the needs of the potential garbage collector, the T symbol needs a dummy
 allocation record so the potential `mark` function can twiddle its flag.
 
 
-#Parsers
+## Parsers
 
 The parser module -- `pc11parser.h` and `pc11parser.c` defines the parser behavior
 and the combinators.
@@ -205,12 +205,12 @@ matches 0 or 1 times. `many` succeeds if its child parser matches 0 or more time
 Two simple compilers can convert a `regex` to a parser or a block of `ebnf` definitions
 into an association list of `(symbol.parser)` pairs.
 
-#Parser symbols
+## Parser symbols
 
 The parser module defines a number of internal symbol names and provides the name 
 `END_PARSER_SYMBOLS` for the next layer to create more unique symbol codes.
 
-#IO module
+## IO module
 
 As an illustration of the power of the combinator approach, the task of 
 creating a string-based DSL for formatted input and output can be modelled
@@ -220,12 +220,12 @@ named `pprintf()` and `pscanf()`.
 
 And for now, this is the outermost layer of the library. 
 
-#Test module
+## Test module
 
 The test module illustrates simple usage of the list objects and parsers,
 building parsers from `regex`es, and using the `ebnf` compiler.
 
-#Debugging
+## Debugging
 
 A decorator function `parser z = probe( parser p, int mode )` can provide feedback
 on what parser `p` is doing when z is run.
@@ -255,7 +255,7 @@ or whether to dump the innards of a function object and print its environment
 in dot notation.
 
 
-#Building Concrete Syntax Trees (CST)
+## Building Concrete Syntax Trees (CST)
 
 Since the behavior of `then` is to merge the values from the left and right parsers
 into a list, the default behavior of any graph of parsers is to yield a flat list
