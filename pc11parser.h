@@ -50,6 +50,7 @@ parser  fails( list errormsg );
 
 
 /* Emit debugging output from p. Print on ok iff mode&1; print not ok iff mode&2. */
+
 parser  probe( parser p, int mode );
 
 
@@ -74,70 +75,94 @@ parser  noneof( char *s );
 parser  item( void );
 
 
+
 /* Choice ("OR" branches) */
+
 
 /* Combine 2 parsers into a choice */
 
 parser  either( parser p, parser q );
+
 
 /* Combine N parsers into a choice */
 
 #define ANY(...) reduce( either, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
 
+
 /* Sequence ("AND" branches) */
+
 
 /* Combine 2 parsers into a sequence, using op to merge the value portions of results */
 
 parser  sequence( parser p, parser q, binoperator op );
 
+
 /* Sequence 2 parsers but drop result from first */
 
 parser  xthen( parser p, parser q );
+
 
 /* Sequence 2 parsers but drop result from second */
 
 parser   thenx( parser p, parser q );
 
+
 /* Sequence 2 parsers and concatenate results */
 
 parser   then( parser p, parser q );
+
 
 /* Sequence N parsers and concatenate results */
 
 #define SEQ(...) reduce( then, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
+
 /* Sequence 2 parsers, but pass result from first as a (id,value) pair in second's env */
 parser  into( parser p, object id, parser q );
 
 
+
 /* Repetitions */
+
 
 /* Accept 0 or 1 successful results from p */
 
 parser  maybe( parser p );
 
+
 /* Accept 0 or more successful results from p */
 
 parser  many( parser p );
 
+
 /* Accept 1 or more successful results from p */
+
 parser  some( parser p );
+
 
 
 /* Transform of values */
 
+
 /* Process succesful result from p by transforming the value portion with op */
+
 parser  bind( parser p, operator op );
+
 
 
 /* Building recursive parsers */
 
-/* Create an empty parser, useful for building loops. */
+
+/* Create an empty parser, useful for building loops.
+   A forward declaration of a parser. */
+
 parser  forward( void );
 
 
+
 /* Compilers */
+
 
 /* Compile a regular expression into a parser. */
 // E->T ('|' T)*

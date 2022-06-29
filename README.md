@@ -24,7 +24,7 @@ The object module -- `pc11object.h` and `pc11object.c` -- defines and exports th
 smorgasbord of types of object and functions for constructing and
 manipulating objects.
 
-There are two global objects for the values stereotypical Lisp true/false type.
+There are two global objects for the values of the stereotypical Lisp true/false type.
 The `boolean` subtype is a "virtual" or *synthetic* type with 2 possible elements,
 one of which is the symbol T, and the other is an invalid object which is also 
 used as a sentinel to terminate lists.
@@ -138,7 +138,7 @@ I can do this simple pointer shenanigan without worrying about alignment issues.
 
 The allocation records are linked together in a list with the head of the list 
 pointed to by the static file scoped `allocation_list`. This variable and all of 
-`next` pointers in the headers point to the left hand side.
+the `next` pointers in the headers point to the left hand side.
 
 Presently, only the `new_()` and `symbol_from_string()` functions use this list.
 With a more efficient mechanism for dynamic names, this number will go down. With
