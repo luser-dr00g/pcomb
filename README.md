@@ -194,7 +194,7 @@ was constructed with `chars_from_str` or `chars_from_file`, the element will be 
 
 A parser that fails will return a slightly different little `cons` tree.
 
-    (FAIL . ( <error message> . <remainder of input> ) )
+    ( FAIL . ( <error message> . <remainder of input> ) )
 
 The default error message from a failing `satisfy` parser is to print the name of
 the predicate that failed and a string saying "predicate failed".
