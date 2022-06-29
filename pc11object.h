@@ -164,22 +164,26 @@ int     length( list ls );
 
 /* Force n elements from the front of (lazy?) list */
 
-list    take( int n, list it );
+list    take( int n,
+	      list it );
 
 
 /* Skip ahead n elements in (lazy?) list */
 
-list    drop( int n, list it );
+list    drop( int n,
+	      list it );
 
 
 /* Index a (lazy?) list */
 
-object  nth( int n, list it );
+object  nth( int n,
+	     list it );
 
 
 /* Apply operator to (lazy?) object */
 
-object  apply( operator op, object it );
+object  apply( operator op,
+	       object it );
 
 
 /* Produce lazy lists */
@@ -203,17 +207,21 @@ list    utf8_from_ucs4( list o );
 
 /* Transform each element of list with operator; yield new list. */
 
-list    map( operator op, list it );
+list    map( operator op,
+	     list it );
 
 
 /* Fold right-to-left over list with f */
 
-object  collapse( fBinOperator *f, list it );
+object  collapse( fBinOperator *f,
+		  list it );
 
 
 /* Fold right-to-left over array of objects with f */
 
-object  reduce( fBinOperator *f, int n, object *po );
+object  reduce( fBinOperator *f,
+		int n,
+		object *po );
 
 
 
@@ -223,32 +231,38 @@ object  reduce( fBinOperator *f, int n, object *po );
 
 /* Compare for equality. For symbols, just compare codes. */
 
-boolean eq( object a, object b );
+boolean eq( object a,
+	    object b );
 
 
 /* Call eq, but avoid the need to allocate a Symbol object */
 
-boolean eq_symbol( int code, object b );
+boolean eq_symbol( int code,
+		   object b );
 
 
 /* Return copy of start sharing end */
 
-list    append( list start, list end );
+list    append( list start,
+		list end );
 
 
 /* Prepend n (key . value) pairs to tail */
 
-list    env( list tail, int n, ... );
+list    env( list tail,
+	     int n, ... );
 
 
 /* Return value associated with key */
 
-object  assoc( object key, list env );
+object  assoc( object key,
+	       list env );
 
 
 /* Call assoc, but avoid the need to allocate a Symbol object */
 
-object  assoc_symbol( int code, list env );
+object  assoc_symbol( int code,
+		      list env );
 
 
 
@@ -258,7 +272,8 @@ object  assoc_symbol( int code, list env );
 
 /* Copy integers and strings into *str. modifies caller supplied pointer */
 
-void    fill_string( char **str, list it );
+void    fill_string( char **str,
+		     list it );
 
 
 /* Convert integers and strings from list into a string */

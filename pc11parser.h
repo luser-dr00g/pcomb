@@ -32,7 +32,8 @@ enum parser_symbol_codes {
 
 /* Parse the input using parser p. */
 
-list    parse( parser p, list input );
+list    parse( parser p,
+	       list input );
 
 
 /* Check result from parse(). */
@@ -51,7 +52,8 @@ parser  fails( list errormsg );
 
 /* Emit debugging output from p. Print on ok iff mode&1; print not ok iff mode&2. */
 
-parser  probe( parser p, int mode );
+parser  probe( parser p,
+	       int mode );
 
 
 /* The basic (leaf) parser. */
@@ -81,12 +83,16 @@ parser  item( void );
 
 /* Combine 2 parsers into a choice. */
 
-parser  either( parser p, parser q );
+parser  either( parser p,
+		parser q );
 
 
 /* Combine N parsers into a choice. */
 
-#define ANY(...) reduce( either, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+#define ANY(...)                    \
+  reduce( either,                   \
+          PP_NARG(__VA_ARGS__),     \
+          (object[]){ __VA_ARGS__ } )
 
 
 
@@ -95,31 +101,41 @@ parser  either( parser p, parser q );
 
 /* Combine 2 parsers into a sequence, using op to merge the value portions of results. */
 
-parser  sequence( parser p, parser q, binoperator op );
+parser  sequence( parser p,
+		  parser q,
+		  binoperator op );
 
 
 /* Sequence 2 parsers but drop result from first. */
 
-parser  xthen( parser p, parser q );
+parser  xthen( parser p,
+	       parser q );
 
 
 /* Sequence 2 parsers but drop result from second. */
 
-parser   thenx( parser p, parser q );
+parser   thenx( parser p,
+		parser q );
 
 
 /* Sequence 2 parsers and concatenate results. */
 
-parser   then( parser p, parser q );
+parser   then( parser p,
+	       parser q );
 
 
 /* Sequence N parsers and concatenate results. */
 
-#define SEQ(...) reduce( then, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+#define SEQ(...)                    \
+  reduce( then,                     \
+          PP_NARG(__VA_ARGS__),     \
+          (object[]){ __VA_ARGS__ } )
 
 
 /* Sequence 2 parsers, but pass result from first as a (id.value) pair in second's env. */
-parser  into( parser p, object id, parser q );
+parser  into( parser p,
+	      object id,
+	      parser q );
 
 
 
@@ -147,7 +163,8 @@ parser  some( parser p );
 
 /* Process succesful result from p by transforming the value portion with op. */
 
-parser  bind( parser p, operator op );
+parser  bind( parser p,
+	      operator op );
 
 
 
@@ -185,4 +202,6 @@ parser  regex( char *re );
 // F->R | N | '[' E ']' | '{' E '}' | '(' E ')' | '/' regex '/'
 // R->'"' [^"]* '"' | "'" [^']* "'"
 
-list    ebnf( char *productions, list supplements, list handlers );
+list    ebnf( char *productions,
+	      list supplements,
+	      list handlers );
