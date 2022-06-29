@@ -50,7 +50,8 @@ parser  succeeds( list result );
 parser  fails( list errormsg );
 
 
-/* Emit debugging output from p. Print on ok iff mode&1; print not ok iff mode&2. */
+/* Emit debugging output from p.
+   Print on ok iff mode&1; print not ok iff mode&2. */
 
 parser  probe( parser p,
 	       int mode );
@@ -100,7 +101,8 @@ parser  either( parser p,
 /* Sequence ("AND" branches) */
 
 
-/* Combine 2 parsers into a sequence, using op to merge the value portions of results. */
+/* Combine 2 parsers into a sequence,
+   using op to merge the value portions of results. */
 
 parser  sequence( parser p,
 		  parser q,
@@ -133,7 +135,8 @@ parser   then( parser p,
           (object[]){ __VA_ARGS__ } )
 
 
-/* Sequence 2 parsers, but pass result from first as a (id.value) pair in second's env. */
+/* Sequence 2 parsers, but pass result from first as a
+   (id.value) pair in second's env. */
 
 parser  into( parser p,
 	      object id,
@@ -163,7 +166,8 @@ parser  some( parser p );
 /* Transform of values */
 
 
-/* Process succesful result from p by transforming the value portion with op. */
+/* Process succesful result from p
+   by transforming the value portion with op. */
 
 parser  bind( parser p,
 	      operator op );
@@ -196,7 +200,8 @@ parser  forward( void );
 parser  regex( char *re );
 
 
-/* Compile a block of EBNF definitions into a list of (symbol.parser) pairs. */
+/* Compile a block of EBNF definitions into a list of
+   (symbol.parser) pairs. */
 // D->N '=' E ';'
 // N->name
 // E->T ('|' T)*

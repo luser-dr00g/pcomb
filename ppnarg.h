@@ -1,3 +1,4 @@
+#define PPNARG_H
 /*
  * The PP_NARG macro evaluates to the number of arguments that have been
  * passed to it.

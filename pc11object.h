@@ -1,7 +1,13 @@
 #define PC11OBJECT_H
 #include <stdlib.h>
 #include <stdio.h>
-#include "ppnarg.h"
+#if ! PPNARG_H
+  #include "ppnarg.h"
+#endif
+
+
+/* Variant subtypes of object,
+   and signatures for function object functions */
 
 #define IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  *
 typedef union    object  IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  object;
@@ -43,23 +49,55 @@ enum object_symbol_codes {
   END_OBJECT_SYMBOLS
 };
 
-union object { tag t;
-      struct { tag t; int i;                                             } Int;
-      struct { tag t; object first, rest;                                } List;
-      struct { tag t; int code; const char *printname; object data;      } Symbol;
-      struct { tag t; char *str; int disposable;                         } String;
-      struct { tag t; void *pointer;                                     } Void;
-      struct { tag t; object env; fSuspension *f; const char *printname; } Suspension;
-      struct { tag t; object env; fParser *f; const char *printname;     } Parser;
-      struct { tag t; object env; fOperator *f; const char *printname;   } Operator;
-      struct { int mark; object next; int forward;                       } Header;
+
+union object {
+
+  tag t;
+
+  struct {
+    tag t; int i;
+  } Int;
+
+  struct {
+    tag t; object first, rest;
+  } List;
+
+  struct {
+    tag t; int code; const char *printname; object data;
+  } Symbol;
+
+  struct {
+    tag t; char *str; int disposable;
+  } String;
+
+  struct {
+    tag t; void *pointer;
+  } Void;
+
+  struct {
+    tag t; object env; fSuspension *f; const char *printname;
+  } Suspension;
+
+  struct {
+    tag t; object env; fParser *f; const char *printname;
+  } Parser;
+
+  struct {
+    tag t; object env; fOperator *f; const char *printname;
+  } Operator;
+
+  struct {
+    int mark; object next; int forward;
+  } Header;
+
 };
 
 
-extern
-object NIL_ /* = (union object[]){ {.t=INVALID} } */;
-extern
-object T_   /* = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T"},NIL_} } + 1 */;
+
+/* Global true/false objects. */
+
+extern object NIL_; /* .t == INVALID */
+extern symbol T_;
 
 
 
@@ -286,7 +324,9 @@ symbol  symbol_from_string( string s );
 /* That one lone function without a category to group it in. */
 
 
-/* Report memory usage. */
+/* Report (an analogue of) memory usage.
+   By current measure, an allocation is 64 bytes,
+   ie. 2x 32 byte union objects. */
 
 int count_allocations( void );
 

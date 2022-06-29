@@ -181,7 +181,9 @@ test_ebnf(){
   print_list( start ), puts("\n");
   
   print_list( parse( start,
-      chars_from_str( "Mr. luser droog I\n2357 Streetname\nAnytown, ST 00700\n" ) ) ),
+      chars_from_str( "Mr. luser droog I\n"
+                      "2357 Streetname\n"
+                      "Anytown, ST 00700\n" ) ) ),
     puts("");
 
   printf( "%d objects\n", count_allocations() );

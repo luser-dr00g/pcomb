@@ -34,12 +34,13 @@ static int print_codes = 0;
 
 /* Define simple objects T_ and NIL_, the components of our boolean type. */
 
-union object nil_object = { .t=INVALID };
+static union object nil_object = { .t=INVALID };
 object NIL_ = & nil_object;
-object T_ = (union object[]){ {.t=1}, {.Symbol={SYMBOL, T, "T", & nil_object}} } + 1;
+object T_ = 1 + (union object[]){ {.Header={1}},
+			          {.Symbol={SYMBOL, T, "T", & nil_object}} };
 
 
-/* Allocated function is defined at the end of this file with
+/* Allocation function is defined at the end of this file with
    its file scoped data protected from the vast majority of
    other functions here. */
 
@@ -231,7 +232,8 @@ object nth( int n, list it ){
 
 object
 apply( operator op, object it ){
-  if(  it->t == SUSPENSION  ) return  Suspension( cons( op, it ), force_apply );
+  if(  it->t == SUSPENSION  )
+    return  Suspension( cons( op, it ), force_apply );
   return  op->Operator.f( op->Operator.env, it );
 }
 
@@ -254,7 +256,8 @@ static list
 force_chars_from_string( string s ){
   char *str = s->String.str;
   if(  ! *str  ) return  one( Symbol( EOF ) );
-  return  cons( Int( *str ), Suspension( String( str+1, 0 ), force_chars_from_string ) );
+  return  cons( Int( *str ),
+		Suspension( String( str+1, 0 ), force_chars_from_string ) );
 }
 
 
@@ -453,7 +456,8 @@ string_length( object it ){
   default: return  0;
   case INT: return  1;
   case STRING: return  strlen( it->String.str );
-  case LIST: return  string_length( first( it ) ) + string_length( rest( it ) );
+  case LIST: return  string_length( first( it ) )
+                   + string_length( rest( it ) );
   }
 }
 

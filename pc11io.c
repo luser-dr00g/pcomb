@@ -31,7 +31,9 @@ int pprintf( char const *fmt, ... ){
   static va_list v;
   va_start( v, fmt );
     static parser p;
-    if(  ! p  ) p = pprintf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
+    if(  ! p  )
+      p = pprintf_grammar( env( NIL_, 1,
+				Symbol(ARGS), Void( &v ) ) );
     object r = parse( p, chars_from_str( (char*)fmt ) );
   va_end( v );
   if(  not_ok( r )  ) return  0;
@@ -43,7 +45,9 @@ int pscanf( char const *fmt, ... ){
   static va_list v;
   va_start( v, fmt );
     static parser p;
-    if(  ! p  ) p = pscanf_grammar( env( NIL_, 1, Symbol(ARGS), Void( &v ) ) );
+    if(  ! p  )
+      p = pscanf_grammar( env( NIL_, 1,
+			       Symbol(ARGS), Void( &v ) ) );
     list fp = parse( p, chars_from_str( (char *)fmt ) );
     parser f = first( rest( fp ) );
     list r = parse( f, chars_from_file( stdin ) );

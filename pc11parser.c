@@ -66,7 +66,9 @@ static fOperator  wrap_handler;
 list
 parse( parser p, list input ){
   if(  !valid( p ) || !valid( input ) || p->t != PARSER  )
-    return  LIST( Symbol(FAIL), String("parse() validity check failed",0), input ); 
+    return  cons( Symbol(FAIL),
+		  cons( String("parse() validity check failed",0),
+			input ) ); 
   return  p->Parser.f( p->Parser.env, input );
 }
 
@@ -79,12 +81,16 @@ parse( parser p, list input ){
 
 static object
 success( object result, list input ){
-  return  cons( Symbol(OK), cons( result, input ) );
+  return  cons( Symbol(OK),
+		cons( result,
+		      input ) );
 }
 
 static object
 fail( object errormsg, list input ){
-  return  cons( Symbol(FAIL), cons( errormsg, input ) );
+  return  cons( Symbol(FAIL),
+		cons( errormsg,
+		      input ) );
 }
 
 
@@ -110,19 +116,20 @@ fails( list errormsg ){
 }
 
 
-/* For all of the parsers after this point, the associated parse_*() function
-   should be considered the "lambda" or "closure" function for the constructed
-   parser object.
-   C, of course, doesn't have lambdas. Hence these closely associated functions
-   are close by and have related names.
-   These parse_* functions receive an association list of (symbol.value) pairs
-   in their env parameter, and they extract their needed values using assoc_symbol().
+/* For all of the parsers after this point, the associated parse_*()
+   function should be considered the "lambda" or "closure" function for
+   the constructed parser object.
+   C, of course, doesn't have lambdas. Hence these closely associated
+   functions are close by and have related names.
+   These parse_* functions receive an association list of (symbol.value)
+   pairs in their env parameter, and they extract their needed values
+   using assoc_symbol().
 */
 
 /* The satisfy(pred) parser is the basis for all "leaf" parsers.
-   Importantly, it forces the first element off of the (lazy?) input list.
-   Therefore, all other functions that operate upon this result of this parser,
-   need not fuss with suspensions at all. */
+   Importantly, it forces the first element off of the (lazy?) input
+   list. Therefore, all other functions that operate upon this result
+   of this parser need not fuss with suspensions at all. */
 
 parser
 satisfy( predicate pred ){
@@ -134,10 +141,13 @@ parse_satisfy( object env, list input ){
   predicate pred = assoc_symbol( SATISFY_PRED, env );
   drop( 1, input );
   object item = first( input );
-  if(  ! valid( item )  ) return  fail( String( "empty input", 0 ), input );
+  if(  ! valid( item )  ) return  fail( String( "empty input", 0 ),
+					input );
   return  valid( apply( pred, item ) )
-            ? success( item, rest( input ) )
-            : fail( LIST( String( "predicate not satisfied", 0 ), pred, NIL_ ), input );
+            ? success( item,
+		       rest( input ) )
+            : fail( LIST( String( "predicate not satisfied", 0 ), pred, NIL_ ),
+		    input );
 }
 
 
@@ -241,7 +251,7 @@ anyof( char *s ){
 
 static boolean
 is_anyof( object set, object it ){
-  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) != NULL );
+  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) );
 }
 
 
@@ -252,7 +262,7 @@ noneof( char *s ){
 
 static boolean
 is_noneof( object set, object it ){
-  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) == NULL );
+  return  Boolean( it->t == INT && ! strchr( set->String.str, it->Int.i ) );
 }
 
 
@@ -306,7 +316,8 @@ parse_sequence( object env, list input ){
   if(  not_ok( q_result )  ){
     object q_error = first( rest( q_result ) );
     object q_remainder = rest( rest( q_result ) );
-    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
+    return  fail( LIST( q_error, String( "after", 0),
+			first( rest( p_result ) ), NIL_ ),
 		  q_remainder );
   }
 
@@ -388,7 +399,8 @@ parse_into( object v, list input ){
   if(  not_ok( q_result )  ){
     object q_error = first( rest( q_result ) );
     object q_remainder = rest( rest( q_result ) );
-    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
+    return  fail( LIST( q_error, String( "after", 0),
+			first( rest( p_result ) ), NIL_ ),
 		  q_remainder );
   }
   return  q_result;
@@ -452,7 +464,10 @@ parse_bind( object env, list input ){
          value = first( payload ),
          remainder = rest( payload );
   return  success( apply( (union object[]){{.Operator={
-    OPERATOR, append(op->Operator.env, env), op->Operator.f, op->Operator.printname
+    OPERATOR,
+    append(op->Operator.env, env),
+    op->Operator.f,
+    op->Operator.printname
   }}}, value ), remainder );
 }
 
@@ -480,7 +495,9 @@ forward( void ){
 
 parser
 probe( parser p, int mode ){
-  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
+  return  Parser( env( NIL_, 2,
+		       Symbol(PROBE_MODE), Int( mode ),
+		       Symbol(PROBE_P), p ),
 		  parse_probe );
 }
 
@@ -622,7 +639,9 @@ ebnf( char *productions, list supplements, list handlers ){
   if(  not_ok( result )  ) return  result;
 
   object payload = first( rest( result ) );
-  list defs = append( payload, env( supplements, 1, Symbol(EBNF_EPSILON), succeeds(NIL_) ) );
+  list defs = append( payload,
+		      env( supplements, 1,
+			   Symbol(EBNF_EPSILON), succeeds(NIL_) ) );
   list forwards = map( Operator( NIL_, define_forward ), defs );
   list parsers = map( Operator( forwards, compile_rhs ), defs );
   list final = map( Operator( forwards, define_parser ), parsers );
@@ -641,8 +660,10 @@ ebnf_grammar( void ){
   parser identifier = thenx( name, spaces );
   parser terminal =
     bind( 
-      thenx( either( thenx( xthen( chr( '"'), many( noneof("\"") ) ), chr( '"') ),
-                     thenx( xthen( chr('\''), many( noneof( "'") ) ), chr('\'') ) ),
+      thenx( either( thenx( xthen( chr( '"'), many( noneof("\"") ) ),
+			    chr( '"') ),
+                     thenx( xthen( chr('\''), many( noneof( "'") ) ),
+			    chr('\'') ) ),
              spaces ),
       Operator( NIL_, make_matcher ) );
   parser symb = bind( identifier, Operator( NIL_, symbolize ) );
