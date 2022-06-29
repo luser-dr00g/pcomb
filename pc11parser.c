@@ -124,6 +124,11 @@ fails( list errormsg ){
    Therefore, all other functions that operate upon this result of this parser,
    need not fuss with suspensions at all. */
 
+parser
+satisfy( predicate pred ){
+  return  Parser( env( NIL_, 1, Symbol(SATISFY_PRED), pred ), parse_satisfy );
+}
+
 static list
 parse_satisfy( object env, list input ){
   predicate pred = assoc_symbol( SATISFY_PRED, env );
@@ -135,9 +140,9 @@ parse_satisfy( object env, list input ){
             : fail( LIST( String( "predicate not satisfied", 0 ), pred, NIL_ ), input );
 }
 
-parser
-satisfy( predicate pred ){
-  return  Parser( env( NIL_, 1, Symbol(SATISFY_PRED), pred ), parse_satisfy );
+
+parser item( void ){
+  return  satisfy( Operator( NIL_, always_true ) );
 }
 
 boolean
@@ -145,14 +150,6 @@ always_true( object v, object it ){
   return  T_;
 }
 
-parser item( void ){
-  return  satisfy( Operator( NIL_, always_true ) );
-}
-
-static boolean
-is_alpha( object v, object it ){
-  return  Boolean( it->t == INT && isalpha( it->Int.i ) );
-}
 
 parser
 alpha( void ){
@@ -160,46 +157,52 @@ alpha( void ){
 }
 
 static boolean
-is_upper( object v, object it ){
-  return  Boolean( it->t == INT && isupper( it->Int.i ) );
+is_alpha( object v, object it ){
+  return  Boolean( it->t == INT && isalpha( it->Int.i ) );
 }
+
 
 parser
 upper( void ){
   return  satisfy( Operator( NIL_, is_upper ) );
 }
 
-
 static boolean
-is_lower( object v, object it ){
-  return  Boolean( it->t == INT && islower( it->Int.i ) );
+is_upper( object v, object it ){
+  return  Boolean( it->t == INT && isupper( it->Int.i ) );
 }
+
 
 parser
 lower( void ){
   return  satisfy( Operator( NIL_, is_lower ) );
 }
 
-
 static boolean
-is_digit( object v, object it ){
-  return  Boolean( it->t == INT && isdigit( it->Int.i ) );
+is_lower( object v, object it ){
+  return  Boolean( it->t == INT && islower( it->Int.i ) );
 }
+
 
 parser
 digit( void ){
   return  satisfy( Operator( NIL_, is_digit ) );
 }
 
-
 static boolean
-is_literal( object example, object it ){
-  return  eq( example, it );
+is_digit( object v, object it ){
+  return  Boolean( it->t == INT && isdigit( it->Int.i ) );
 }
+
 
 parser
 literal( object example ){
   return  satisfy( Operator( example, is_literal ) );
+}
+
+static boolean
+is_literal( object example, object it ){
+  return  eq( example, it );
 }
 
 
@@ -212,11 +215,16 @@ chr( int c ){
 parser
 str( char *s ){
   return  !*s  ? succeeds( NIL_ )
-               : s[1]  ? then( chr( *s ), str( s+1 ) )
-                       : chr( *s );
+               : !s[1]  ? chr( *s )
+                        : then( chr( *s ), str( s+1 ) );
 }
 
 
+
+parser
+range( int lo, int hi ){
+  return  satisfy( Operator( cons( Int( lo ), Int( hi ) ), is_range ) );
+}
 
 static boolean
 is_range( object bounds, object it ){
@@ -225,37 +233,40 @@ is_range( object bounds, object it ){
   return  Boolean( it->t == INT && lo <= it->Int.i && it->Int.i <= hi );
 }
 
-parser
-range( int lo, int hi ){
-  return  satisfy( Operator( cons( Int( lo ), Int( hi ) ), is_range ) );
-}
-
-
-static boolean
-is_anyof( object set, object it ){
-  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) != NULL );
-}
 
 parser
 anyof( char *s ){
   return  satisfy( Operator( String( s, 0 ), is_anyof ) );
 }
 
-
 static boolean
-is_noneof( object set, object it ){
-  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) == NULL );
+is_anyof( object set, object it ){
+  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) != NULL );
 }
+
 
 parser
 noneof( char *s ){
   return  satisfy( Operator( String( s, 0 ), is_noneof ) );
 }
 
+static boolean
+is_noneof( object set, object it ){
+  return  Boolean( it->t == INT && strchr( set->String.str, it->Int.i ) == NULL );
+}
+
 
 /* The choice combinator. Result is success if either p or q succeed.
    Short circuits q if p was successful. Not lazy. */
 
+
+parser
+either( parser p, parser q ){
+  return  Parser( env( NIL_, 2,
+		       Symbol(EITHER_Q), q,
+                       Symbol(EITHER_P), p ),
+                  parse_either );
+}
 
 static object
 parse_either( object env, list input ){
@@ -266,14 +277,6 @@ parse_either( object env, list input ){
   return  parse( q, input );
 }
 
-parser
-either( parser p, parser q ){
-  return  Parser( env( NIL_, 2,
-		       Symbol(EITHER_Q), q,
-                       Symbol(EITHER_P), p ),
-                  parse_either );
-}
-
 
 /* Sequence 2 parsers and join the 2 results using a binary operator.
    By parameterizing this "joining" operator, this parser supports
@@ -281,6 +284,15 @@ either( parser p, parser q ){
    how joining might or might not be done.
  */
 
+
+parser
+sequence( parser p, parser q, binoperator op ){
+  return  Parser( env( NIL_, 3,
+                       Symbol(SEQUENCE_OP), op,
+                       Symbol(SEQUENCE_Q), q,
+                       Symbol(SEQUENCE_P), p ),
+                  parse_sequence );
+}
 
 static object
 parse_sequence( object env, list input ){
@@ -304,19 +316,25 @@ parse_sequence( object env, list input ){
                    rest( rest( q_result ) ) );
 }
 
+
 parser
-sequence( parser p, parser q, binoperator op ){
-  return  Parser( env( NIL_, 3,
-                       Symbol(SEQUENCE_OP), op,
-                       Symbol(SEQUENCE_Q), q,
-                       Symbol(SEQUENCE_P), p ),
-                  parse_sequence );
+then( parser p, parser q ){
+  return  sequence( p, q, Operator( NIL_, concat ) );
+}
+
+parser
+xthen( parser p, parser q ){
+  return  sequence( p, q, Operator( NIL_, right ) );
+}
+
+parser
+thenx( parser p, parser q ){
+  return  sequence( p, q, Operator( NIL_, left ) );
 }
 
 
 /* Some hacking and heuristics to massage 2 objects together into a list,
    taking care if either is already a list */
-
 
 static object
 concat( object l, object r ){
@@ -332,51 +350,61 @@ concat( object l, object r ){
   }
 }
 
-
-parser
-then( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, concat ) );
+static object
+right( object l, object r ){
+  return  r;
 }
-
 
 static object
 left( object l, object r ){
   return  l;
 }
 
-static object
-right( object l, object r ){
-  return  r;
-}
 
 
-parser
-xthen( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, right ) );
-}
-
-parser
-thenx( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, left ) );
-}
-
-
-/* Construct a forwarding parser to aid building of loops.
-   This parser can be composed with other parsers.
-   Later, the higher level composed parser can be copied over this object 
-   to create the point of recursion in the parser graph.
-   Remembers the fact that it was created as a forward
-   by storing a flag in the hidden allocation record for the parser.
-   This flag is not altered by overwriting the parser's normal union object.
+/* Sequence parsers p and q, but define the value portion of the result of p 
+   (if successful) as (id.value) in the env of q.
  */
 
 parser
-forward( void ){
-  parser p = Parser( 0, 0 );
-  p[-1].Header.forward = 1;
-  return  p;
+into( parser p, object id, parser q ){
+  return  Parser( env( NIL_, 3,
+                       Symbol(INTO_P), p,
+                       Symbol(INTO_ID), id,
+                       Symbol(INTO_Q), q ),
+                  parse_into );
 }
 
+static object
+parse_into( object v, list input ){
+  parser p = assoc_symbol( INTO_P, v );
+  object p_result = parse( p, input );
+  if(  not_ok( p_result )  ) return  p_result;
+  object id = assoc_symbol( INTO_ID, v );
+  parser q = assoc_symbol( INTO_Q, v );
+  object q_result = q->Parser.f( env( q->Parser.env, 1,
+                                      id, first( rest( p_result ) ) ),
+		                 rest( rest( p_result ) ) );
+  if(  not_ok( q_result )  ){
+    object q_error = first( rest( q_result ) );
+    object q_remainder = rest( rest( q_result ) );
+    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
+		  q_remainder );
+  }
+  return  q_result;
+}
+
+
+
+/* If the parser p succeeds, great! return its result.
+   If not, who cares?! call it a success, but give a nothing value.
+   If this parser is composed using then(), the merging of values will
+   simply ignore this nothing value. It just disappears.
+   
+   If you bind() this parser to an operator, the operator can test
+   if valid( input ) to tell whether p succeeded (and yielded a value)
+   or not (which yielded NIL).
+ */
 
 parser
 maybe( parser p ){
@@ -400,10 +428,19 @@ some( parser p ){
 }
 
 
+
 /* Bind transforms a succesful result from the child parser
    through the operator. The operator's environment is supplemented
    with the environment passed to bind itself.
  */
+
+parser
+bind( parser p, operator op ){
+  return  Parser( env( NIL_, 2,
+                       Symbol(BIND_P), p,
+                       Symbol(BIND_OP), op ),
+                  parse_bind );
+}
 
 static object
 parse_bind( object env, list input ){
@@ -419,47 +456,33 @@ parse_bind( object env, list input ){
   }}}, value ), remainder );
 }
 
-parser
-bind( parser p, operator op ){
-  return  Parser( env( NIL_, 2,
-                       Symbol(BIND_P), p,
-                       Symbol(BIND_OP), op ),
-                  parse_bind );
-}
 
 
-/* Sequence parsers p and q, but define the value portion of the result of p 
-   (if successful) as (id.value) in the env of q.
+/* Construct a forwarding parser to aid building of loops.
+   This parser can be composed with other parsers.
+   Later, the higher level composed parser can be copied over this object 
+   to create the point of recursion in the parser graph.
+   Remembers the fact that it was created as a forward
+   by storing a flag in the hidden allocation record for the parser.
+   This flag is not altered by overwriting the parser's normal union object.
  */
 
-static object
-parse_into( object v, list input ){
-  parser p = assoc_symbol( INTO_P, v );
-  object p_result = parse( p, input );
-  if(  not_ok( p_result )  ) return  p_result;
-  object id = assoc_symbol( INTO_ID, v );
-  parser q = assoc_symbol( INTO_Q, v );
-  object q_result = q->Parser.f( env( q->Parser.env, 1,
-                                      id, first( rest( p_result ) ) ),
-		                 rest( rest( p_result ) ) );
-  if(  not_ok( q_result )  ){
-    object q_error = first( rest( q_result ) );
-    object q_remainder = rest( rest( q_result ) );
-    return  fail( LIST( q_error, String( "after", 0), first( rest( p_result ) ), NIL_ ),
-		  q_remainder );
-  }
-  return  q_result;
+parser
+forward( void ){
+  parser p = Parser( 0, 0 );
+  p[-1].Header.forward = 1;
+  return  p;
 }
+
+
+
+
 
 parser
-into( parser p, object id, parser q ){
-  return  Parser( env( NIL_, 3,
-                       Symbol(INTO_P), p,
-                       Symbol(INTO_ID), id,
-                       Symbol(INTO_Q), q ),
-                  parse_into );
+probe( parser p, int mode ){
+  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
+		  parse_probe );
 }
-
 
 static object
 parse_probe( object env, object input ){
@@ -473,11 +496,6 @@ parse_probe( object env, object input ){
   return  result;
 }
 
-parser
-probe( parser p, int mode ){
-  return  Parser( env( NIL_, 2, Symbol(PROBE_MODE), Int( mode ), Symbol(PROBE_P), p ),
-		  parse_probe );
-}
 
 
 /* Regex compiler */
