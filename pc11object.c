@@ -3,6 +3,10 @@
 #include <stdarg.h>
 #include <string.h>
 
+static void print_listn( object a );
+static int leading_ones( object byte );
+static int mask_off( object byte, int m );
+
 static fSuspension  force_first;
 static fSuspension  force_rest;
 static fSuspension  force_apply;
@@ -121,6 +125,15 @@ print( object a ){
 }
 
 
+void
+print_list( object a ){
+  switch(  a  ? a->t  : 0  ){
+  default: print( a ); break;
+  case LIST: printf( "(" ), print_list( first( a ) ),
+                            print_listn( rest( a ) ), printf( ") " ); break;
+  }
+}
+
 static void
 print_listn( object a ){
   if(  ! valid( a )  ) return;
@@ -128,15 +141,6 @@ print_listn( object a ){
   default: print( a ); break;
   case LIST: print_list( first( a ) ),
              print_listn( rest( a ) ); break;
-  }
-}
-
-void
-print_list( object a ){
-  switch(  a  ? a->t  : 0  ){
-  default: print( a ); break;
-  case LIST: printf( "(" ), print_list( first( a ) ),
-                            print_listn( rest( a ) ), printf( ") " ); break;
   }
 }
 
@@ -156,6 +160,12 @@ print_list( object a ){
    exclusively used in the stereotyped form:
 
      *it = *force_( it );
+
+   Functions outside of this module requiring the forced execution
+   of a potential suspension must use side effect of take() or drop().
+   Eg. drop( 1, it ) will transform a suspended calculation into its
+   actual resulting value. If it is a lazy list, this will manifest 
+   the list node with a new suspension as the rest().
  */
 
 static object
@@ -165,27 +175,27 @@ force_( object it ){
 }
 
 
-static object force_first ( object it ){
-  *it = *force_( it );
-  return  first( it );
-}
-
 object first( list it ){
   if(  it->t == SUSPENSION  ) return  Suspension( it, force_first );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.first;
 }
 
-
-static object force_rest ( object it ){
+static object force_first ( object it ){
   *it = *force_( it );
-  return  rest( it );
+  return  first( it );
 }
+
 
 object rest( list it ){
   if(  it->t == SUSPENSION  ) return  Suspension( it, force_rest );
   if(  it->t != LIST  ) return  NIL_;
   return  it->List.rest;
+}
+
+static object force_rest ( object it ){
+  *it = *force_( it );
+  return  rest( it );
 }
 
 
@@ -219,6 +229,12 @@ object nth( int n, list it ){
 }
 
 
+object
+apply( operator op, object it ){
+  if(  it->t == SUSPENSION  ) return  Suspension( cons( op, it ), force_apply );
+  return  op->Operator.f( op->Operator.env, it );
+}
+
 static object
 force_apply( list env ){
   operator op = first( env );
@@ -227,12 +243,12 @@ force_apply( list env ){
   return  apply( op, it );
 }
 
-object
-apply( operator op, object it ){
-  if(  it->t == SUSPENSION  ) return  Suspension( cons( op, it ), force_apply );
-  return  op->Operator.f( op->Operator.env, it );
-}
 
+list
+chars_from_str( char *str ){
+  if(  ! str  ) return  NIL_;
+  return  Suspension( String( str, 0 ), force_chars_from_string );
+}
 
 static list
 force_chars_from_string( string s ){
@@ -241,12 +257,12 @@ force_chars_from_string( string s ){
   return  cons( Int( *str ), Suspension( String( str+1, 0 ), force_chars_from_string ) );
 }
 
-list
-chars_from_str( char *str ){
-  if(  ! str  ) return  NIL_;
-  return  Suspension( String( str, 0 ), force_chars_from_string );
-}
 
+list
+chars_from_file( FILE *file ){
+  if(  ! file  ) return  NIL_;
+  return  Suspension( Void( file ), force_chars_from_file );
+}
 
 static list
 force_chars_from_file( object file ){
@@ -256,33 +272,19 @@ force_chars_from_file( object file ){
   return  cons( Int( c ), Suspension( file, force_chars_from_file ) );
 }
 
-list
-chars_from_file( FILE *file ){
-  if(  ! file  ) return  NIL_;
-  return  Suspension( Void( file ), force_chars_from_file );
-}
-
 
 /* UCS4 <=> UTF8 */
 
-static int
-leading_ones( object byte ){
-  if(  byte->t != INT  ) return  0;
-  int x = byte->Int.i;
-  return  x&0x80 ? x&0x40 ? x&0x20 ? x&0x10 ? x&8 ? x&4 ? 6
-                                                    : 5
-                                              : 4
-                                     : 3
-                            : 2
-                   : 1
-          : 0;
+list
+ucs4_from_utf8( list input ){
+  if(  ! input  ) return  NIL_;
+  return  Suspension( input, force_ucs4_from_utf8 );
 }
 
-static int
-mask_off( object byte, int m ){
-  if(  byte->t != INT  ) return  0;
-  int x = byte->Int.i;
-  return  x & (m? (1<<(8-m))-1 :-1);
+list
+utf8_from_ucs4( list input ){
+  if(  ! input  ) return  NIL_;
+  return  Suspension( input, force_utf8_from_ucs4 );
 }
 
 static list
@@ -305,13 +307,6 @@ force_ucs4_from_utf8( list input ){
     fprintf( stderr, "Overlength encoding in utf8 char.\n" );
   return  cons( Int( bits ), Suspension( input, force_ucs4_from_utf8 ) );
 }
-
-list
-ucs4_from_utf8( list input ){
-  if(  ! input  ) return  NIL_;
-  return  Suspension( input, force_ucs4_from_utf8 );
-}
-
 
 static list
 force_utf8_from_ucs4( list input ){
@@ -351,11 +346,26 @@ force_utf8_from_ucs4( list input ){
   return  next;
 }
 
-list
-utf8_from_ucs4( list input ){
-  if(  ! input  ) return  NIL_;
-  return  Suspension( input, force_utf8_from_ucs4 );
+static int
+leading_ones( object byte ){
+  if(  byte->t != INT  ) return  0;
+  int x = byte->Int.i;
+  return  x&0x80 ? x&0x40 ? x&0x20 ? x&0x10 ? x&8 ? x&4 ? 6
+                                                    : 5
+                                              : 4
+                                     : 3
+                            : 2
+                   : 1
+          : 0;
 }
+
+static int
+mask_off( object byte, int m ){
+  if(  byte->t != INT  ) return  0;
+  int x = byte->Int.i;
+  return  x & (m? (1<<(8-m))-1 :-1);
+}
+
 
 
 
@@ -378,6 +388,7 @@ object
 reduce( fBinOperator *f, int n, object *po ){
   return  n==1  ? *po  : f( *po, reduce( f, n-1, po+1 ) );
 }
+
 
 
 boolean
@@ -403,6 +414,7 @@ append( list start, list end ){
   return  cons( first( start ), append( rest( start ), end ) );
 }
 
+
 list
 env( list tail, int n, ... ){
   va_list v;
@@ -416,6 +428,7 @@ env( list tail, int n, ... ){
   va_end( v );
   return  r;
 }
+
 
 object
 assoc( object key, list b ){
@@ -444,6 +457,7 @@ string_length( object it ){
   }
 }
 
+
 void
 fill_string( char **str, list it ){
   switch(  it  ? it->t  : 0  ){
@@ -461,6 +475,7 @@ fill_string( char **str, list it ){
     return;
   }
 }
+
 
 string
 to_string( list ls ){
