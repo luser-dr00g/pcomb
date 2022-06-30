@@ -57,6 +57,11 @@ test_basics(){
     print( ch ), puts("");
     print_list( ch ), puts("");
   puts("");
+  list xs = infinite( Int('x') );
+    print_list( xs ), puts("");
+  drop( 3, xs );
+    print_list( xs ), puts("");
+  puts("");
   return  0;
 }
 

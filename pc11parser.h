@@ -111,14 +111,14 @@ parser  sequence( parser p,
 
 /* Sequence 2 parsers but drop result from first. */
 
-parser  xthen( parser p,
+parser  xthen( parser x,
 	       parser q );
 
 
 /* Sequence 2 parsers but drop result from second. */
 
 parser   thenx( parser p,
-		parser q );
+		parser x );
 
 
 /* Sequence 2 parsers and concatenate results. */

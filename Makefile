@@ -14,8 +14,8 @@ pc11test.o   : pc11test.[ch]   pc11object.h pc11parser.h pc11io.h
 
 
 clean :
-	rm *.o
+	rm *.o pc11test.exe
 
 count :
-	wc -l -c -L pc11*[ch]
-	cloc pc11*[ch]
+	wc -l -c -L pc11*[ch] ppnarg.h
+	cloc pc11*[ch] ppnarg.h

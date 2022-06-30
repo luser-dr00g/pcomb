@@ -334,13 +334,13 @@ then( parser p, parser q ){
 }
 
 parser
-xthen( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, right ) );
+xthen( parser x, parser q ){
+  return  sequence( x, q, Operator( NIL_, right ) );
 }
 
 parser
-thenx( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, left ) );
+thenx( parser p, parser x ){
+  return  sequence( p, x, Operator( NIL_, left ) );
 }
 
 

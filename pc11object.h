@@ -50,46 +50,72 @@ enum object_symbol_codes {
 };
 
 
-union object {
-
+struct integer {
   tag t;
+  int i;
+};
 
-  struct {
-    tag t; int i;
-  } Int;
+struct list {
+  tag t;
+  object first, rest;
+};
 
-  struct {
-    tag t; object first, rest;
-  } List;
+struct symbol {
+  tag t;
+  int code;
+  const char *printname;
+  object data;
+};
 
-  struct {
-    tag t; int code; const char *printname; object data;
-  } Symbol;
+struct string {
+  tag t;
+  char *str;
+  int disposable;
+};
 
-  struct {
-    tag t; char *str; int disposable;
-  } String;
+struct void_ {
+  tag t;
+  void *pointer;
+};
 
-  struct {
-    tag t; void *pointer;
-  } Void;
+struct suspension {
+  tag t;
+  object env;
+  fSuspension *f;
+  const char *printname;
+};
 
-  struct {
-    tag t; object env; fSuspension *f; const char *printname;
-  } Suspension;
+struct parser {
+  tag t;
+  object env;
+  fParser *f;
+  const char *printname;
+};
 
-  struct {
-    tag t; object env; fParser *f; const char *printname;
-  } Parser;
+struct operator {
+  tag t;
+  object env;
+  fOperator *f;
+  const char *printname;
+};
 
-  struct {
-    tag t; object env; fOperator *f; const char *printname;
-  } Operator;
+struct header {
+  int mark;
+  object next;
+  int forward;
+};
 
-  struct {
-    int mark; object next; int forward;
-  } Header;
-
+union object {
+  tag t;
+  struct integer Int;
+  struct list List;
+  struct symbol Symbol;
+  struct string String;
+  struct void_ Void;
+  struct suspension Suspension;
+  struct parser Parser;
+  struct operator Operator;
+  struct header Header;
 };
 
 
@@ -218,6 +244,8 @@ object  apply( operator op,
 
 
 /* Produce lazy lists */
+
+list    infinite( object mother );
 
 list    chars_from_str( char *str );
 

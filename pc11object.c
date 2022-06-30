@@ -10,10 +10,12 @@ static int mask_off( object byte, int m );
 static fSuspension  force_first;
 static fSuspension  force_rest;
 static fSuspension  force_apply;
+fSuspension infinite;
 static fSuspension  force_chars_from_string;
 static fSuspension  force_chars_from_file;
 static fSuspension  force_ucs4_from_utf8;
 static fSuspension  force_utf8_from_ucs4;
+
 fBinOperator map;
 fBinOperator eq;
 fBinOperator append;
@@ -247,6 +249,12 @@ force_apply( list env ){
 
 
 list
+infinite( object mother ){
+  return cons( mother, Suspension( mother, infinite ) );
+}
+
+
+list
 chars_from_str( char *str ){
   if(  ! str  ) return  NIL_;
   return  Suspension( String( str, 0 ), force_chars_from_string );
@@ -353,20 +361,20 @@ static int
 leading_ones( object byte ){
   if(  byte->t != INT  ) return  0;
   int x = byte->Int.i;
-  return  x&0x80 ? x&0x40 ? x&0x20 ? x&0x10 ? x&8 ? x&4 ? 6
-                                                    : 5
-                                              : 4
-                                     : 3
-                            : 2
-                   : 1
-          : 0;
+  return  x&0200 ? x&0100 ? x&040 ? x&020 ? x&010 ? x&4 ? 6
+                                                        : 5
+                                                  : 4
+                                          : 3
+                                  : 2
+                          : 1
+                 : 0;
 }
 
 static int
 mask_off( object byte, int m ){
   if(  byte->t != INT  ) return  0;
   int x = byte->Int.i;
-  return  x & (m? (1<<(8-m))-1 :-1);
+  return  x & (m  ? (1<<(8-m))-1  : -1);
 }
 
 
@@ -510,17 +518,6 @@ new_( object prototype ){
   return  record + 1;
 }
 
-int
-count_allocations( void ){
-  list ls = allocation_list;
-  int n = 0;
-  while(  ls != NULL && valid( ls + 1 )  ){
-    ++n;
-    ls = ls->Header.next;
-  }
-  return  n;
-}
-
 
 /* Construction of dynamic symbols */
 
@@ -537,4 +534,16 @@ symbol_from_string( string s ){
     ls = ls[0].Header.next;
   }
   return  Symbol_( next_symbol_code--, strdup( s->String.str ), NIL_ );
+}
+
+
+int
+count_allocations( void ){
+  list ls = allocation_list;
+  int n = 0;
+  while(  ls != NULL && valid( ls + 1 )  ){
+    ++n;
+    ls = ls->Header.next;
+  }
+  return  n;
 }
