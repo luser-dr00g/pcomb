@@ -331,7 +331,7 @@ force_utf8_from_ucs4( list input ){
   if(  x <= 0x7ff  )
     return  LIST( Int( (x >> 6)   | 0xc0 ),
                   Int( (x & 0x3f) | 0x80 ), next );
-  if(  x <= 0xffff )
+  if(  x <= 0xffff  )
     return  LIST( Int(   (x >> 12)         | 0xe0 ),
                   Int( ( (x >> 6) & 0x3f ) | 0x80 ),
 	          Int( (  x       & 0x3f ) | 0x80 ), next );
@@ -388,16 +388,16 @@ map( operator op, list it ){
 }
 
 object
-collapse( fBinOperator *f, list it ){
+fold_list( fBinOperator *f, list it ){
   if(  !valid( it )  ) return  it;
-  object right = collapse( f, rest( it ) );
+  object right = fold_list( f, rest( it ) );
   if(  !valid( right )  ) return  first( it );
   return  f( first( it ), right );
 }
 
 object
-reduce( fBinOperator *f, int n, object *po ){
-  return  n==1  ? *po  : f( *po, reduce( f, n-1, po+1 ) );
+fold_array( fBinOperator *f, int n, object po[] ){
+  return  n==1  ? *po  : f( *po, fold_array( f, n-1, po+1 ) );
 }
 
 
@@ -420,9 +420,9 @@ eq_symbol( int code, object b ){
 
 
 list
-append( list start, list end ){
-  if(  ! valid( start )  ) return  end;
-  return  cons( first( start ), append( rest( start ), end ) );
+append( list head, list tail ){
+  if(  ! valid( head )  ) return  tail;
+  return  cons( first( head ), append( rest( head ), tail ) );
 }
 
 
@@ -458,7 +458,7 @@ assoc_symbol( int code, list b ){
 
 
 
-static int
+int
 string_length( object it ){
   switch(  it  ? it->t  : 0  ){
   default: return  0;

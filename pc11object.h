@@ -164,7 +164,7 @@ list       cons( object first, object rest );
 /* Join N elements together in a list */
 
 #define LIST(...) \
-  reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+  fold_array( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
 
 /* Macros capture printnames automatically for these constructors */
@@ -204,28 +204,32 @@ void    print_list( object a );
 /* Functions over lists */
 
 
-/* car */
+/* First element of list.
+   Same as Lisp (car) */
 
 object  first( list it );
 
 
-/* cdr */
+/* Remainder of list after dropping the first element.
+   Same as Lisp (cdr) */
 
 list    rest( list it );
 
 
-/* Length of list */
+/* Apparent length of list.
+   Does not force a suspension, but counts it as 0. */
 
 int     length( list ls );
 
 
-/* Force n elements from the front of (lazy?) list */
+/* Force n elements from the front of (lazy?) list.
+   Returns a copy. */
 
 list    take( int n,
 	      list it );
 
 
-/* Skip ahead n elements in (lazy?) list */
+/* Drop n elements from the front of (lazy?) list */
 
 list    drop( int n,
 	      list it );
@@ -252,7 +256,9 @@ list    chars_from_str( char *str );
 list    chars_from_file( FILE *file );
 
 
-/* Lazy list adapters */
+/* Lazy list adapters.
+   Extended to full width --
+     ie. up to a 6-byte utf8 encoding representing a 32bit ucs4 code. */
 
 list    ucs4_from_utf8( list o );
 
@@ -264,23 +270,26 @@ list    utf8_from_ucs4( list o );
 /* Maps and folds */
 
 
-/* Transform each element of list with operator; yield new list. */
+/* Map elements of list it through operator function.
+   Build a new list, each element of which is the result of
+     apply( op, <corresponding-element-of-list-it> )
+ */
 
 list    map( operator op,
 	     list it );
 
 
-/* Fold right-to-left over list with f */
+/* Fold right to left over list with f */
 
-object  collapse( fBinOperator *f,
-		  list it );
+object  fold_list( fBinOperator *f,
+		   list it );
 
 
-/* Fold right-to-left over array of objects with f */
+/* Fold right to left over array of objects with f */
 
-object  reduce( fBinOperator *f,
-		int n,
-		object *po );
+object  fold_array( fBinOperator *f,
+		    int n,
+		    object po[] );
 
 
 
@@ -300,10 +309,11 @@ boolean eq_symbol( int code,
 		   object b );
 
 
-/* Return copy of start sharing end */
+/* Return copy of head with a pointer to tail in place of
+   head's terminating NIL. */
 
-list    append( list start,
-		list end );
+list    append( list head,
+		list tail );
 
 
 /* Prepend n (key . value) pairs to tail */
@@ -312,7 +322,7 @@ list    env( list tail,
 	     int n, ... );
 
 
-/* Return value associated with key */
+/* Return value associated with key in env */
 
 object  assoc( object key,
 	       list env );
@@ -329,11 +339,17 @@ object  assoc_symbol( int code,
 /* Conversions */
 
 
+/* Return length of strings + number of integers in list.
+   Ie. the size of string required to use fill_string().
+ */
+
+int     string_length( list it );
+
+
 /* Copy integers and strings into *str. modifies caller supplied pointer */
 
 void    fill_string( char **str,
 		     list it );
-
 
 /* Convert integers and strings from list into a string */
 

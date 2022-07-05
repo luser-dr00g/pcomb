@@ -91,10 +91,10 @@ parser  either( parser p,
 
 /* Combine N parsers into a choice. */
 
-#define ANY(...)                    \
-  reduce( either,                   \
-          PP_NARG(__VA_ARGS__),     \
-          (object[]){ __VA_ARGS__ } )
+#define ANY(...)                        \
+  fold_array( either,                   \
+              PP_NARG(__VA_ARGS__),     \
+              (object[]){ __VA_ARGS__ } )
 
 
 
@@ -129,10 +129,10 @@ parser   then( parser p,
 
 /* Sequence N parsers and concatenate results. */
 
-#define SEQ(...)                    \
-  reduce( then,                     \
-          PP_NARG(__VA_ARGS__),     \
-          (object[]){ __VA_ARGS__ } )
+#define SEQ(...)                        \
+  fold_array( then,                     \
+              PP_NARG(__VA_ARGS__),     \
+              (object[]){ __VA_ARGS__ } )
 
 
 /* Sequence 2 parsers, but pass result from first as a

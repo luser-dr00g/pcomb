@@ -606,14 +606,14 @@ on_term( object v, object it ){
   if(  ! valid( it )  ) return  NIL_;
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it ); 
   if(  it->t == PARSER  ) return  it;
-  return  collapse( then, it );
+  return  fold_list( then, it );
 }
 
 static parser
 on_expr( object v, object it ){
   if(  it->t == LIST  &&  ! valid( rest( it ) )  ) it = first( it );
   if(  it->t == PARSER  ) return  it;
-  return  collapse( either, it );
+  return  fold_list( either, it );
 }
 
 
@@ -769,10 +769,10 @@ compile_bnf( object env, object it ){
   case LIST:   {
     object f = first( it );
     if(  valid( eq_symbol( EBNF_SEQ, f ) )  )
-      return  collapse( then,
+      return  fold_list( then,
 			map( self, rest( it ) ) );
     if(  valid( eq_symbol( EBNF_ANY, f ) )  )
-      return  collapse( either,
+      return  fold_list( either,
 			map( self, rest( it ) ) );
     if(  valid( eq_symbol( EBNF_MANY, f ) )  )
       return  many( map( self, rest( it ) ) );
