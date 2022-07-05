@@ -140,7 +140,7 @@ of enum codes.
 These are considered "compile time" symbols, although constructing a `symbol`
 object happens dynamically, at run-time. 
 
-Symbol codes are also allocated dynamically when calling the `symbol_from_string`
+Symbol codes are also allocated dynamically, when calling the `symbol_from_string`
 function. This function searches through the allocation list for a Symbol object
 whose printname matches the string. If there is no such object found, then a new
 code is assigned in the space of negative integers below -1 (which == EOF).
@@ -150,12 +150,12 @@ There is obvious room for improvement in the efficiency of the dynamic symbols.
 
 ## Function objects
 
-`parser`s, `operator`s, and `suspension`s contain a saved environment and
+`parsers`, `operators`, and `suspensions` contain a saved environment and
 a function pointer, as well as a printable string to hold the function's name.
 
 Function objects are executed by calling the function pointer and passing it
 the saved environment as its first argument and any other input as its
-second argument. A supension function receives only its environment, there 
+second argument. A supension function receives only its environment: there 
 is no other input.
 
 In the special cases of `bind` and `into` combinators, the right hand function will
@@ -230,9 +230,9 @@ value in the right hand parser's environment with a specified key.
 The `ANY` and `SEQ` combinators take advantage of the fact that a combinator
 whose signature is `parser function( parser, parser )` is naturally compatible
 with `object function( object, object )` and so it can be treated as a binary operator
-function for use with `collapse()` (fold over a list) or `reduce()` (fold over an array).
+function for use with `fold_list()` or `fold_array()`.
 The implementation for these mirrors the implementation of the `LIST()` macro which
-reduces over an array using `cons` as the binary operator (since `list` is also
+folds over an array using `cons` as the binary operator (since `list` is also
 compatible with `object`).
 
 A few combinators provide optional repetitions. `maybe` succeeds if its child parser 
@@ -263,8 +263,9 @@ name `END_IO_SYMBOLS` for the next layer to create more unique symbol codes.
 
 ## Test module
 
-The test module illustrates simple usage of the list objects and parsers,
-building parsers from `regex`es, and using the `ebnf` compiler.
+The test module -- `pc11test.h` and `pc11test.c` illustrates simple usage of the
+list objects and parsers, building parsers from `regex`es,
+and using the `ebnf` compiler.
 
 
 ## Debugging
@@ -274,6 +275,7 @@ on what parser `p` is doing when `z` is run.
 `mode == 1` will print out the (intermediate) result of a successful parse.
 `mode == 2` will print out the (intermediate) failure result of a failed parse.
 `mode == 3` will print both.
+`mode == 0` just calls p and returns its result and doesn't print anything.
 
 Similarly, if an operator attached with `bind` is having trouble massaging the
 desired result, try just calling `print` on its input to see what kind of object
@@ -290,11 +292,28 @@ together along their `rest` pointers will be printed simply with one opening
 parenthesis and one closing parenthesis.
 
 Some additional behaviors of the print*() functions are controlled by file
-scoped static flags such as whether to print integers as a decimal number 
-or interpreted as an ascii character and presented in single quotes, or
-whether to print a symbol's code number as well as the symbol's name,
+scoped static flags in `pc11object.c` such as
+whether to print integers as a decimal number 
+or interpreted as an ascii character and presented in single quotes,
+or whether to print a symbol's code number as well as the symbol's name,
 or whether to dump the innards of a function object and print its environment
 in dot notation.
+
+
+## Building Recursive Parser Graphs
+
+The parser constructed with `forward()` can be composed with `then` and `either`
+and then have its value filled in by the resulting "higher level" parser. This
+creates a loop in the parser graph. Take care not build a graph with left recursion
+or the recursive descent parsing algorithm will become locked in an infinite
+unproductive loop.
+
+For examples of this, see the implementations of the `many` combinator and
+the `regex_grammar()` and `ebnf_grammar()` functions in `pc11parser.c`.
+
+To avoid infinite recursion, the `print()` function will refuse to print the
+innards of a parser created with `forward()` -- even after its value has been
+overwritten -- and will display only its printname.
 
 
 ## Building Concrete Syntax Trees (CST)
@@ -355,7 +374,7 @@ You can stash any extra info you like in the symbol's `->data`.
 It will be invisible to the syntax analysis layer.
 
 Then the syntax analysis layer can be constructed to recognize
-`symbol`s as its input elements. You will need to write predicates
+`symbols` as its input elements. You will need to write predicates
 which call `eq_symbol` to check symbol codes, and call `satisfy()`
 to produce parsers from the predicates, and populate an enum
 with all necessary symbol codes. The first enum name ought to be
