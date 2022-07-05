@@ -118,7 +118,7 @@ nonzero( void ){
 
 static integer
 summarize( object v, object it ){
-  return  collapse( sum, it );
+  return  fold_list( sum, it );
 }
 
 
@@ -176,5 +176,5 @@ on_literal( object v, list it ){
 
 static parser
 on_terms( object v, list it ){
-  return  bind( collapse( then, it ), Operator( NIL_, summarize ) );
+  return  bind( fold_list( then, it ), Operator( NIL_, summarize ) );
 }
