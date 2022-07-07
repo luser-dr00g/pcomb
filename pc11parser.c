@@ -21,7 +21,7 @@ fBinOperator  either;
 
 static fParser    parse_sequence;
 
-static fBinOperator concat;
+static fBinOperator merge;
 fBinOperator  then;
 
 static fBinOperator left;
@@ -330,7 +330,7 @@ parse_sequence( object env, list input ){
 
 parser
 then( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, concat ) );
+  return  sequence( p, q, Operator( NIL_, merge ) );
 }
 
 parser
@@ -348,7 +348,7 @@ thenx( parser p, parser x ){
    taking care if either is already a list */
 
 static object
-concat( object l, object r ){
+merge( object l, object r ){
   if(  ! valid( l )  ) return  r;
   if(  r->t == LIST
     && valid( eq_symbol( VALUE, first( first( r ) ) ) )
@@ -356,7 +356,7 @@ concat( object l, object r ){
     && ! valid( rest( first( r ) ) )  )
     return  l;
   switch(  l->t  ){
-  case LIST: return  cons( first( l ), concat( rest( l ), r ) );
+  case LIST: return  cons( first( l ), merge( rest( l ), r ) );
   default: return  cons( l, r );
   }
 }
@@ -465,7 +465,7 @@ parse_bind( object env, list input ){
          remainder = rest( payload );
   return  success( apply( (union object[]){{.Operator={
     OPERATOR,
-    append(op->Operator.env, env),
+    concat(op->Operator.env, env),
     op->Operator.f,
     op->Operator.printname
   }}}, value ), remainder );
@@ -639,7 +639,7 @@ ebnf( char *productions, list supplements, list handlers ){
   if(  not_ok( result )  ) return  result;
 
   object payload = first( rest( result ) );
-  list defs = append( payload,
+  list defs = concat( payload,
 		      env( supplements, 1,
 			   Symbol(EBNF_EPSILON), succeeds(NIL_) ) );
   list forwards = map( Operator( NIL_, define_forward ), defs );

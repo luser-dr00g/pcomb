@@ -108,7 +108,9 @@ print_string( object env, object it ){
 
 static boolean
 is_nonzero( object v, list it ){
-  return  Boolean( valid( it ) && it->t == INT && it->Int.i != 0 );
+  return  Boolean( valid( it )
+		   && ( it->t == INT && it->Int.i != 0 
+		        ||  it->t == SYMBOL && it->Symbol.code != EOF ) );
 }
 
 static parser

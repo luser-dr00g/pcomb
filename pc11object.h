@@ -187,6 +187,16 @@ operator   Operator_( object env, fOperator *f, const char *printname );
 
 
 
+/* Predicate combinators */
+
+predicate  not( predicate p );
+
+predicate  and( predicate p, predicate q );
+
+predicate  or( predicate p, predicate q );
+
+
+
 /* Printing */
 
 
@@ -272,7 +282,7 @@ list    utf8_from_ucs4( list o );
 
 /* Map elements of list it through operator function.
    Build a new list, each element of which is the result of
-     apply( op, <corresponding-element-of-list-it> )
+     apply( op, <corresponding element of list it> )
  */
 
 list    map( operator op,
@@ -312,7 +322,7 @@ boolean eq_symbol( int code,
 /* Return copy of head with a pointer to tail in place of
    head's terminating NIL. */
 
-list    append( list head,
+list    concat( list head,
 		list tail );
 
 
@@ -370,7 +380,11 @@ symbol  symbol_from_string( string s );
 
 /* Report (an analogue of) memory usage.
    By current measure, an allocation is 64 bytes,
-   ie. 2x 32 byte union objects. */
+   ie. 2x 32 byte union objects.
+   Largest object is 3 pointers + integer tag.
+     ie. 3x 8byte pointers + 4byte integer + 4byte padding.
+ */
+   
 
 int count_allocations( void );
 

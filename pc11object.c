@@ -7,6 +7,10 @@ static void print_listn( object a );
 static int leading_ones( object byte );
 static int mask_off( object byte, int m );
 
+fPredicate op_or;
+fPredicate op_and;
+fPredicate op_not;
+
 static fSuspension  force_first;
 static fSuspension  force_rest;
 static fSuspension  force_apply;
@@ -18,7 +22,7 @@ static fSuspension  force_utf8_from_ucs4;
 
 fBinOperator map;
 fBinOperator eq;
-fBinOperator append;
+fBinOperator concat;
 fBinOperator assoc;
 
 
@@ -102,6 +106,42 @@ Operator_( object env, fOperator *f, const char *printname ){
 
 
 
+predicate
+or( predicate p, predicate q ){
+  return  Operator( cons( p, q ), op_or );
+}
+
+boolean
+op_or( object pq, object input ){
+  return  Boolean( valid( apply( first( pq ), input ) )
+                || valid( apply( rest( pq ), input ) ) );
+}
+
+
+predicate
+and( predicate p, predicate q ){
+  return  Operator( cons( p, q ), op_and );
+}
+
+boolean
+op_and( object pq, object input ){
+  return  Boolean( valid( apply( first( pq ), input ) )
+                && valid( apply( rest( pq ), input ) ) );
+}
+
+
+predicate
+not( predicate p ){
+  return  Operator( p, op_not );
+}
+
+boolean
+op_not( object p, object input ){
+  return  Boolean( ! valid( apply( p, input ) ) );
+}
+
+
+
 void
 print( object a ){
   switch(  a  ? a->t  : 0  ){
@@ -165,7 +205,7 @@ print_listn( object a ){
      *it = *force_( it );
 
    Functions outside of this module requiring the forced execution
-   of a potential suspension must use side effect of take() or drop().
+   of a potential suspension must use the side effect of take() or drop().
    Eg. drop( 1, it ) will transform a suspended calculation into its
    actual resulting value. If it is a lazy list, this will manifest 
    the list node with a new suspension as the rest().
@@ -420,9 +460,9 @@ eq_symbol( int code, object b ){
 
 
 list
-append( list head, list tail ){
+concat( list head, list tail ){
   if(  ! valid( head )  ) return  tail;
-  return  cons( first( head ), append( rest( head ), tail ) );
+  return  cons( first( head ), concat( rest( head ), tail ) );
 }
 
 
