@@ -46,6 +46,8 @@ typedef enum {
 
 enum object_symbol_codes {
   T,
+  HOOK_PQ,
+  FORK_UPQ,
   END_OBJECT_SYMBOLS
 };
 
@@ -185,6 +187,8 @@ parser     Parser_( object env, fParser *f, const char *printname );
            Operator_( env, f, #f )
 operator   Operator_( object env, fOperator *f, const char *printname );
 
+#define    Predicate( env, f ) Operator( env, f )
+#define    BinOperator( f ) Operator( NIL_, f )
 
 
 /* Predicate combinators */
@@ -194,6 +198,19 @@ predicate  not( predicate p );
 predicate  and( predicate p, predicate q );
 
 predicate  or( predicate p, predicate q );
+
+
+
+/* Operator combinators */
+
+operator   hook( operator p, operator q );
+
+operator   fork( operator p, binoperator u, operator q );
+
+operator   both( operator p, operator q );
+
+#define LISTOF(...) \
+  fold_array( both, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
 
 

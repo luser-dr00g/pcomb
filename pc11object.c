@@ -7,9 +7,15 @@ static void print_listn( object a );
 static int leading_ones( object byte );
 static int mask_off( object byte, int m );
 
-fPredicate op_or;
-fPredicate op_and;
-fPredicate op_not;
+fBinOperator or;
+fPredicate   op_or;
+fBinOperator and;
+fPredicate   op_and;
+fPredicate   op_not;
+
+fOperator    op_hook;
+fOperator    op_fork;
+fBinOperator both;
 
 static fSuspension  force_first;
 static fSuspension  force_rest;
@@ -108,7 +114,7 @@ Operator_( object env, fOperator *f, const char *printname ){
 
 predicate
 or( predicate p, predicate q ){
-  return  Operator( cons( p, q ), op_or );
+  return  Predicate( cons( p, q ), op_or );
 }
 
 boolean
@@ -120,7 +126,7 @@ op_or( object pq, object input ){
 
 predicate
 and( predicate p, predicate q ){
-  return  Operator( cons( p, q ), op_and );
+  return  Predicate( cons( p, q ), op_and );
 }
 
 boolean
@@ -132,12 +138,48 @@ op_and( object pq, object input ){
 
 predicate
 not( predicate p ){
-  return  Operator( p, op_not );
+  return  Predicate( p, op_not );
 }
 
 boolean
 op_not( object p, object input ){
   return  Boolean( ! valid( apply( p, input ) ) );
+}
+
+
+operator
+hook( operator p, operator q ){
+  return  Operator( env( NIL_, 1,
+			 Symbol(HOOK_PQ), cons( p, q ) ),
+		    op_hook );
+}
+
+object
+op_hook( object env, object input ){
+  object pq = assoc_symbol( HOOK_PQ, env );
+  return  apply( rest( pq ), apply( first( pq ), input ) );
+}
+
+
+operator
+fork( operator p, binoperator u, operator q ){
+  return  Operator( env( NIL_, 1,
+			 Symbol(FORK_UPQ), cons( u, cons( p, q ) ) ),
+		    op_fork );
+}
+
+object
+op_fork( object env, object input ){
+  object upq = assoc_symbol( FORK_UPQ, env );
+  binoperator u = first( upq );
+  object pq = rest( upq );
+  return  u->Operator.f( apply( first( pq ), input ),
+			 apply( rest( pq ), input ) );
+}
+
+operator
+both( operator p, operator q ){
+  return  fork( p, BinOperator( concat ), q );
 }
 
 

@@ -152,7 +152,7 @@ parse_satisfy( object env, list input ){
 
 
 parser item( void ){
-  return  satisfy( Operator( NIL_, always_true ) );
+  return  satisfy( Predicate( NIL_, always_true ) );
 }
 
 boolean
@@ -163,7 +163,7 @@ always_true( object v, object it ){
 
 parser
 alpha( void ){
-  return  satisfy( Operator( NIL_, is_alpha ) );
+  return  satisfy( Predicate( NIL_, is_alpha ) );
 }
 
 static boolean
@@ -174,7 +174,7 @@ is_alpha( object v, object it ){
 
 parser
 upper( void ){
-  return  satisfy( Operator( NIL_, is_upper ) );
+  return  satisfy( Predicate( NIL_, is_upper ) );
 }
 
 static boolean
@@ -185,7 +185,7 @@ is_upper( object v, object it ){
 
 parser
 lower( void ){
-  return  satisfy( Operator( NIL_, is_lower ) );
+  return  satisfy( Predicate( NIL_, is_lower ) );
 }
 
 static boolean
@@ -196,7 +196,7 @@ is_lower( object v, object it ){
 
 parser
 digit( void ){
-  return  satisfy( Operator( NIL_, is_digit ) );
+  return  satisfy( Predicate( NIL_, is_digit ) );
 }
 
 static boolean
@@ -207,7 +207,7 @@ is_digit( object v, object it ){
 
 parser
 literal( object example ){
-  return  satisfy( Operator( example, is_literal ) );
+  return  satisfy( Predicate( example, is_literal ) );
 }
 
 static boolean
@@ -233,7 +233,7 @@ str( char *s ){
 
 parser
 range( int lo, int hi ){
-  return  satisfy( Operator( cons( Int( lo ), Int( hi ) ), is_range ) );
+  return  satisfy( Predicate( cons( Int( lo ), Int( hi ) ), is_range ) );
 }
 
 static boolean
@@ -246,7 +246,7 @@ is_range( object bounds, object it ){
 
 parser
 anyof( char *s ){
-  return  satisfy( Operator( String( s, 0 ), is_anyof ) );
+  return  satisfy( Predicate( String( s, 0 ), is_anyof ) );
 }
 
 static boolean
@@ -257,7 +257,7 @@ is_anyof( object set, object it ){
 
 parser
 noneof( char *s ){
-  return  satisfy( Operator( String( s, 0 ), is_noneof ) );
+  return  satisfy( Predicate( String( s, 0 ), is_noneof ) );
 }
 
 static boolean
@@ -330,17 +330,17 @@ parse_sequence( object env, list input ){
 
 parser
 then( parser p, parser q ){
-  return  sequence( p, q, Operator( NIL_, merge ) );
+  return  sequence( p, q, BinOperator( merge ) );
 }
 
 parser
 xthen( parser x, parser q ){
-  return  sequence( x, q, Operator( NIL_, right ) );
+  return  sequence( x, q, BinOperator( right ) );
 }
 
 parser
 thenx( parser p, parser x ){
-  return  sequence( p, x, Operator( NIL_, left ) );
+  return  sequence( p, x, BinOperator( left ) );
 }
 
 
@@ -597,8 +597,8 @@ on_meta( object v, object it ){
 static parser
 on_class( object v, object it ){
   if(  first( it )->Int.i == '^'  )
-    return  satisfy( Operator( to_string( rest( it ) ), is_noneof ) );
-  return  satisfy( Operator( to_string( it ), is_anyof ) );
+    return  satisfy( Predicate( to_string( rest( it ) ), is_noneof ) );
+  return  satisfy( Predicate( to_string( it ), is_anyof ) );
 }
 
 static parser
