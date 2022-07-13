@@ -102,7 +102,7 @@ the pointer to it.
                Operator_( env, f, #f )
     operator   Operator_( object env, fOperator *f, const char *printname );
 
-There are three subtypes of `operator`, a "plain" operator, a predicate, or a binary
+There are three subtypes of `operator`: a "plain" operator, a predicate, or a binary
 operator. The three function types all have compatible prototypes, so for expediency
 all three use the same `.Operator` struct in the union object, and we rely upon 
 "duck typing" to some degree to use the appropriate ones in appropriate places.
@@ -128,12 +128,13 @@ that expands both the value yielded by evaluating the enum name
 as well as the enum name's string representation.
 
 Symbol codes are allocated statically by defining each in an enum.
-The object module defines only one name and then the name `END_OBJECT_SYMBOLS`
-which the next module *layer* will use to start off its own range
-of enum codes.
+The object module defines its internal symbol names and then the
+name `END_OBJECT_SYMBOLS` which the next module *layer* will use
+to start off its own range of enum codes.
 
     enum object_symbol_codes {
     T,
+    //...,
     END_OBJECT_SYMBOLS
     };
     
@@ -219,21 +220,24 @@ The value portion of the result returned by any parser can be modified by
 `bind`ing the parser to an operator. The operator will be used to transform
 the value portion returned by a successful parse.
 
-Parsers can be combined into a choice with the `either` or `ANY` combinators.
-Parsers can be combined into a sequence with the `then` or `SEQ` combinators.
-Two variants of `then` will delete the result from the left hand parser (`xthen`)
-or delete the result from the right hand parser (`thenx`). The special combinator
-`into` will make the result from the left hand parser available to the right hand
-parser (and importantly to its `bind`ed operator, if it has one) by defining the
-value in the right hand parser's environment with a specified key.
+Parsers can be combined into a choice with the `either` or `ANY`
+combinators.  Parsers can be combined into a sequence with the `then`
+or `SEQ` combinators.  Two variants of `then` will delete the result
+from the left hand parser (`xthen`) or delete the result from the
+right hand parser (`thenx`). The special sequencing combinator `into`
+will make the result from the left hand parser available to the right
+hand parser (and importantly to its `bind`ed operator, if it has one)
+by defining the value in the right hand parser's environment with a
+specified key.
 
-The `ANY` and `SEQ` combinators take advantage of the fact that a combinator
-whose signature is `parser function( parser, parser )` is naturally compatible
-with `object function( object, object )` and so it can be treated as a binary operator
-function for use with `fold_list()` or `fold_array()`.
-The implementation for these mirrors the implementation of the `LIST()` macro which
-folds over an array using `cons` as the binary operator (since `list` is also
-compatible with `object`).
+The `ANY` and `SEQ` combinators take advantage of the fact that a
+combinator whose signature is `parser function( parser, parser )` is
+naturally compatible with `object function( object, object )` and so
+it can be treated as a binary operator function for use with
+`fold_list()` or `fold_array()`.  The implementation for these mirrors
+the implementation of the `LIST()` macro which folds over an array
+using `cons` as the binary operator (since `list` is also compatible
+with `object`).
 
 A few combinators provide optional repetitions. `maybe` succeeds if its child parser 
 matches 0 or 1 times. `many` succeeds if its child parser matches 0 or more times.
@@ -328,7 +332,7 @@ A simple operator function like
 
     static list
     encapsulate( object env, object input ){
-	return  one( input );
+        return  one( input );
     }
 
 will enclose the value by wrapping an additional list structure around it
