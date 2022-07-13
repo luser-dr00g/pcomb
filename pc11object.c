@@ -219,7 +219,12 @@ void
 print( object a ){
   switch(  a  ? a->t  : 0  ){
   default: printf( "() " ); break;
-  case INT: printf( print_chars  ? "'%c' "  : "%d ", a->Int.i ); break;
+  case INT: 
+    printf( print_chars  ? isgraph( a->Int.i )  ? "'%c' "
+	                                        : "'\x%x' "
+	                 : "%d ",
+	    a->Int.i );
+    break;
   case LIST: printf( "(" ), print( a->List.first ), printf( "." ),
                             print( a->List.rest ), printf( ")" ); break;
   case SUSPENSION: printf( "...%s ", a->Suspension.printname ); break;
