@@ -352,7 +352,16 @@ list    concat( list head,
 		list tail );
 
 
-/* Prepend n (key . value) pairs to tail */
+/* Create an environment, ie. an association list.
+   Prepend n (key . value) pairs to tail,
+     where key and value are taken one by one from the variable arguments.
+   Can build a new association list from scratch by passing NIL_ as the tail.
+   Can also add new associations to an existing list nondestructively by
+   chaining onto the front of the list.
+
+   NB. the resulting list will have the order of keys reversed
+     from the order in the arguments.
+ */
 
 list    env( list tail,
 	     int n, ... );

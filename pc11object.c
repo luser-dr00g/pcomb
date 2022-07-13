@@ -222,7 +222,7 @@ print( object a ){
   case INT: printf( print_chars  ? "'%c' "  : "%d ", a->Int.i ); break;
   case LIST: printf( "(" ), print( a->List.first ), printf( "." ),
                             print( a->List.rest ), printf( ")" ); break;
-  case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
+  case SUSPENSION: printf( "...%s ", a->Suspension.printname ); break;
   case PARSER: printf( "Parser(%s", a->Parser.printname ),
                (print_innards & ! a[-1].Header.is_forward) &&
                  (printf( ", " ), print( a->Parser.env ),0),
