@@ -30,14 +30,20 @@ int main( void ){
       ||  test_regex()
       ||  test_ebnf()
       ||  test_io()
-      ;
+      ||  0;
 }
 
 static fOperator to_upper;
+static fBinOperator add;
 
 static integer
 to_upper( object env, integer it ){
   return  Int( toupper( it->Int.i ) );
+}
+
+static integer
+add( integer x, integer y ){
+  return  Int( x->Int.i + y->Int.i );
 }
 
 static int
@@ -57,10 +63,25 @@ test_basics(){
     print( ch ), puts("");
     print_list( ch ), puts("");
   puts("");
+
   list xs = infinite( Int('x') );
     print_list( xs ), puts("");
   drop( 3, xs );
     print_list( xs ), puts("");
+  puts("");
+  
+  list numbers = iota( Int( 1 ) );
+    print_list( numbers ), puts("");
+    print_list( take( 9, numbers ) ), puts("");
+    print_list( map( curry_left( Int('A'), BinOperator( add ) ), take( 5, numbers ) ) ),
+      puts("");
+    print_list( numbers ), puts("");
+  list letters = map( curry_right( BinOperator( add ), Int('A') ), iota( Int( 0 ) ) );
+    print_list( letters ), puts("");
+  drop( 6, letters );
+    print_list( letters ), puts("");
+  puts("");
+
   puts("");
   return  0;
 }

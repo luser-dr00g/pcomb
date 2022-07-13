@@ -51,7 +51,7 @@ parser  fails( list errormsg );
 
 
 /* Emit debugging output from p.
-   Print on ok iff mode&1; print not ok iff mode&2. */
+   Print on ok if mode&1; print not ok if mode&2. */
 
 parser  probe( parser p,
 	       int mode );
@@ -83,7 +83,10 @@ parser  item( void );
 /* Choice ("OR" branches) */
 
 
-/* Combine 2 parsers into a choice. */
+/* Combine 2 parsers into a choice.
+   Try p,
+     if ok return result from p.
+     else return result from q, whatever it is. */
 
 parser  either( parser p,
 		parser q );
@@ -102,7 +105,13 @@ parser  either( parser p,
 
 
 /* Combine 2 parsers into a sequence,
-   using op to merge the value portions of results. */
+   using op to merge the value portions of results.
+   Try p,
+     if ok try q on remainder from p,
+       if ok return success with value of
+         op( value from p, value from q ).
+   Else fail.
+*/
 
 parser  sequence( parser p,
 		  parser q,
@@ -135,8 +144,8 @@ parser   then( parser p,
               (object[]){ __VA_ARGS__ } )
 
 
-/* Sequence 2 parsers, but pass result from first as a
-   (id.value) pair in second's env. */
+/* Sequence parsers p and q, but pass result from p as a
+   (id.value) pair in q's env. */
 
 parser  into( parser p,
 	      object id,
@@ -167,7 +176,9 @@ parser  some( parser p );
 
 
 /* Process succesful result from p
-   by transforming the value portion with op. */
+   by transforming the value portion with op.
+   op will be called with a modified environment,
+   supplemented with the env supplied to the bind parser. */
 
 parser  bind( parser p,
 	      operator op );
@@ -188,26 +199,30 @@ parser  forward( void );
 
 
 /* Compile a regular expression into a parser. */
-// E->T ('|' T)*
-// T->F*
-// F->A ('*' | '+' | '?')?
-// A->'.' | '('E')' | C
-// C->S|L|P
-// S->'\' ('.' | '|' | '(' | ')' | '[' | ']' | '/' )
-// L->'[' '^'? ']'? [^]]* ']'
-// P->Plain char
+// E-> T ('|' T)*
+// T-> F*
+// F-> A ('*' | '+' | '?')?
+// A-> '.' | '('E')' | C
+// C-> S|L|P
+// S-> '\' [][.|()/]
+// L-> '[' '^'? ']'? [^]]* ']'
+// P-> Plain char
 
 parser  regex( char *re );
 
 
-/* Compile a block of EBNF definitions into a list of
-   (symbol.parser) pairs. */
-// D->N '=' E ';'
-// N->name
-// E->T ('|' T)*
-// T->F*
-// F->R | N | '[' E ']' | '{' E '}' | '(' E ')' | '/' regex '/'
-// R->'"' [^"]* '"' | "'" [^']* "'"
+/* Compile a block of EBNF definitions into
+   an association list of (symbol.parser) pairs. */
+// D-> N '=' E ';'
+// N-> name
+// E-> T ('|' T)*
+// T-> F*
+// F-> R | N
+//       | '[' E ']'
+//       | '{' E '}'
+//       | '(' E ')'
+//       | '/' regex '/'
+// R-> '"' [^"]* '"' | "'" [^']* "'"
 
 list    ebnf( char *productions,
 	      list supplements,

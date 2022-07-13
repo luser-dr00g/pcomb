@@ -16,20 +16,23 @@ fPredicate   op_not;
 fOperator    op_hook;
 fOperator    op_fork;
 fBinOperator both;
+fOperator    op_curry_left;
+fOperator    op_curry_right;
 
 static fSuspension  force_first;
 static fSuspension  force_rest;
 static fSuspension  force_apply;
-fSuspension infinite;
+fSuspension  infinite;
 static fSuspension  force_chars_from_string;
 static fSuspension  force_chars_from_file;
 static fSuspension  force_ucs4_from_utf8;
 static fSuspension  force_utf8_from_ucs4;
 
-fBinOperator map;
-fBinOperator eq;
-fBinOperator concat;
-fBinOperator assoc;
+fBinOperator  map;
+static fSuspension  force_map;
+fBinOperator  eq;
+fBinOperator  concat;
+fBinOperator  assoc;
 
 
 /* Helper macro for constructor functions. */
@@ -183,6 +186,34 @@ both( operator p, operator q ){
 }
 
 
+operator
+curry_left( object left, binoperator op ){
+  return  Operator( env( NIL_, 2,
+			 Symbol(CURRY_OP), op,
+                         Symbol(CURRY_LEFT), left ),
+                    op_curry_left );
+}
+
+operator
+curry_right( binoperator op, object right ){
+  return  Operator( env( NIL_, 2,
+			 Symbol(CURRY_OP), op,
+                         Symbol(CURRY_RIGHT), right ),
+                    op_curry_right );
+}
+
+object
+op_curry_left( list env, object input ){
+  return  assoc_symbol( CURRY_OP, env )->Operator.f( assoc_symbol( CURRY_LEFT, env ),
+                                                     input );
+}
+
+object
+op_curry_right( list env, object input ){
+  return  assoc_symbol( CURRY_OP, env )->Operator.f( input,
+						     assoc_symbol( CURRY_RIGHT, env ) );
+}
+
 
 void
 print( object a ){
@@ -332,7 +363,13 @@ force_apply( list env ){
 
 list
 infinite( object mother ){
-  return cons( mother, Suspension( mother, infinite ) );
+  return  cons( mother, Suspension( mother, infinite ) );
+}
+
+
+list
+iota( integer seed ){
+  return  cons( seed, Suspension( Int( seed->Int.i + 1 ), iota ) );
 }
 
 
@@ -465,9 +502,19 @@ mask_off( object byte, int m ){
 list
 map( operator op, list it ){
   if(  ! valid( it )  ) return  it;
+  if(  it->t == SUSPENSION  ) return  Suspension( cons( op, it ), force_map );
   return  cons( apply( op, first( it ) ),
 		map( op, rest( it ) ) );
 }
+
+static list
+force_map( list env ){
+  operator op = first( env );
+  list it = rest( env );
+  *it = *force_( it );
+  return  map( op, it );
+}
+
 
 object
 fold_list( fBinOperator *f, list it ){

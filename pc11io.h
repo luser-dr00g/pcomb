@@ -8,6 +8,16 @@ enum io_symbol_codes {
   END_IO_SYMBOLS
 };
 
+/* Subset of printf() supporting directives
+     %%
+     %c
+     %s
+ */
 int pprintf( char const *fmt, ... );
 
+/* Subset of scanf() supporting directives
+     %%
+     %c
+     %s
+ */
 int pscanf( char const *fmt, ... );

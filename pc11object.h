@@ -48,6 +48,9 @@ enum object_symbol_codes {
   T,
   HOOK_PQ,
   FORK_UPQ,
+  CURRY_OP,
+  CURRY_LEFT,
+  CURRY_RIGHT,
   END_OBJECT_SYMBOLS
 };
 
@@ -212,6 +215,10 @@ operator   both( operator p, operator q );
 #define LISTOF(...) \
   fold_array( both, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
+operator   curry_left( object left, binoperator op );
+
+operator   curry_right( binoperator op, object right );
+
 
 
 /* Printing */
@@ -277,6 +284,8 @@ object  apply( operator op,
 /* Produce lazy lists */
 
 list    infinite( object mother );
+
+list    iota( integer seed );
 
 list    chars_from_str( char *str );
 
