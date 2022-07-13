@@ -1,5 +1,6 @@
 #define _BSD_SOURCE
 #include "pc11object.h"
+#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -221,7 +222,7 @@ print( object a ){
   default: printf( "() " ); break;
   case INT: 
     printf( print_chars  ? isgraph( a->Int.i )  ? "'%c' "
-	                                        : "'\x%x' "
+	                                        : "'\\x%02x' "
 	                 : "%d ",
 	    a->Int.i );
     break;
