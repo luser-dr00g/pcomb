@@ -193,7 +193,7 @@ print( object a ){
                             print( a->List.rest ), printf( ")" ); break;
   case SUSPENSION: printf( "...(%s) ", a->Suspension.printname ); break;
   case PARSER: printf( "Parser(%s", a->Parser.printname ),
-               (print_innards & ! a[-1].Header.forward) &&
+               (print_innards & ! a[-1].Header.is_forward) &&
                  (printf( ", " ), print( a->Parser.env ),0),
                printf( ") " ); break;
   case OPERATOR: printf( "Oper(%s", a->Operator.printname ),
@@ -540,7 +540,7 @@ assoc_symbol( int code, list b ){
 
 
 
-int
+size_t
 string_length( object it ){
   switch(  it  ? it->t  : 0  ){
   default: return  0;

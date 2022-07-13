@@ -104,7 +104,7 @@ struct operator {
 struct header {
   int mark;
   object next;
-  int forward;
+  int is_forward;
 };
 
 union object {
@@ -370,7 +370,7 @@ object  assoc_symbol( int code,
    Ie. the size of string required to use fill_string().
  */
 
-int     string_length( list it );
+size_t  string_length( list it );
 
 
 /* Copy integers and strings into *str. modifies caller supplied pointer */

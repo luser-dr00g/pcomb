@@ -485,7 +485,7 @@ parse_bind( object env, list input ){
 parser
 forward( void ){
   parser p = Parser( 0, 0 );
-  p[-1].Header.forward = 1;
+  p[-1].Header.is_forward = 1;
   return  p;
 }
 
