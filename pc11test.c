@@ -23,6 +23,11 @@ static int test_regex();
 static int test_ebnf();
 static int test_io();
 
+static fOperator stringify;
+static fOperator to_upper;
+static fBinOperator add;
+
+
 int main( void ){
   return  0
       ||  test_basics()
@@ -33,18 +38,6 @@ int main( void ){
       ||  0;
 }
 
-static fOperator to_upper;
-static fBinOperator add;
-
-static integer
-to_upper( object env, integer it ){
-  return  Int( toupper( it->Int.i ) );
-}
-
-static integer
-add( integer x, integer y ){
-  return  Int( x->Int.i + y->Int.i );
-}
 
 static int
 test_basics(){
@@ -86,6 +79,7 @@ test_basics(){
   return  0;
 }
 
+
 static int
 test_parsers(){
   puts( __func__ );
@@ -103,6 +97,7 @@ test_parsers(){
   puts("");
   return  0;
 }
+
 
 static int
 test_regex(){
@@ -151,15 +146,10 @@ test_regex(){
   print_list( parse( f, chars_from_str( "." ) ) ), puts("");
   puts("");
 
+  puts("");
   return  0;
 }
 
-static fOperator stringify;
-
-static string
-stringify( object env, list it ){
-  return  to_string( it );
-}
 
 static int
 test_ebnf(){
@@ -212,12 +202,33 @@ test_ebnf(){
                       "Anytown, ST 00700\n" ) ) ),
     puts("");
 
-  printf( "%d objects\n", count_allocations() );
+  printf( "%d objects\n", count_allocations() ), puts("");
+
+  puts("");
   return  0;
 }
 
+
 static int
 test_io(){
+  puts( __func__ );
   pprintf( "%s:%c-%c\n", "does it work?", '*', '@' );
+  puts("");
   return  0;
+}
+
+
+static string
+stringify( object env, list it ){
+  return  to_string( it );
+}
+
+static integer
+to_upper( object env, integer it ){
+  return  Int( toupper( it->Int.i ) );
+}
+
+static integer
+add( integer x, integer y ){
+  return  Int( x->Int.i + y->Int.i );
 }
