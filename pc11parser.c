@@ -13,7 +13,6 @@ static fPredicate is_digit;
 static fPredicate is_literal;
 static fPredicate is_range;
 static fPredicate is_anyof;
-static fPredicate is_noneof;
 static fPredicate always_true;
 
 static fParser    parse_either;
@@ -257,12 +256,7 @@ is_anyof( object set, object it ){
 
 parser
 noneof( char *s ){
-  return  satisfy( Predicate( String( s, 0 ), is_noneof ) );
-}
-
-static boolean
-is_noneof( object set, object it ){
-  return  Boolean( it->t == INT && ! strchr( set->String.str, it->Int.i ) );
+  return  satisfy( not( Predicate( String( s, 0 ), is_anyof ) ) );
 }
 
 
@@ -348,27 +342,27 @@ thenx( parser p, parser x ){
    taking care if either is already a list */
 
 static object
-merge( object l, object r ){
-  if(  ! valid( l )  ) return  r;
-  if(  r->t == LIST
-    && valid( eq_symbol( VALUE, first( first( r ) ) ) )
-    && ! valid( rest( r ) )
-    && ! valid( rest( first( r ) ) )  )
-    return  l;
-  switch(  l->t  ){
-  case LIST: return  cons( first( l ), merge( rest( l ), r ) );
-  default: return  cons( l, r );
+merge( object left, object right ){
+  if(  ! valid( left )  ) return  right;
+  if(  right->t == LIST
+    && valid( eq_symbol( VALUE, first( first( right ) ) ) )
+    && ! valid( rest( right ) )
+    && ! valid( rest( first( right ) ) )  )
+    return  left;
+  switch(  left->t  ){
+  case LIST: return  cons( first( left ), merge( rest( left ), right ) );
+  default: return  cons( left, right );
   }
 }
 
 static object
-right( object l, object r ){
-  return  r;
+right( object left, object right ){
+  return  right;
 }
 
 static object
-left( object l, object r ){
-  return  l;
+left( object left, object right ){
+  return  left;
 }
 
 
@@ -506,9 +500,9 @@ parse_probe( object env, object input ){
   parser p = assoc_symbol( PROBE_P, env );
   int mode = assoc_symbol( PROBE_MODE, env )->Int.i;
   object result = parse( p, input );
-  if(  is_ok( result ) && mode&1  )
+  if(  is_ok( result )  &&  mode & 1  )
     print( result ), puts("");
-  else if(  not_ok( result ) && mode&2  )
+  else if(  not_ok( result )  &&  mode & 2  )
     print_list( result ), puts("");
   return  result;
 }
@@ -522,7 +516,7 @@ static parser regex_parser;
 
 parser
 regex( char *re ){
-  if(  !regex_parser  ) regex_parser = regex_grammar();
+  if(  ! regex_parser  ) regex_parser = regex_grammar();
   object result = parse( regex_parser, chars_from_str( re ) );
   if(  not_ok( result )  ) return  result;
   return  first( rest( result ) );
@@ -597,7 +591,7 @@ on_meta( object v, object it ){
 static parser
 on_class( object v, object it ){
   if(  first( it )->Int.i == '^'  )
-    return  satisfy( Predicate( to_string( rest( it ) ), is_noneof ) );
+    return  satisfy( not( Predicate( to_string( rest( it ) ), is_anyof ) ) );
   return  satisfy( Predicate( to_string( it ), is_anyof ) );
 }
 

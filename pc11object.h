@@ -194,6 +194,7 @@ operator   Operator_( object env, fOperator *f, const char *printname );
 #define    BinOperator( f ) Operator( NIL_, f )
 
 
+
 /* Predicate combinators */
 
 predicate  not( predicate p );
@@ -327,6 +328,15 @@ object  fold_array( fBinOperator *f,
 		    int n,
 		    object po[] );
 
+
+/* Combine corresponding elements from left and right lists using f
+   into a single list.
+ */
+
+list  zipwith( fBinOperator *f, list left, list right );
+
+#define ZIP( left, right ) \
+  zipwith( cons, left, right )
 
 
 

@@ -216,6 +216,7 @@ op_curry_right( list env, object input ){
 }
 
 
+
 void
 print( object a ){
   switch(  a  ? a->t  : 0  ){
@@ -533,6 +534,21 @@ fold_list( fBinOperator *f, list it ){
 object
 fold_array( fBinOperator *f, int n, object po[] ){
   return  n==1  ? *po  : f( *po, fold_array( f, n-1, po+1 ) );
+}
+
+
+#define TAGS( x, y ) \
+  ( (x) * END_TAGS + (y) )
+
+list
+zipwith( fBinOperator *f, list left, list right ){
+  *left = *force_( left );
+  *right = *force_( right );
+  switch(  ( left && right )  ? TAGS( left->t, right->t )  : 0  ){
+  default: return  NIL_;
+  case TAGS( LIST, LIST ): return  cons( f( first( left ), first( right ) ),
+					 zipwith( f, rest( left ), rest( right ) ) );
+  }
 }
 
 
