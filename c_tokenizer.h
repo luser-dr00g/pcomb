@@ -1,4 +1,4 @@
-#define PC11CTOKEN_H
+#define C_TOKENIZER_H
 #if  ! PC11PARSER_H
   #include "pc11parser.h"
 #endif
@@ -27,7 +27,7 @@
   _("{", lbrace) _("}", rbrace) _("[", lbracket) _("]", rbracket)    \
 //end Each_Symbolic
 
-#define Each_assignop(_) \
+#define Each_Assignop(_) \
   _("+=", op_pluseq) _("-=", op_minuseq)                       \
   _("*=", op_stareq) _("/=", op_slanteq) _("%=", op_percenteq) \
   _(">>=", op_righteq) _("<<=", op_lefteq)                     \
@@ -39,20 +39,22 @@
 #define Languages(_) \
   _(C90) _(C99)
 
-#define Symbolic_name(x,y) y ,
-#define Semantic_name(x) x ,
+#define Symbolic_name_comma(x,y) y ,
+#define Semantic_name_comma(x) x ,
 #define Semantic_string(x) #x
-#define Language_name(x) LANG_ ## x ,
+#define Language_name(x) LANG_ ## x
+#define Language_name_comma(x) Language_name(x) ,
 
 enum token_symbol_codes {
   token_symbols = END_PARSER_SYMBOLS,
-  Semantic_Tokens( Semantic_name )
-  Each_Symbolic( Symbolic_name )
-  Each_assignop( Symbolic_name )
-  Languages( Language_name )
+  Semantic_Tokens( Semantic_name_comma )
+  Each_Symbolic( Symbolic_name_comma )
+  Each_Assignop( Symbolic_name_comma )
+  Languages( Language_name_comma )
+  SPACE,
   END_TOKEN_SYMBOLS
 };
  
-typedef enum language { Languages( Semantic_name ) } language;
+typedef enum language { Languages( Semantic_name_comma ) } language;
 
 list tokens_from_chars( language lang, list input );
