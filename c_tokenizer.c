@@ -24,7 +24,8 @@ list
 tokens_from_chars( language lang, list input ){
   if(  ! valid( input )  ) return Symbol(EOF);
   return  cons( Symbol_( LANG_C90 + lang, lang_string( lang ), NIL_ ),
-                Suspension( cons( Int(lang), input ), force_tokens_from_chars ) );
+                Suspension( cons( Int(lang), input ),
+			    force_tokens_from_chars ) );
 }
 
 
@@ -60,14 +61,17 @@ token_parser( language lang ){
   parser space = many( either( anyof(" \t\n"), comment ) );
   parser alpha_ = either( alpha(), chr('_') );
   parser int_ = some( digit() );
-  parser float_ = then( either( SEQ( some( digit() ), chr('.'), many( digit() ) ),
+  parser float_ = then( either( SEQ( some( digit() ),
+				     chr('.'),
+				     many( digit() ) ),
 			        then( chr('.'), some( digit() ) ) ),
 		        maybe( SEQ( anyof("Ee"),
 				    maybe( anyof("+-") ),
 				    some( digit() ) ) ) );
   parser escape = then( chr('\\'),
 			either( then( digit(),
-				      maybe( then( digit(), maybe( digit() ) ) ) ),
+				      maybe( then( digit(),
+						   maybe( digit() ) ) ) ),
 				anyof( "'\"bnrt\\" ) ) );
   parser char_ = either( escape, noneof( "'\n" ) );
   parser schar_ = either( escape, noneof( "\"\n" ) );
@@ -87,8 +91,9 @@ token_parser( language lang ){
 			 assign );
   parser identifier = bind( then( alpha_, many( either( alpha_, digit() ) ) ),
 			    Operator( NIL_, on_ident ) );
-  return  into( space, Symbol(SPACE), bind( ANY( constant, symbolic, identifier ),
-					    Operator( NIL_, on_token )) );
+  return  into( space, Symbol(SPACE),
+		bind( ANY( constant, symbolic, identifier ),
+		      Operator( NIL_, on_token )) );
 }
 
 
@@ -98,7 +103,7 @@ token_parser( language lang ){
 char *
 lang_string( language lang ){
   switch( lang ){
-  default: return "";
+  default: return  "";
   Languages( Case_Lang_String );
   }
 }
@@ -124,6 +129,7 @@ on_space( object v, list input ){
 
 static symbol
 on_token( object v, symbol input ){
-  input->Symbol.data = cons( assoc_symbol( SPACE, v ), input->Symbol.data );
+  input->Symbol.data = cons( assoc_symbol( SPACE, v ),
+			     input->Symbol.data );
   return  input;
 }
