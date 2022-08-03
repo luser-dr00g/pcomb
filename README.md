@@ -93,7 +93,7 @@ the pointer to it.
 
     /* Join N elements together in a list */
     #define LIST(...) \
-      reduce( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+      fold_array( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
 
     /* Macros capture printnames automatically for these constructors */
@@ -260,10 +260,10 @@ The `ANY` and `SEQ` combinators take advantage of the fact that a
 combinator whose signature is `parser function( parser, parser )` is
 naturally compatible with `object function( object, object )` and so
 it can be treated as a binary operator function for use with
-`fold_list()` or `fold_array()`.  The implementation for these mirrors
-the implementation of the `LIST()` macro which folds over an array
-using `cons` as the binary operator (since `list` is also compatible
-with `object`).
+`fold_list()` or `fold_array()`.  The implementation for `ANY` and
+`SEQ` mirrors the implementation of the `LIST()` macro which folds
+over an array using `cons` as the binary operator (since `list` is
+also compatible with `object`).
 
 A few combinators provide optional repetitions. `maybe` succeeds if
 its child parser matches 0 or 1 times. `many` succeeds if its child
@@ -342,9 +342,9 @@ and `either` and then have its value filled in by the resulting
 care not build a graph with left recursion or the recursive descent
 parsing algorithm will become locked in an infinite unproductive loop.
 
-For examples of this, see the implementations of the `many` combinator
-and the `regex_grammar()` and `ebnf_grammar()` functions in
-`pc11parser.c`.
+For examples of using `forward()` to build loops, see the
+implementations of the `many` combinator and the `regex_grammar()` and
+`ebnf_grammar()` functions in `pc11parser.c`.
 
 To avoid infinite recursion, the `print()` function will refuse to
 print the innards of a parser created with `forward()` -- even after
