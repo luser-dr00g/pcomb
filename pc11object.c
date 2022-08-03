@@ -523,6 +523,12 @@ force_map( list env ){
 }
 
 
+/*
+  f( first( it ),
+    f( first( rest( it ) ),
+      f( ... , rest( rest( ... rest( it ) ) ) ... ) ) )
+ */
+
 object
 fold_list( fBinOperator *f, list it ){
   if(  !valid( it )  ) return  it;
@@ -530,6 +536,13 @@ fold_list( fBinOperator *f, list it ){
   if(  !valid( right )  ) return  first( it );
   return  f( first( it ), right );
 }
+
+
+/*
+  f( po[0],
+    f( po[1],
+      f( ... , po[n-1] ) ... ))
+ */
 
 object
 fold_array( fBinOperator *f, int n, object po[] ){
