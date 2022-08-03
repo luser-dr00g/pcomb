@@ -1,15 +1,28 @@
 #include "c_tokenizer.h"
 
 
-static fSuspension force_tokens_from_chars;
-static parser token_parser( language lang );
-char *lang_string( language lang );
 
 #define Declare_Semantic_Op_fun( x ) \
         Declare_Op_fun( 0, x )
 
 #define Declare_Op_fun( x, y ) \
   static fOperator on_ ## y ;
+
+
+#define Semantic_Op_fun( x ) \
+        Op_fun( 0, x )
+
+#define Op_fun( x, y ) \
+  static object \
+  on_ ## y ( object v, list input ){ \
+    return  Symbol_( y, #y, to_string( input ) ); \
+  }
+
+
+
+static fSuspension force_tokens_from_chars;
+static parser token_parser( language lang );
+char *lang_string( language lang );
 
 Each_Symbolic( Declare_Op_fun )
 Each_Assignop( Declare_Op_fun )
@@ -108,15 +121,6 @@ lang_string( language lang ){
   }
 }
 
-
-#define Semantic_Op_fun( x ) \
-        Op_fun( 0, x )
-
-#define Op_fun( x, y ) \
-  static object \
-  on_ ## y ( object v, list input ){ \
-    return  Symbol_( y, #y, to_string( input ) ); \
-  }
 
 Each_Symbolic( Op_fun )
 Each_Assignop( Op_fun )
