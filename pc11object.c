@@ -4,9 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 
-static void print_listn( object a );
-static int leading_ones( object byte );
-static int mask_off( object byte, int m );
+fOperator op_constant;
 
 fBinOperator or;
 fPredicate   op_or;
@@ -28,6 +26,10 @@ static fSuspension  force_chars_from_string;
 static fSuspension  force_chars_from_file;
 static fSuspension  force_ucs4_from_utf8;
 static fSuspension  force_utf8_from_ucs4;
+
+static void print_listn( object a );
+static int leading_ones( object byte );
+static int mask_off( object byte, int m );
 
 fBinOperator  map;
 static fSuspension  force_map;
@@ -112,6 +114,19 @@ Parser_( object env, fParser *f, const char *printname ){
 operator
 Operator_( object env, fOperator *f, const char *printname ){
   return  OBJECT( .Operator = { OPERATOR, env, f, printname } );
+}
+
+
+
+operator
+constant( object thing ){
+  return  Operator( env( NIL_, 1, Symbol(CONSTANT), thing ),
+		    op_constant );
+}
+
+object
+op_constant( object env, object ignore ){
+  return  assoc_symbol( CONSTANT, env );
 }
 
 
@@ -324,7 +339,7 @@ static object force_rest ( object it ){
 
 int
 length( list ls ){
-  return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) ) : 0;
+  return  valid( ls )  ?  valid( first( ls ) ) + length( rest( ls ) )  : 0;
 }
 
 
@@ -550,16 +565,16 @@ fold_array( fBinOperator *f, int n, object po[] ){
 }
 
 
-#define TAGS( x, y ) \
-  ( (x) * END_TAGS + (y) )
+#define TAG2( x, y ) \
+  ( (x) * END_TAGS  +  (y) )
 
 list
 zipwith( fBinOperator *f, list left, list right ){
   *left = *force_( left );
   *right = *force_( right );
-  switch(  ( left && right )  ? TAGS( left->t, right->t )  : 0  ){
+  switch(  ( left && right )  ? TAG2( left->t, right->t )  : 0  ){
   default: return  NIL_;
-  case TAGS( LIST, LIST ): return  cons( f( first( left ), first( right ) ),
+  case TAG2( LIST, LIST ): return  cons( f( first( left ), first( right ) ),
 					 zipwith( f, rest( left ), rest( right ) ) );
   }
 }
@@ -579,7 +594,12 @@ eq( object a, object b ){
 
 boolean
 eq_symbol( int code, object b ){
-  return  eq( (union object[]){ {.Symbol = {SYMBOL, code, "", 0} } }, b );
+  return  eq( (union object[]){ {.Symbol = {SYMBOL, code, "", 0}} }, b );
+}
+
+boolean
+eq_int( int i, object b ){
+  return  eq( (union object[]){ {.Int = {INT, i}} }, b );
 }
 
 

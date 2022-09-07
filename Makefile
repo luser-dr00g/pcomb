@@ -1,5 +1,6 @@
-CFLAGS ?= -g -Wall -Wpedantic -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-switch -Wno-return-type -Wunused-variable
+CFLAGS ?= -g -Wall -Wpedantic -Wextra -Wno-unused-function -Wno-unused-parameter -Wno-switch -Wno-return-type -Wunused-variable -Wno-parentheses
 CFLAGS += -std=c99
+SRC = pc11*[ch] ppnarg.h
 
 test : pc11test
 	./$<
@@ -17,7 +18,7 @@ clean :
 	rm *.o pc11test.exe
 
 count :
-	wc -l -c -L pc11*[ch] ppnarg.h
-	cloc pc11*[ch] ppnarg.h
+	wc -l -c -L $(SRC)
+	cloc $(SRC)
 
 .PHONY : test clean count

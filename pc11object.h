@@ -10,7 +10,7 @@
    and signatures for function object functions */
 
 #define IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  *
-typedef union    object  IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  object;
+typedef union object  IS_THE_TARGET_OF_THE_HIDDEN_POINTER_  object;
 
 typedef object   integer;
 typedef object   list;
@@ -46,6 +46,7 @@ typedef enum {
 
 enum object_symbol_codes {
   T,
+  CONSTANT,
   HOOK_PQ,
   FORK_UPQ,
   CURRY_OP,
@@ -133,7 +134,7 @@ extern symbol T_;
 
 
 /* Determine if object is non-NULL and non-NIL.
-   Will also convert a boolean T_ or NIL_ to an integer 1 or 0.
+   Will also convert a boolean T_ or NIL_ to 1 or 0.
  */
 
 static int
@@ -194,8 +195,9 @@ operator   Operator_( object env, fOperator *f, const char *printname );
 #define    BinOperator( f ) Operator( NIL_, f )
 
 
+operator  constant( object thing );
 
-/* Predicate combinators */
+/* Predicate combinators (short circuiting) */
 
 predicate  not( predicate p );
 
@@ -208,6 +210,9 @@ predicate  or( predicate p, predicate q );
 /* Operator combinators */
 
 operator   hook( operator p, operator q );
+
+#define TRAIN(...) \
+  fold_array( hook, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
 
 operator   fork( operator p, binoperator u, operator q );
 
@@ -307,7 +312,7 @@ list    utf8_from_ucs4( list o );
 /* Maps and folds */
 
 
-/* Map elements of list it through operator function.
+/* Map elements of (lazy?) list it through operator function.
    Build a new list, each element of which is the result of
      apply( op, <corresponding element of list it> )
  */
@@ -354,6 +359,10 @@ boolean eq( object a,
 boolean eq_symbol( int code,
 		   object b );
 
+/* Call eq, but avoid the need to allocate an Int object */
+
+boolean eq_int( int i,
+                object b );
 
 /* Return copy of head with a pointer to tail in place of
    head's terminating NIL. */
@@ -426,8 +435,8 @@ symbol  symbol_from_string( string s );
 /* Report (an analogue of) memory usage.
    By current measure, an allocation is 64 bytes,
    ie. 2x 32 byte union objects.
-   Largest object is 3 pointers + integer tag.
-     ie. 3x 8byte pointers + 4byte integer + 4byte padding.
+   Largest object is  integer tag + 3 pointers
+     ie.  4byte integer + 4byte padding + 3x 8byte pointers
  */
    
 

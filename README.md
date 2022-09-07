@@ -339,7 +339,7 @@ in dot notation.
 The parser constructed with `forward()` can be composed with `then`
 and `either` and then have its value filled in by the resulting
 "higher level" parser. This creates a loop in the parser graph. Take
-care not build a graph with left recursion or the recursive descent
+care not to build a graph with left recursion or the recursive descent
 parsing algorithm will become locked in an infinite unproductive loop.
 
 For examples of using `forward()` to build loops, see the

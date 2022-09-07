@@ -15,7 +15,6 @@ static fOperator  print_string;
 static fPredicate is_nonzero;
 
 static fOperator  summarize;
-static fOperator  always_zero;
 static fOperator  convert_char;
 static fOperator  convert_string;
 
@@ -124,14 +123,9 @@ summarize( object v, object it ){
 }
 
 
-static integer
-always_zero( object v, list it ){
-  return  Int( 0 );
-}
-
 static parser
 pass( parser p ){
-  return  bind( p, Operator( NIL_, always_zero ) );
+  return  bind( p, constant( Int( 0 ) ) );
 }
 
 static integer

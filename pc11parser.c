@@ -142,6 +142,8 @@ parse_satisfy( object env, list input ){
   object item = first( input );
   if(  ! valid( item )  ) return  fail( String( "empty input", 0 ),
 					input );
+  if(  item->t == LIST  )
+    item = first( item ); //discard position info
   return  valid( apply( pred, item ) )
             ? success( item,
 		       rest( input ) )
@@ -150,8 +152,9 @@ parse_satisfy( object env, list input ){
 }
 
 
-parser item( void ){
-  return  satisfy( Predicate( NIL_, always_true ) );
+parser
+item( void ){
+  return  satisfy( constant( T_ ) );
 }
 
 boolean
@@ -795,6 +798,7 @@ define_parser( object env, object it ){
     object rhs = rest( it );
     if(  rhs->t == LIST  ) rhs = first( rhs );
     *lhs = *rhs;
+    return  cons( first( it ), rhs );
   }
   return  it;
 }

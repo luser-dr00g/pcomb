@@ -192,8 +192,6 @@ test_ebnf(){
   );
 
   parser start = assoc_symbol( postal_address, parsers );
-  if(  valid( start ) && start->t == LIST  )
-    start = first( start );
   print_list( start ), puts("\n");
   
   print_list( parse( start,
