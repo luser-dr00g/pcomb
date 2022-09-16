@@ -145,6 +145,7 @@ valid( object it ){
 }
 
 
+
 /* Constructors */
 
 
@@ -169,8 +170,10 @@ list       cons( object first, object rest );
 
 /* Join N elements together in a list */
 
-#define LIST(...) \
-  fold_array( cons, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+#define LIST(...)                       \
+  fold_array( cons,                     \
+              PP_NARG(__VA_ARGS__),     \
+              (object[]){ __VA_ARGS__ } )
 
 
 /* Macros capture printnames automatically for these constructors */
@@ -209,17 +212,45 @@ predicate  or( predicate p, predicate q );
 
 /* Operator combinators */
 
+
+/* p( q( input ) ) */
+
 operator   hook( operator p, operator q );
 
-#define TRAIN(...) \
-  fold_array( hook, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+
+/* TRAIN(p,q,r,s) == p( q( r( s( input ) ) ) ) */
+
+#define TRAIN(...)                      \
+  fold_array( hook,                     \
+              PP_NARG(__VA_ARGS__),     \
+              (object[]){ __VA_ARGS__ } )
+
+
+/* u( p( input ),
+      q( input ) ) */
 
 operator   fork( operator p, binoperator u, operator q );
 
+
+/* concat( p( input ),
+           q( input ) ) */
+
 operator   both( operator p, operator q );
 
-#define LISTOF(...) \
-  fold_array( both, PP_NARG(__VA_ARGS__), (object[]){ __VA_ARGS__ } )
+
+/* LISTOF(p,q,r,s) == concat( p( input ),
+                        concat( q( input ),
+                          concat( r( input ),
+                                  s( input ) ) ) ) */
+
+#define LISTOF(...)                     \
+  fold_array( both,                     \
+              PP_NARG(__VA_ARGS__),     \
+              (object[]){ __VA_ARGS__ } )
+
+
+/* Fix the left or right argument of a binoperator
+   to use as a regular operator. */
 
 operator   curry_left( object left, binoperator op );
 

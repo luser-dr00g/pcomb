@@ -161,7 +161,7 @@ not( predicate p ){
 }
 
 boolean
-op_not( object p, object input ){
+op_not( predicate p, object input ){
   return  Boolean( ! valid( apply( p, input ) ) );
 }
 
