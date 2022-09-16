@@ -199,30 +199,30 @@ parser  forward( void );
 
 
 /* Compile a regular expression into a parser. */
-// E-> T ('|' T)*
-// T-> F*
-// F-> A ('*' | '+' | '?')?
-// A-> '.' | '('E')' | C
-// C-> S|L|P
-// S-> '\' [][.|()/]
-// L-> '[' '^'? ']'? [^]]* ']'
-// P-> Plain char
+// Exp-> Term ('|' Term)*
+// Term-> Factor*
+// Factor-> Atom ('*' | '+' | '?')?
+// Atom-> '.' | '('Exp')' | Class
+// Class-> Escape | CharClass | Plain
+// Escape-> '\' [][.|()/]
+// CharClass-> '[' '^'? ']'? [^]]* ']'
+// Plain-> Plain char
 
 parser  regex( char *re );
 
 
 /* Compile a block of EBNF definitions into
    an association list of (symbol.parser) pairs. */
-// D-> N '=' E ';'
-// N-> name
-// E-> T ('|' T)*
-// T-> F*
-// F-> R | N
+// Def-> Name '=' Exp ';'
+// Exp-> Term ('|' Term)*
+// Term-> Factor*
+// Factor-> Terminal
+//       | Name
 //       | '[' E ']'
 //       | '{' E '}'
 //       | '(' E ')'
 //       | '/' regex '/'
-// R-> '"' [^"]* '"' | "'" [^']* "'"
+// Terminal-> '"' [^"]* '"' | "'" [^']* "'"
 
 list    ebnf( char *productions,
 	      list supplements,
