@@ -13,7 +13,6 @@ static fPredicate is_digit;
 static fPredicate is_literal;
 static fPredicate is_range;
 static fPredicate is_anyof;
-static fPredicate always_true;
 
 static fParser    parse_either;
 fBinOperator  either;
@@ -155,11 +154,6 @@ parse_satisfy( object env, list input ){
 parser
 item( void ){
   return  satisfy( constant( T_ ) );
-}
-
-boolean
-always_true( object v, object it ){
-  return  T_;
 }
 
 
