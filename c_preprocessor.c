@@ -11,31 +11,48 @@ static void split( list it, object *front, list *back ){
 }
 
 
-static fSuspension chars_with_positions;
-static list position( object item );
+static fSuspension force_chars_with_positions;
+static list position( object item, int *row, int *col );
 static parser position_grammar( void );
 static fOperator new_line;
 
 
 list
 chars_with_positions( list input ){
+  return  Suspension( env( NIL_, 3,
+                           Symbol(POS_ROW), Int( 0 ),
+                           Symbol(POS_COL), Int( 0 ),
+                           Symbol(POS_INPUT), input ),
+		      force_chars_with_positions );
+}
+  
+list
+force_chars_with_positions( list ev ){
+  list input = assoc_symbol( POS_INPUT, ev );
+  integer row = assoc_symbol( POS_ROW, ev );
+  integer col = assoc_symbol( POS_COL, ev );
+
   static parser position_parser;
   if(  ! position_parser  ) position_parser = position_grammar();
   object result = parse( position_parser, input );
   if(  not_ok( result )  ) return  rest( rest( result ) );
+
   object payload = rest( result );
-  return  cons( position( first( payload ) ),
-		Suspension( rest( payload ), chars_with_positions ) );
+  list pos = position( first( payload ), &row->Int.i, &col->Int.i );
+  return  cons( pos,
+		Suspension( env( NIL_, 3,
+				 Symbol(POS_ROW), row,
+				 Symbol(POS_COL), col,
+                                 Symbol(POS_INPUT), rest( payload ) ),
+			    force_chars_with_positions ) );
 }
 
 static list
-position( object item ){
-  static int row = 0,
-             col = 0;
+position( object item, int *row, int *col ){
   if(  valid( eq_int( '\n', item ) )  )
-    return  cons( item, cons( Int( ++ row ), Int( col = 0 ) ) );
+    return  cons( item, cons( Int( ++ *row ), Int( *col = 0 ) ) );
   else
-    return  cons( item, cons( Int(    row ), Int( ++ col  ) ) );
+    return  cons( item, cons( Int(    *row ), Int( ++ *col  ) ) );
 }
 
 static parser

@@ -5,5 +5,8 @@
 
 enum preprocessor_symbols {
   NEWLINE = END_PARSER_SYMBOLS,
+  POS_ROW,
+  POS_COL,
+  POS_INPUT,
   END_PREPROCESSOR_SYMBOLS
 };
